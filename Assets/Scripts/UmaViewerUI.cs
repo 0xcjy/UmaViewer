@@ -150,17 +150,20 @@ public class UmaViewerUI : MonoBehaviour
 
     private void Update()
     {
-        if (Builder.CurrentAudioSources.Count > 0 && Builder.CurrentAudioSources[0])
+        if (Builder == null)
+            return;
+
+        if (Builder.CurrentAudioSources != null && Builder.CurrentAudioSources.Count > 0 && Builder.CurrentAudioSources[0])
         {
             AudioSource MianSource = Builder.CurrentAudioSources[0];
-            if (MianSource.clip)
+            if (MianSource.clip && AudioSettings != null)
             {
                 AudioSettings.UpdateTrack(MianSource);
             }
         }
 
         var umaContainer = Builder.CurrentUMAContainer;
-        if (umaContainer != null && umaContainer.OverrideController != null)
+        if (umaContainer != null && umaContainer.OverrideController != null && AnimationSettings != null)
         {
             AnimationSettings.UpdateAnimationInfo(umaContainer);
         }

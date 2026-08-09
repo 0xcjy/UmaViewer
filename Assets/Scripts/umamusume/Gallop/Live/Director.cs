@@ -6,6 +6,8 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using Gallop.Live.Cyalume;
+using Gallop.RenderPipeline;
 
 namespace Gallop.Live
 {
@@ -54,6 +56,9 @@ namespace Gallop.Live
         private Dictionary<string, Vector2> _uvScrollAccum = new Dictionary<string, Vector2>();
 
         private Volume _postProcessVolume;
+        private readonly Dictionary<int, GameObject> _liveProps = new Dictionary<int, GameObject>();
+        private readonly Dictionary<LiveTimelineAdditionalLight, Light> _additionalLights = new Dictionary<LiveTimelineAdditionalLight, Light>();
+        private readonly Dictionary<LiveTimelineLightProjectionData, Light> _projectionLights = new Dictionary<LiveTimelineLightProjectionData, Light>();
 
         public UmaViewerAudio.CuteAudioSource liveMusic = new UmaViewerAudio.CuteAudioSource();
 
@@ -80,6 +85,12 @@ namespace Gallop.Live
         public Transform MainCameraTransform => _mainCameraTransform;
 
         private Transform _mainCameraTransform;
+        private bool _playbackPaused;
+        private bool _freeCameraActive;
+        private FreeCam _freeCamera;
+
+        public bool PlaybackPaused => _playbackPaused;
+        public bool FreeCameraActive => _freeCameraActive;
 
         public bool isTimelineControlled
         {
@@ -111,6 +122,10 @@ namespace Gallop.Live
             if (live != null)
             {
                 _instance = this;
+                if (GetComponent<SkirtCollisionRuntimeTuner>() == null)
+                    gameObject.AddComponent<SkirtCollisionRuntimeTuner>();
+                if (GetComponent<LivePlaybackToolbar>() == null)
+                    gameObject.AddComponent<LivePlaybackToolbar>();
                 Debug.Log(string.Format(CUTT_PATH, live.MusicId));
                 Builder.LoadAssetPath(string.Format(CUTT_PATH, live.MusicId), transform);
                 if (RequireStage)
@@ -119,6 +134,8 @@ namespace Gallop.Live
                     Builder.LoadAssetPath(string.Format(STAGE_PATH, live.BackGroundId), transform);
                     _liveTimelineControl.StageObjectMap = _stageController.StageObjectMap;
                     _liveTimelineControl.StageObjectUnitMap = _stageController.StageObjectUnitMap;
+                    InitializeCyalumeStage();
+                    InitializeStageMonitor();
                 }
 
                 //Make CharacterObject
@@ -231,6 +248,14 @@ namespace Gallop.Live
             _liveTimelineControl.OnUpdateChromaticAberration += OnChromaticAberrationUpdate;
             _liveTimelineControl.OnUpdateColorCorrection += OnColorCorrectionUpdate;
             _liveTimelineControl.OnUpdatePostFilm += OnPostFilmUpdate;
+            _liveTimelineControl.OnUpdateLensFlare += OnLensFlareUpdate;
+            _liveTimelineControl.OnUpdateEnvironment += OnEnvironmentUpdate;
+            _liveTimelineControl.OnUpdateFacialToon += OnFacialToonUpdate;
+            _liveTimelineControl.OnUpdateProps += OnPropsUpdate;
+            _liveTimelineControl.OnUpdatePropsAttach += OnPropsAttachUpdate;
+            _liveTimelineControl.OnUpdateCharaFootLight += OnCharaFootLightUpdate;
+            _liveTimelineControl.OnUpdateAdditionalLight += OnAdditionalLightUpdate;
+            _liveTimelineControl.OnUpdateLightProjection += OnLightProjectionUpdate;
             PostFilmRendererFeature.ResetLayers();
 
             // 获取或创建摄像机上的 Volume 组件，供后处理 handler 使用
@@ -250,6 +275,39 @@ namespace Gallop.Live
                 if (!profile.Has<ColorAdjustments>())   profile.Add<ColorAdjustments>(true);
                 if (!profile.Has<ColorCurves>())        profile.Add<ColorCurves>(true);
             }
+        }
+
+        private void InitializeCyalumeStage()
+        {
+            if (_stageController == null) return;
+
+            foreach (var holder in _stageController.GetComponentsInChildren<AssetHolder>(true))
+            {
+                if (holder == null || holder._assetTable == null || holder._assetTable.list == null) continue;
+
+                bool hasDefault = false;
+                bool hasRandom = false;
+                foreach (var entry in holder._assetTable.list)
+                {
+                    if (string.Equals(entry.Key, "default", StringComparison.OrdinalIgnoreCase)) hasDefault = true;
+                    if (string.Equals(entry.Key, "random", StringComparison.OrdinalIgnoreCase)) hasRandom = true;
+                }
+
+                if (!hasDefault && !hasRandom) continue;
+                var controller = holder.GetComponent<CyalumeController3D>();
+                if (controller == null) controller = holder.gameObject.AddComponent<CyalumeController3D>();
+                controller.StartOfficialLikeSetup();
+                return;
+            }
+
+            Debug.Log("[Cyalume] no audience AssetHolder was present on this stage.");
+        }
+
+        private void InitializeStageMonitor()
+        {
+            if (_stageController == null) return;
+            if (_stageController.GetComponent<StageMonitorDriver>() == null)
+                _stageController.gameObject.AddComponent<StageMonitorDriver>();
         }
 
         private void OnEffectUpdate(LiveTimelineEffectData effectData, LiveTimelineKeyEffectData keyData)
@@ -278,6 +336,195 @@ namespace Gallop.Live
             }
             // 载不到时也要记下帧号，否则每帧都会重试一遍 bundle 载入。
             _activeEffects[effectData] = (keyData.frame, instance);
+        }
+
+        private void OnLensFlareUpdate(LiveTimelineLensFlareData data, LiveTimelineKeyLensFlareData key)
+        {
+            if (key == null || _stageController == null) return;
+            bool enabled = key.enableParameter == 0 || key.enableFlare != 0;
+            foreach (var flare in _stageController.GetComponentsInChildren<CustomLensFlare>(true))
+            {
+                if (flare == null) continue;
+                flare.ApplyTimeline(enabled,
+                    key.IsOverridePosition != 0 ? key.offset : flare.transform.localPosition,
+                    key.color, key.brightness, key.fadeSpeed);
+            }
+        }
+
+        private void OnEnvironmentUpdate(LiveTimelineStageEnvironmentData data, LiveTimelineKeyStageEnvironmentData key)
+        {
+            if (key == null || _stageController == null) return;
+            foreach (var mirror in _stageController.GetComponentsInChildren<MirrorReflection>(true))
+                mirror.ApplyTimeline(key.MirrorIsValid, key.MirrorEnabled, key.ReflectionRate);
+        }
+
+        private void OnFacialToonUpdate(int characterIndex, LiveTimelineKeyFacialToonData key)
+        {
+            if (key == null || characterIndex < 0 || characterIndex >= CharaContainerScript.Count) return;
+            var container = CharaContainerScript[characterIndex];
+            if (container == null) return;
+            var block = PropBlock;
+            foreach (var renderer in container.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null) continue;
+                renderer.GetPropertyBlock(block);
+                foreach (var material in renderer.sharedMaterials)
+                {
+                    if (material == null) continue;
+                    if (material.HasProperty("_CheekPretenseThreshold")) block.SetFloat("_CheekPretenseThreshold", key.CheekPretenseThreshold);
+                    if (material.HasProperty("_NosePretenseThreshold")) block.SetFloat("_NosePretenseThreshold", key.NosePretenseThreshold);
+                    if (material.HasProperty("_CylinderBlend")) block.SetFloat("_CylinderBlend", key.CylinderBlend);
+                    if (material.HasProperty("_HairNormalBlend")) block.SetFloat("_HairNormalBlend", key.HairNormalBlend);
+                    if (material.HasProperty("_UseOriginalDirectionalLight")) block.SetFloat("_UseOriginalDirectionalLight", key.UseOriginalDirectionalLight);
+                    if (material.HasProperty("_OriginalDirectionalLightDir")) block.SetVector("_OriginalDirectionalLightDir", key.OriginalDirectionalLightDir);
+                    if (material.HasProperty("_EyeToonStep")) block.SetFloat("_EyeToonStep", key.EyeToonStep);
+                    if (material.HasProperty("_EyeToonFeather")) block.SetFloat("_EyeToonFeather", key.EyeToonFeather);
+                    if (material.HasProperty("_EyeSaturation")) block.SetFloat("_EyeSaturation", key.EyeSaturation);
+                }
+                renderer.SetPropertyBlock(block);
+            }
+        }
+
+        private GameObject ResolveLiveProp(int propsId)
+        {
+            if (_liveProps.TryGetValue(propsId, out var existing) && existing != null) return existing;
+            var settings = _liveTimelineControl?.data?.propsSettings;
+            if (settings?.propsDataGroup == null || propsId < 0 || propsId >= settings.propsDataGroup.Length) return null;
+            var group = settings.propsDataGroup[propsId];
+            if (group == null || string.IsNullOrEmpty(group.propsName) || !UmaViewerMain.Instance.AbList.TryGetValue(group.propsName, out var entry)) return null;
+            var prefab = entry.Get<GameObject>();
+            if (prefab == null) return null;
+            var instance = Instantiate(prefab, transform);
+            instance.name = prefab.name;
+            _liveProps[propsId] = instance;
+            return instance;
+        }
+
+        private void OnPropsUpdate(LiveTimelinePropsData data, LiveTimelineKeyPropsData key)
+        {
+            if (key == null) return;
+            var prop = ResolveLiveProp(key.propsID);
+            if (prop == null) return;
+            foreach (var renderer in prop.GetComponentsInChildren<Renderer>(true))
+            {
+                renderer.enabled = key.rendererEnable != 0;
+                var block = PropBlock;
+                renderer.GetPropertyBlock(block);
+                foreach (var material in renderer.sharedMaterials)
+                {
+                    if (material == null) continue;
+                    if (material.HasProperty("_Color")) block.SetColor("_Color", key.color);
+                    if (material.HasProperty("_RootColor")) block.SetColor("_RootColor", key.rootColor);
+                    if (material.HasProperty("_TipColor")) block.SetColor("_TipColor", key.tipColor);
+                    if (material.HasProperty("_ColorPower")) block.SetFloat("_ColorPower", key.colorPower);
+                    if (key.IsUpdateOutline != 0 && material.HasProperty("_OutlineWidth")) block.SetFloat("_OutlineWidth", key.OutlineWidth);
+                    if (key.IsUpdateOutline != 0 && material.HasProperty("_OutlineColor")) block.SetColor("_OutlineColor", key.OutlineColor);
+                    if (key.IsEmissive != 0 && material.HasProperty("_EmissiveColor")) block.SetColor("_EmissiveColor", key.EmissiveColor);
+                }
+                renderer.SetPropertyBlock(block);
+            }
+        }
+
+        private void OnPropsAttachUpdate(LiveTimelinePropsAttachData data, LiveTimelineKeyPropsAttachData key)
+        {
+            if (key == null) return;
+            var prop = ResolveLiveProp(key._propsId);
+            if (prop == null) return;
+            Transform target = null;
+            for (int i = 0; i < _liveTimelineControl.liveCharactorLocators.Length && target == null; i++)
+            {
+                if (_liveTimelineControl.liveCharactorLocators[i] is LiveTimelineCharaLocator locator &&
+                    locator.Bones != null && locator.Bones.TryGetValue(key._attachJointName, out var bone)) target = bone;
+            }
+            if (target == null) return;
+            prop.transform.SetParent(target, false);
+            prop.transform.localPosition = key._offsetPosition;
+            prop.transform.localRotation = Quaternion.Euler(key.OffsetRotate);
+            prop.transform.localScale = key.OffsetScale;
+        }
+
+        private void OnCharaFootLightUpdate(LiveTimelineKeyCharaFootLightData key)
+        {
+            if (key == null) return;
+            for (int i = 0; i < CharaContainerScript.Count; i++)
+            {
+                if (key.positionFlag != 0 && (key.positionFlag & (1 << i)) == 0) continue;
+                if (i >= key.lightColor.Length || i >= key.hightMax.Length) continue;
+                var container = CharaContainerScript[i];
+                if (container == null) continue;
+                float blend = i < key.LightBlendModeArray.Length ? key.LightBlendModeArray[i] : 0f;
+                float easing = i < key.EasingArray.Length ? key.EasingArray[i] : 0f;
+                var block = PropBlock;
+                foreach (var renderer in container.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (renderer == null) continue;
+                    bool supported = false;
+                    foreach (var material in renderer.sharedMaterials)
+                        supported |= material != null && material.HasProperty("_HightLightColor") && material.HasProperty("_HightLightParam");
+                    if (!supported) continue;
+                    renderer.GetPropertyBlock(block);
+                    block.SetColor("_HightLightColor", key.lightColor[i]);
+                    block.SetVector("_HightLightParam", new Vector4(key.hightMax[i], blend, easing, 0f));
+                    renderer.SetPropertyBlock(block);
+                }
+            }
+        }
+
+        private void OnAdditionalLightUpdate(LiveTimelineAdditionalLight data, LiveTimelineKeyData_AdditionalLight key)
+        {
+            if (data == null || key == null) return;
+            if (!_additionalLights.TryGetValue(data, out var light) || light == null)
+            {
+                var go = new GameObject(string.IsNullOrEmpty(data.name) ? "AdditionalLight" : data.name);
+                go.transform.SetParent(_stageController != null ? _stageController.transform : transform, false);
+                light = go.AddComponent<Light>();
+                _additionalLights[data] = light;
+            }
+            light.gameObject.SetActive(key.IsEnable != 0);
+            light.transform.localPosition = key.Position;
+            light.transform.localRotation = Quaternion.Euler(key.Rotate);
+            light.type = (LightType)Mathf.Clamp(key.Type, 0, 2);
+            light.range = Mathf.Max(0f, key.Range);
+            light.spotAngle = Mathf.Clamp(key.SpotAngle, 1f, 179f);
+            light.intensity = Mathf.Max(0f, key.Strength);
+            light.bounceIntensity = Mathf.Max(0f, key.IndirectMultiplier);
+            light.shadows = (LightShadows)Mathf.Clamp(key.ShadowType, 0, 2);
+            light.shadowStrength = Mathf.Clamp01(key.Strength);
+            light.shadowBias = Mathf.Max(0f, key.Bias);
+            light.shadowNormalBias = Mathf.Max(0f, key.NormalBias);
+            light.shadowNearPlane = Mathf.Max(0.01f, key.NearPlane);
+        }
+
+        private void OnLightProjectionUpdate(LiveTimelineLightProjectionData data, LiveTimelineKeyLightProjectionData key)
+        {
+            if (data == null || key == null || _stageController == null) return;
+            if (!_projectionLights.TryGetValue(data, out var light) || light == null)
+            {
+                CustomProjector authored = null;
+                foreach (var candidate in _stageController.GetComponentsInChildren<CustomProjector>(true))
+                {
+                    if (candidate != null && string.Equals(candidate.name, data.name, StringComparison.OrdinalIgnoreCase))
+                    { authored = candidate; break; }
+                }
+                var host = authored != null ? authored.gameObject : new GameObject(data.name ?? "LightProjection");
+                if (authored == null) host.transform.SetParent(_stageController.transform, false);
+                light = host.GetComponent<Light>();
+                if (light == null) light = host.AddComponent<Light>();
+                light.type = LightType.Spot;
+                if (authored != null) light.cookie = authored.ProjectionTexture;
+                _projectionLights[data] = light;
+            }
+
+            light.gameObject.SetActive(key.IsEnable != 0);
+            light.transform.localPosition = key.Position;
+            light.transform.localRotation = Quaternion.Euler(key.Angle);
+            light.transform.localScale = key.Scale;
+            light.range = Mathf.Max(0.01f, key.FarClipPlane);
+            light.spotAngle = Mathf.Clamp(key.FieldOfView, 1f, 179f);
+            light.color = key.Color;
+            light.intensity = Mathf.Max(0f, key.ColorPower * key.BlinkLightBrightnessPower);
+            light.shadowNearPlane = Mathf.Max(0.01f, key.NearClipPlane);
+            if (key.OverrideIgnoreLayer != 0) light.cullingMask = key.OverrideLayerMask.value;
         }
 
         private static GameObject LoadEffectPrefab(string effectName)
@@ -1311,9 +1558,15 @@ namespace Gallop.Live
 
         private void UpdateMainCamera()
         {
-            if (_cameraObjects == null) return;
+            if (_cameraObjects == null || _cameraNodes == null || _cameraTransforms == null) return;
+            if (_freeCameraActive && _freeCamera != null)
+            {
+                _mainCameraTransform = _freeCamera.transform;
+                return;
+            }
             for (int i = 0; i < _cameraNodes.Length; i++)
             {
+                if (_cameraNodes[i] == null) continue;
                 bool activeSelf = _cameraNodes[i].activeSelf;
                 bool flag = i == _activeCameraIndex;
                 _cameraNodes[i].SetActive(flag);
@@ -1322,7 +1575,77 @@ namespace Gallop.Live
                     _cameraLookAt.ActivationUpdate();
                 }
             }
-            _mainCameraTransform = _cameraTransforms[_activeCameraIndex];
+            if (_activeCameraIndex >= 0 && _activeCameraIndex < _cameraTransforms.Length)
+                _mainCameraTransform = _cameraTransforms[_activeCameraIndex];
+        }
+
+        public void SetPlaybackPaused(bool paused)
+        {
+            if (_playbackPaused == paused || IsRecordVMD)
+                return;
+
+            _playbackPaused = paused;
+            SetAudioPaused(liveMusic, paused);
+            foreach (var vocal in liveVocal)
+                SetAudioPaused(vocal, paused);
+        }
+
+        public void SeekPlayback(float time)
+        {
+            _liveCurrentTime = Mathf.Clamp(time, 0f, Mathf.Max(0f, totalTime - 0.001f));
+            UI.ProgressBar.SetValueWithoutNotify(totalTime > 0f ? _liveCurrentTime / totalTime : 0f);
+            if (liveMusic != null && liveMusic.sourceList != null)
+                UmaViewerAudio.SetTime(liveMusic, _liveCurrentTime);
+            foreach (var vocal in liveVocal)
+                if (vocal != null && vocal.sourceList != null)
+                    UmaViewerAudio.SetTime(vocal, _liveCurrentTime);
+            OnTimelineUpdate(_liveCurrentTime);
+            if (_liveTimelineControl != null)
+                _liveTimelineControl.AlterLateUpdate();
+            _syncTime = !_playbackPaused;
+        }
+
+        public void SetFreeCameraEnabled(bool enabled)
+        {
+            if (_freeCameraActive == enabled)
+                return;
+
+            if (_freeCamera == null)
+                _freeCamera = Resources.FindObjectsOfTypeAll<FreeCam>().FirstOrDefault(cam => cam.gameObject.scene.IsValid());
+            if (_freeCamera == null)
+                return;
+
+            _freeCameraActive = enabled;
+            if (enabled)
+            {
+                Transform source = _cameraTransforms != null && _activeCameraIndex >= 0 && _activeCameraIndex < _cameraTransforms.Length
+                    ? _cameraTransforms[_activeCameraIndex] : null;
+                if (source != null)
+                    _freeCamera.transform.SetPositionAndRotation(source.position, source.rotation);
+                _freeCamera.gameObject.SetActive(true);
+                if (_cameraNodes != null)
+                {
+                    for (int i = 0; i < _cameraNodes.Length; i++)
+                        if (_cameraNodes[i] != null) _cameraNodes[i].SetActive(false);
+                }
+                _mainCameraTransform = _freeCamera.transform;
+            }
+            else
+            {
+                _freeCamera.gameObject.SetActive(false);
+                UpdateMainCamera();
+            }
+        }
+
+        private static void SetAudioPaused(UmaViewerAudio.CuteAudioSource source, bool paused)
+        {
+            if (source == null || source.sourceList == null)
+                return;
+            foreach (var audioSource in source.sourceList)
+            {
+                if (paused) audioSource.Pause();
+                else audioSource.UnPause();
+            }
         }
 
         private void SetupCharacterLocator()
@@ -1370,6 +1693,13 @@ namespace Gallop.Live
 
         public void Play()
         {
+
+            // Play can be invoked after scene/UI setup has been rebuilt; ensure the
+            // debugging overlay exists and is enabled for the whole playback.
+            LivePlaybackToolbar toolbar = GetComponent<LivePlaybackToolbar>();
+            if (toolbar == null)
+                toolbar = gameObject.AddComponent<LivePlaybackToolbar>();
+            toolbar.enabled = true;
 
             foreach (var vocal in liveVocal)
             {
@@ -1447,6 +1777,10 @@ namespace Gallop.Live
                         UI.ProgressBar.SetValueWithoutNotify(_liveCurrentTime / totalTime);
                         OnTimelineUpdate(_liveCurrentTime);
                         _liveTimelineControl.AlterLateUpdate();
+                    }
+                    else if (_playbackPaused)
+                    {
+                        // The toolbar can still seek while paused; the timeline itself remains frozen.
                     }
                     else if (sliderControl.is_Outed)
                     {

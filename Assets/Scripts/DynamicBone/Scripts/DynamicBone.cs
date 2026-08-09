@@ -63,6 +63,12 @@ public class DynamicBone : MonoBehaviour
     public float m_Radius = 0;
     public AnimationCurve m_RadiusDistrib = null;
 
+    // Point-only collision allows a long skirt bone segment to pass through a
+    // limb even when both of its endpoints are outside the collider.
+    public bool m_ContinuousCollision = false;
+    // Assigned by the CySpring importer so runtime tuning can target a semantic group.
+    public string m_MotionGroup = string.Empty;
+
 #if UNITY_5_3_OR_NEWER
 	[Tooltip("If End Length is not zero, an extra bone is generated at the end of transform hierarchy.")]
 #endif
@@ -118,6 +124,10 @@ public class DynamicBone : MonoBehaviour
     float m_Time = 0;
     float m_Weight = 1.0f;
     bool m_DistantDisabled = false;
+    Transform m_MotionReference = null;
+    Vector3 m_MotionReferencePrevPosition = Vector3.zero;
+    Quaternion m_MotionReferencePrevRotation = Quaternion.identity;
+    bool m_MotionReferenceInitialized = false;
 
     public class Particle
     {
@@ -138,6 +148,7 @@ public class DynamicBone : MonoBehaviour
         public Vector3 m_LimitAngel_Max = Vector3.zero;
         public Vector3 m_Position = Vector3.zero;
         public Vector3 m_PrevPosition = Vector3.zero;
+        public Vector3 m_PreviousFramePosition = Vector3.zero;
         public Vector3 m_EndOffset = Vector3.zero;
         public Vector3 m_InitLocalPosition = Vector3.zero;
         public Quaternion m_InitLocalRotation = Quaternion.identity;
@@ -277,6 +288,7 @@ public class DynamicBone : MonoBehaviour
             return;
 
         m_ObjectScale = Mathf.Abs(transform.lossyScale.x);
+        StabilizeLargeReferenceMotion();
         m_ObjectMove = transform.position - m_ObjectPrevPosition;
         m_ObjectPrevPosition = transform.position;
 
@@ -287,11 +299,11 @@ public class DynamicBone : MonoBehaviour
         {
             if (m_UpdateRate > 0)
             {
-                timeVar = Time.deltaTime * m_UpdateRate;
+                timeVar = Mathf.Min(t * m_UpdateRate, 1f);
             }
             else
             {
-                timeVar = Time.deltaTime;
+                timeVar = t;
             }
         }
         else
@@ -344,6 +356,62 @@ public class DynamicBone : MonoBehaviour
         m_BoneTotalLength = 0;
         AppendParticles(m_Root, -1, 0);
         UpdateParameters();
+        ResetMotionReference();
+    }
+
+    private void ResetMotionReference()
+    {
+        m_MotionReference = m_Root != null && m_Root.parent != null ? m_Root.parent : m_Root;
+        if (m_MotionReference == null)
+        {
+            m_MotionReferenceInitialized = false;
+            return;
+        }
+
+        m_MotionReferencePrevPosition = m_MotionReference.position;
+        m_MotionReferencePrevRotation = m_MotionReference.rotation;
+        m_MotionReferenceInitialized = true;
+    }
+
+    private void StabilizeLargeReferenceMotion()
+    {
+        Transform currentReference = m_Root != null && m_Root.parent != null ? m_Root.parent : m_Root;
+        if (currentReference == null)
+            return;
+
+        if (!m_MotionReferenceInitialized || currentReference != m_MotionReference)
+        {
+            ResetMotionReference();
+            return;
+        }
+
+        Vector3 currentPosition = currentReference.position;
+        Quaternion currentRotation = currentReference.rotation;
+        float translation = Vector3.Distance(currentPosition, m_MotionReferencePrevPosition);
+        float rotation = Quaternion.Angle(m_MotionReferencePrevRotation, currentRotation);
+        float translationThreshold = Mathf.Max(0.05f * m_ObjectScale, m_BoneTotalLength * 0.2f);
+
+        if (translation > translationThreshold || rotation > 30f)
+        {
+            Quaternion rotationDelta = currentRotation * Quaternion.Inverse(m_MotionReferencePrevRotation);
+            for (int i = 0; i < Particles.Count; ++i)
+            {
+                Particle particle = Particles[i];
+                particle.m_Position = currentPosition + rotationDelta *
+                    (particle.m_Position - m_MotionReferencePrevPosition);
+                particle.m_PrevPosition = currentPosition + rotationDelta *
+                    (particle.m_PrevPosition - m_MotionReferencePrevPosition);
+                particle.m_PreviousFramePosition = currentPosition + rotationDelta *
+                    (particle.m_PreviousFramePosition - m_MotionReferencePrevPosition);
+            }
+
+            // The animated parent motion has already been applied to the particle
+            // state and must not be counted again as Verlet velocity/inertia.
+            m_ObjectPrevPosition = transform.position;
+        }
+
+        m_MotionReferencePrevPosition = currentPosition;
+        m_MotionReferencePrevRotation = currentRotation;
     }
 
     void AppendParticles(Transform b, int parentIndex, float boneLength)
@@ -472,15 +540,18 @@ public class DynamicBone : MonoBehaviour
             if (p.m_Transform != null)
             {
                 p.m_Position = p.m_PrevPosition = p.m_Transform.position;
+                p.m_PreviousFramePosition = p.m_Position;
             }
             else	// end bone
             {
                 Transform pb = Particles[p.m_ParentIndex].m_Transform;
                 p.m_Position = p.m_PrevPosition = pb.TransformPoint(p.m_EndOffset);
+                p.m_PreviousFramePosition = p.m_Position;
             }
             p.m_isCollide = false;
         }
         m_ObjectPrevPosition = transform.position;
+        ResetMotionReference();
     }
 
     void UpdateParticles1(float timeVar)
@@ -497,8 +568,16 @@ public class DynamicBone : MonoBehaviour
             Particle p = Particles[i];
             if (p.m_ParentIndex >= 0)
             {
+                p.m_PreviousFramePosition = p.m_Position;
                 // verlet integration
                 Vector3 v = p.m_Position - p.m_PrevPosition;
+                if (m_ContinuousCollision)
+                {
+                    Particle parent = Particles[p.m_ParentIndex];
+                    float maxStep = Vector3.Distance(parent.m_Position, p.m_Position);
+                    if (maxStep > Mathf.Epsilon)
+                        v = Vector3.ClampMagnitude(v, maxStep);
+                }
                 Vector3 rmove = m_ObjectMove * p.m_Inert;
                 p.m_PrevPosition = p.m_Position + rmove;
                 float damping = p.m_Damping;
@@ -560,18 +639,6 @@ public class DynamicBone : MonoBehaviour
                 }
             }
 
-            // collide
-            if (p.m_Colliders != null)
-            {
-                float particleRadius = p.m_Radius * m_ObjectScale;
-                for (int j = 0; j < p.m_Colliders.Count; ++j)
-                {
-                    DynamicBoneColliderBase c = p.m_Colliders[j];
-                    if (c != null && c.enabled)                    
-                        p.m_isCollide |= c.Collide(ref p.m_Position, particleRadius);                    
-                }
-            }
-
             // freeze axis, project to plane 
             if (m_FreezeAxis != FreezeAxis.None)
             {
@@ -595,7 +662,108 @@ public class DynamicBone : MonoBehaviour
             float leng = dd.magnitude;
             if (leng > 0)
                 p.m_Position += dd * ((leng - restLen) / leng);
+
+            // This must be the final positional constraint. Otherwise the
+            // length correction can pull the skirt back inside a leg volume.
+            float particleRadius = p.m_Radius * m_ObjectScale;
+            ResolveParticleCollisions(p, particleRadius);
+
+            if (m_ContinuousCollision)
+            {
+                ResolveSegmentCollisions(p0, p, particleRadius);
+                ResolveSweptCollisions(p, particleRadius);
+            }
         }
+    }
+
+    private void ResolveParticleCollisions(Particle particle, float particleRadius)
+    {
+        if (particle.m_Colliders == null)
+            return;
+
+        for (int i = 0; i < particle.m_Colliders.Count; ++i)
+        {
+            DynamicBoneColliderBase collider = particle.m_Colliders[i];
+            if (collider != null && collider.enabled)
+                particle.m_isCollide |= collider.Collide(ref particle.m_Position, particleRadius);
+        }
+    }
+
+    private void ResolveSegmentCollisions(Particle parent, Particle particle, float particleRadius)
+    {
+        if (particle.m_Colliders == null)
+            return;
+
+        Vector3 correction = Vector3.zero;
+
+        // Test several points because a segment can enter a capsule near either
+        // endpoint while its midpoint remains outside.
+        for (int sampleIndex = 1; sampleIndex <= 3; ++sampleIndex)
+        {
+            float t = sampleIndex * 0.25f;
+            Vector3 segmentPoint = Vector3.Lerp(parent.m_Position, particle.m_Position, t);
+            for (int i = 0; i < particle.m_Colliders.Count; ++i)
+            {
+                DynamicBoneColliderBase collider = particle.m_Colliders[i];
+                if (collider == null || !collider.enabled)
+                    continue;
+
+                Vector3 projectedPoint = segmentPoint;
+                if (!collider.Collide(ref projectedPoint, particleRadius))
+                    continue;
+
+                // Move the child enough to move this sample onto the surface.
+                Vector3 candidate = (projectedPoint - segmentPoint) / t;
+                if (candidate.sqrMagnitude > correction.sqrMagnitude)
+                    correction = candidate;
+            }
+        }
+
+        if (correction == Vector3.zero)
+            return;
+
+        particle.m_Position += correction;
+        particle.m_PrevPosition += correction;
+        particle.m_isCollide = true;
+        ResolveParticleCollisions(particle, particleRadius);
+    }
+
+    private void ResolveSweptCollisions(Particle particle, float particleRadius)
+    {
+        if (particle.m_Colliders == null)
+            return;
+
+        Vector3 start = particle.m_PreviousFramePosition;
+        Vector3 end = particle.m_Position;
+
+        // Catch a skirt particle that crossed a leg between rendered frames.
+        // The final point may already be outside the collider, so checking it
+        // alone cannot detect this case.
+        float travel = Vector3.Distance(start, end);
+        int sampleCount = Mathf.Clamp(Mathf.CeilToInt(travel / Mathf.Max(particleRadius * 0.5f, 0.01f)), 4, 8);
+        for (int sampleIndex = 1; sampleIndex <= sampleCount; ++sampleIndex)
+        {
+            float t = sampleIndex / (float)sampleCount;
+            Vector3 probe = Vector3.Lerp(start, end, t);
+            for (int i = 0; i < particle.m_Colliders.Count; ++i)
+            {
+                DynamicBoneColliderBase collider = particle.m_Colliders[i];
+                if (collider == null || !collider.enabled)
+                    continue;
+
+                Vector3 projected = probe;
+                if (!collider.Collide(ref projected, particleRadius))
+                    continue;
+
+                Vector3 correction = projected - probe;
+                particle.m_Position += correction;
+                particle.m_PrevPosition += correction;
+                particle.m_isCollide = true;
+                end = particle.m_Position;
+            }
+        }
+
+        ResolveParticleCollisions(particle, particleRadius);
     }
 
     // only update stiffness and keep bone length
@@ -717,5 +885,10 @@ public class DynamicBone : MonoBehaviour
             if (p.m_Transform != null)
                 p.m_Transform.position = p.m_Position;
         }
+    }
+
+    public void ApplyParticlesToTransformsNow()
+    {
+        ApplyParticlesToTransforms();
     }
 }

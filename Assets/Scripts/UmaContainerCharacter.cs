@@ -353,6 +353,109 @@ public class UmaContainerCharacter : UmaContainer
         {
             cySpringDataContainers[i].InitializePhysics(bones, colliders);
         }
+
+        SkirtSurfaceCollisionSolver surfaceSolver = GetComponent<SkirtSurfaceCollisionSolver>();
+        if (surfaceSolver == null)
+            surfaceSolver = gameObject.AddComponent<SkirtSurfaceCollisionSolver>();
+        bones.TryGetValue("Hip", out Transform skirtHip);
+        var skirtColliders = new List<DynamicBoneColliderBase>();
+        foreach (Transform transform in colliders.Values)
+        {
+            DynamicBoneColliderBase collider = transform.GetComponent<DynamicBoneColliderBase>();
+            if (collider != null)
+            {
+                if (IsBodySkirtCollider(collider) && collider.GetComponent<SkirtCollisionVisualizer>() == null)
+                    collider.gameObject.AddComponent<SkirtCollisionVisualizer>();
+                if (IsThighSkirtCollider(collider.ColliderName))
+                    skirtColliders.Add(collider);
+            }
+        }
+        surfaceSolver.Initialize(GetComponentsInChildren<DynamicBone>(true), skirtHip, skirtColliders);
+    }
+
+    private static bool IsBodySkirtCollider(DynamicBoneColliderBase collider)
+    {
+        if (collider == null || string.IsNullOrEmpty(collider.ColliderName) ||
+            collider.ColliderName.IndexOf("Skirt", StringComparison.OrdinalIgnoreCase) < 0)
+            return false;
+
+        if (collider.ColliderName.IndexOf("Thigh", StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+
+        DynamicBoneCollider dynamicCollider = collider as DynamicBoneCollider;
+        bool isSideHip = collider.ColliderName.EndsWith("_L", StringComparison.OrdinalIgnoreCase) ||
+            collider.ColliderName.EndsWith("_R", StringComparison.OrdinalIgnoreCase);
+        return collider.ColliderName.IndexOf("Hip", StringComparison.OrdinalIgnoreCase) >= 0 &&
+            isSideHip && (dynamicCollider == null || dynamicCollider.m_Radius <= 0.25f);
+    }
+
+    private static bool IsThighSkirtCollider(string colliderName)
+    {
+        return !string.IsNullOrEmpty(colliderName) &&
+            colliderName.IndexOf("Thigh", StringComparison.OrdinalIgnoreCase) >= 0 &&
+            colliderName.IndexOf("MSkirt", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    public void LoadSchoolUniformSkirtCollision(UmaDatabaseEntry entry)
+    {
+        if (entry == null)
+            return;
+
+        GameObject source = entry.Get<GameObject>();
+        if (source == null)
+            return;
+
+        if (!PhysicsContainer)
+        {
+            PhysicsContainer = new GameObject("PhysicsController");
+            PhysicsContainer.transform.SetParent(transform);
+        }
+
+        CySpringDataContainer destination = PhysicsContainer.GetComponent<CySpringDataContainer>();
+        if (destination == null)
+            destination = PhysicsContainer.AddComponent<CySpringDataContainer>();
+        if (destination.collisionParam == null)
+            destination.collisionParam = new List<CySpringCollisionData>();
+        if (destination.springParam == null)
+            destination.springParam = new List<CySpringParamDataElement>();
+
+        foreach (CySpringDataContainer sourceContainer in source.GetComponentsInChildren<CySpringDataContainer>(true))
+        {
+            foreach (CySpringCollisionData collision in sourceContainer.collisionParam)
+            {
+                if (!IsSchoolUniformSkirtCollider(collision))
+                    continue;
+                destination.collisionParam.Add(CloneCollisionData(collision));
+            }
+        }
+    }
+
+    private static bool IsSchoolUniformSkirtCollider(CySpringCollisionData collision)
+    {
+        if (collision == null)
+            return false;
+
+        return string.Equals(collision._collisionName, "Col_B_Thigh_L_MSkirt_L", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(collision._collisionName, "Col_B_Thigh_R_MSkirt_R", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(collision._collisionName, "Col_B_Hip_MSkirt_L", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(collision._collisionName, "Col_B_Hip_MSkirt_R", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static CySpringCollisionData CloneCollisionData(CySpringCollisionData source)
+    {
+        return new CySpringCollisionData
+        {
+            _collisionName = source._collisionName,
+            _targetObjectName = source._targetObjectName,
+            _isOtherTarget = source._isOtherTarget,
+            _offset = source._offset,
+            _offset2 = source._offset2,
+            _radius = source._radius,
+            _distance = source._distance,
+            _normal = source._normal,
+            _type = source._type,
+            _isInner = source._isInner
+        };
     }
 
     public void SetDynamicBoneEnable(bool isOn)

@@ -202,6 +202,13 @@ public class UmaViewerBuilder : MonoBehaviour
         else
         {
             umaContainer.LoadBody(asset);
+            // Winner costumes use their own cloth physics, but their skirt collision
+            // volumes are not consistently authored. Reuse the verified school-uniform
+            // MSkirt collision definition on the current character skeleton.
+            const string schoolUniformCollision = "3d/chara/body/bdy0002_00/clothes/pfb_bdy0002_00_cloth00";
+            if (Main.AbList.TryGetValue(schoolUniformCollision, out UmaDatabaseEntry schoolCollisionAsset))
+                umaContainer.LoadSchoolUniformSkirtCollision(schoolCollisionAsset);
+
             //Load Physics
             var asset1 = Main.AbList[UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/clothes/pfb_bdy{id}_{costumeId}_cloth00"];
             umaContainer.LoadPhysics(asset1);

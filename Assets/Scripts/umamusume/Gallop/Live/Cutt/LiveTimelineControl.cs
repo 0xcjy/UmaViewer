@@ -78,6 +78,19 @@ namespace Gallop.Live.Cutt
         public event Action<LiveTimelineChromaticAberrationData, LiveTimelineKeyChromaticAberrationData> OnUpdateChromaticAberration;
         public event Action<LiveTimelineHdrBloomData, LiveTimelineKeyHdrBloomData> OnUpdateHdrBloom;
         public event Action<LiveTimelineColorCorrectionData, LiveTimelineKeyColorCorrectionData> OnUpdateColorCorrection;
+        public event MobCyalumeUpdateInfoDelegate OnUpdateMobControl;
+        public event MobCyalumeUpdateInfoDelegate OnUpdateCyalumeControl;
+        public event Action<LiveTimelineMonitorControlData, LiveTimelineKeyMonitorControlData> OnUpdateMonitorControl;
+        public event Action<LiveTimelineMonitorCameraPositionData, LiveTimelineKeyMonitorCameraPositionData> OnUpdateMonitorCameraPosition;
+        public event Action<LiveTimelineMonitorCameraLookAtData, LiveTimelineKeyMonitorCameraLookAtData> OnUpdateMonitorCameraLookAt;
+        public event Action<LiveTimelineLensFlareData, LiveTimelineKeyLensFlareData> OnUpdateLensFlare;
+        public event Action<LiveTimelineStageEnvironmentData, LiveTimelineKeyStageEnvironmentData> OnUpdateEnvironment;
+        public event Action<int, LiveTimelineKeyFacialToonData> OnUpdateFacialToon;
+        public event Action<LiveTimelinePropsData, LiveTimelineKeyPropsData> OnUpdateProps;
+        public event Action<LiveTimelinePropsAttachData, LiveTimelineKeyPropsAttachData> OnUpdatePropsAttach;
+        public event Action<LiveTimelineKeyCharaFootLightData> OnUpdateCharaFootLight;
+        public event Action<LiveTimelineAdditionalLight, LiveTimelineKeyData_AdditionalLight> OnUpdateAdditionalLight;
+        public event Action<LiveTimelineLightProjectionData, LiveTimelineKeyLightProjectionData> OnUpdateLightProjection;
 
         private static Func<LiveTimelineKeyCameraPositionData, LiveTimelineControl, FindTimelineConfig, Vector3> fnGetCameraPosValue = GetCameraPosValue;
 
@@ -210,6 +223,7 @@ namespace Gallop.Live.Cutt
         private Vector3 _liveStageCenterPos = Vector3.zero;
 
         private TimelinePlayerMode _playMode = TimelinePlayerMode.Default;
+        public TimelinePlayerMode PlayMode => _playMode;
 
         public static int liveCharaPositionMax
         {
@@ -382,6 +396,19 @@ namespace Gallop.Live.Cutt
             // 分发保留，接上只需订阅 OnUpdateHdrBloom。
             AlterUpdate_SimpleListControl(workSheet.hdrBloomKeys, d => d.keys, OnUpdateHdrBloom, _currentFrame);
             AlterUpdate_SimpleListControl(workSheet.colorCorrectionDataLists, d => d.keys, OnUpdateColorCorrection, _currentFrame);
+            AlterUpdate_MobCyalumeControl(workSheet.MobControlKeys, _currentFrame, OnUpdateMobControl);
+            AlterUpdate_MobCyalumeControl(workSheet.CyalumeControlKeys, _currentFrame, OnUpdateCyalumeControl);
+            AlterUpdate_SimpleListControl(workSheet.monitorControlList, d => d.keys, OnUpdateMonitorControl, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.monitorCameraPosKeys, d => d.keys, OnUpdateMonitorCameraPosition, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.monitorCameraLookAtKeys, d => d.keys, OnUpdateMonitorCameraLookAt, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.lensFlareList, d => d.keys, OnUpdateLensFlare, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.environmentDataLists, d => d.keys, OnUpdateEnvironment, _currentFrame);
+            AlterUpdate_FacialToon(workSheet.facialToonSet, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.propsList, d => d.keys, OnUpdateProps, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.propsAttachList, d => d.keys, OnUpdatePropsAttach, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.AdditionalLightList, d => d.keys, OnUpdateAdditionalLight, _currentFrame);
+            AlterUpdate_CharaFootLight(workSheet.charaFootLightKeys, _currentFrame);
+            AlterUpdate_SimpleListControl(workSheet.lightProjectionList, d => d.keys, OnUpdateLightProjection, _currentFrame);
             AlterUpdate_PostFilm(workSheet.postFilmKeys,  0, _currentFrame);
             AlterUpdate_PostFilm(workSheet.postFilm2Keys, 1, _currentFrame);
             AlterUpdate_PostFilm(workSheet.postFilm3Keys, 2, _currentFrame);
@@ -609,9 +636,14 @@ namespace Gallop.Live.Cutt
         {
 
             var formationList = data.worksheetList[0].formationOffsetSet.Init();
+            if (formationList == null)
+                return;
 
-            for (int i = 0; i < Director.instance.characterCount; i++)
+            int count = Mathf.Min(Director.instance.characterCount, formationList.Count);
+            for (int i = 0; i < count; i++)
             {
+                if (formationList[i] == null)
+                    continue;
                 LiveTimelineKeyIndex curKey = AlterUpdate_Key(formationList[i], liveTime);
 
                 if (curKey != null && curKey.index != -1)
@@ -2015,6 +2047,72 @@ namespace Gallop.Live.Cutt
             }
         }
 
+        private void AlterUpdate_MobCyalumeControl(
+            List<LiveTimelineMobCyalumeControlData> dataList,
+            float currentFrame,
+            MobCyalumeUpdateInfoDelegate callback)
+        {
+            if (callback == null || dataList == null) return;
+
+            for (int i = 0; i < dataList.Count; i++)
+            {
+                var data = dataList[i];
+                var keys = data != null ? data.keys : null;
+                if (keys == null || keys.Count == 0 || keys.HasAttribute(LiveTimelineKeyDataListAttr.Disable) ||
+                    !keys.EnablePlayModeTimeline(_playMode)) continue;
+
+                FindTimelineKey(out var curKey, out var nextKey, keys, currentFrame);
+                var current = curKey as LiveTimelineKeyMobCyalumeControlData;
+                var next = nextKey as LiveTimelineKeyMobCyalumeControlData;
+                if (current == null) continue;
+
+                var info = new MobCyalumeUpdateInfo
+                {
+                    data = data,
+                    unk0 = (uint)keys.unk48 < 11u ? keys.unk48 : i,
+                    currentFrame = currentFrame,
+                    currentLiveTime = currentLiveTime
+                };
+
+                if (next != null && next.interpolateType != LiveCameraInterpolateType.None)
+                {
+                    float t = CalculateInterpolationValue(current, next, currentFrame);
+                    info.position = Vector3.Lerp(current.position, next.position, t);
+                    info.rotation = Quaternion.Lerp(current.GetRotation(), next.GetRotation(), t);
+                    info.scale = Vector3.Lerp(current.scale, next.scale, t);
+                }
+                else
+                {
+                    info.position = current.position;
+                    info.rotation = current.GetRotation();
+                    info.scale = current.scale;
+                }
+
+                callback.Invoke(ref info);
+            }
+        }
+
+        private void AlterUpdate_FacialToon(LiveTimelineFacialToonData data, float currentFrame)
+        {
+            if (data == null || OnUpdateFacialToon == null) return;
+            for (int i = 0; i < 20; i++)
+            {
+                var keys = data.GetKeys(i);
+                if (keys == null || keys.Count == 0 || keys.HasAttribute(LiveTimelineKeyDataListAttr.Disable) ||
+                    !keys.EnablePlayModeTimeline(_playMode)) continue;
+                FindTimelineKey(out var current, out var _, keys, currentFrame);
+                if (current is LiveTimelineKeyFacialToonData key) OnUpdateFacialToon.Invoke(i, key);
+            }
+        }
+
+        private void AlterUpdate_CharaFootLight(LiveTimelineKeyCharaFootLightDataList keys, float currentFrame)
+        {
+            if (keys == null || OnUpdateCharaFootLight == null || keys.Count == 0 ||
+                keys.HasAttribute(LiveTimelineKeyDataListAttr.Disable) || !keys.EnablePlayModeTimeline(_playMode)) return;
+            FindTimelineKey(out var current, out var _, keys, currentFrame);
+            if (current is LiveTimelineKeyCharaFootLightData key) OnUpdateCharaFootLight.Invoke(key);
+        }
+
         private void AlterUpdate_GlobalFogControl(LiveTimelineWorkSheet sheet, float currentFrame)
         {
             if (sheet.globalFogDataLists == null || OnUpdateGlobalFog == null) return;
@@ -2070,4 +2168,3 @@ namespace Gallop.Live.Cutt
 
 
 }
-

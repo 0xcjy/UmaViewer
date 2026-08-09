@@ -57,6 +57,20 @@ namespace Gallop
         private static readonly int kReflectionRate = Shader.PropertyToID("_ReflectionRate");
         private static readonly int kColor = Shader.PropertyToID("_Color");
 
+        public void ApplyTimeline(bool valid, bool enabled, float reflectionRate)
+        {
+            if (!valid) return;
+            _mirrorReflectionRate = Mathf.Max(0f, reflectionRate);
+            this.enabled = enabled;
+            if (_renderer != null)
+            {
+                _block ??= new MaterialPropertyBlock();
+                _renderer.GetPropertyBlock(_block);
+                _block.SetFloat(kReflectionRate, _mirrorReflectionRate);
+                _renderer.SetPropertyBlock(_block);
+            }
+        }
+
         // URP 下不能用 Camera.Render()（SRP 会直接报错、什么都不画），
         // 必须挂 beginCameraRendering 拿到 ScriptableRenderContext 再 RenderSingleCamera。
         private void OnEnable()  => RenderPipelineManager.beginCameraRendering += OnBeginCamera;

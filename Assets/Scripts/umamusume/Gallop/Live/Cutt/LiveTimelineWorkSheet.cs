@@ -952,6 +952,22 @@ namespace Gallop.Live.Cutt
         [SerializeField] public List<LiveTimelineHdrBloomData> hdrBloomKeys;
         [SerializeField] public List<LiveTimelineColorCorrectionData> colorCorrectionDataLists;
 
+        // Names verified against the cutt TypeTree.  The capital letters are required for Unity deserialization.
+        [SerializeField] public List<LiveTimelineMobCyalumeControlData> MobControlKeys;
+        [SerializeField] public List<LiveTimelineMobCyalumeControlData> CyalumeControlKeys;
+        [SerializeField] public List<LiveTimelineMonitorControlData> monitorControlList;
+        [SerializeField] public List<LiveTimelineMonitorCameraPositionData> monitorCameraPosKeys;
+        [SerializeField] public List<LiveTimelineMonitorCameraLookAtData> monitorCameraLookAtKeys;
+        [SerializeField] public List<LiveTimelineLensFlareData> lensFlareList;
+        [SerializeField] public List<LiveTimelineStageEnvironmentData> environmentDataLists;
+        [SerializeField] public LiveTimelineFacialToonData facialToonSet;
+        [SerializeField] public LiveTimelineKeyCameraLayerDataList cameraLayerKeys;
+        [SerializeField] public List<LiveTimelinePropsData> propsList;
+        [SerializeField] public List<LiveTimelinePropsAttachData> propsAttachList;
+        [SerializeField] public LiveTimelineKeyCharaFootLightDataList charaFootLightKeys;
+        [SerializeField] public List<LiveTimelineAdditionalLight> AdditionalLightList;
+        [SerializeField] public List<LiveTimelineLightProjectionData> lightProjectionList;
+
         // PostFilm (39)：全语料 ~20200 keys / 59 首，是未实现轨道里数据量最大的一块。
         // 旧扫描把它记成「58/58 首存在但全部 0 keyframe（空占位）」，实测是错的
         // （song 1177 分别有 100 / 161 / 87 keys）。字段名取自 bundle TypeTree。
@@ -1039,4 +1055,3 @@ namespace Gallop.Live.Cutt
         }
     }
 }
-
