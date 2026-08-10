@@ -49,6 +49,7 @@ namespace Gallop.Live
         private float _otherInertScale = 1.1f;
         private float _otherRigidity = 0.85f;
         private float _monitorBrightness = 1f;
+        private float _monitorLightIntensity = 0.25f;
         private bool _showSkirtColliders;
         private bool _skirtBodyCollisionEnabled = true;
 
@@ -143,7 +144,8 @@ namespace Gallop.Live
 
             GUILayout.Space(5);
             GUILayout.Label("Live display");
-            changed |= SliderRow("Screen brightness", ref _monitorBrightness, 0f, 1.5f);
+            changed |= SliderRow("Screen brightness", ref _monitorBrightness, 0f, 1f);
+            changed |= SliderRow("Screen glow", ref _monitorLightIntensity, 0f, 1f);
 
             if (GUILayout.Button("Restore defaults", GUILayout.Width(165)))
             {
@@ -160,6 +162,7 @@ namespace Gallop.Live
                 _otherInertScale = 1.1f;
                 _otherRigidity = 0.85f;
                 _monitorBrightness = 1f;
+                _monitorLightIntensity = 0.25f;
                 changed = true;
             }
 
@@ -181,7 +184,12 @@ namespace Gallop.Live
                 SetSkirtBodyCollisionEnabled(_skirtBodyCollisionEnabled);
             }
 
-            UmaContainerCharacter firstCharacter = Director.instance.CharaContainerScript[0];
+            Director director = Director.instance;
+            UmaContainerCharacter firstCharacter = director != null &&
+                director.CharaContainerScript != null &&
+                director.CharaContainerScript.Count > 0
+                ? director.CharaContainerScript[0]
+                : null;
             SkirtSurfaceCollisionSolver solver = firstCharacter != null
                 ? firstCharacter.GetComponent<SkirtSurfaceCollisionSolver>() : null;
             GUILayout.Label(solver != null
@@ -279,7 +287,10 @@ namespace Gallop.Live
             }
 
             foreach (StageMonitorDriver monitorDriver in Object.FindObjectsOfType<StageMonitorDriver>(true))
-                monitorDriver.brightnessMultiplier = _monitorBrightness;
+            {
+                monitorDriver.SetBrightnessMultiplier(_monitorBrightness);
+                monitorDriver.SetMonitorLightIntensity(_monitorLightIntensity);
+            }
         }
 
         private void SetSkirtBodyCollisionEnabled(bool enabled)

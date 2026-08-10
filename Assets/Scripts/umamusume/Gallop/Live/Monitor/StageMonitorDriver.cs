@@ -20,6 +20,11 @@ namespace Gallop.Live
         public bool clearFadeTextureWhenUnused = true;
         public bool applyRenderQueue = true;
         public bool applyBlendModeProperties = true;
+        public bool autoDiagnosticLog = true;
+        public bool showDiagnosticOverlay = true;
+        public bool suppressMonitorLightOverlay = false;
+        [Range(0f, 1f)] public float monitorLightIntensity = 0.25f;
+        [Range(0.25f, 10f)] public float diagnosticIntervalSeconds = 2f;
         public string monitorShaderName = "Gallop/3D/Live/Stage/Monitor";
 
         [Header("着色器属性名称")]
@@ -29,7 +34,7 @@ namespace Gallop.Live
         public string alphaProperty = "_Alpha";
         public string colorFadeProperty = "_ColorFade";
         public string baseColorProperty = "_BaseColor";
-        [Range(0f, 1.5f)] public float brightnessMultiplier = 1f;
+        [Range(0f, 1f)] public float brightnessMultiplier = 1f;
         public string monitorWidthProperty = "_MonitorWidth";
         public string monitorHeightProperty = "_MonitorHeight";
         public string crossFadeRateProperty = "_CrossFadeRate";
@@ -42,6 +47,7 @@ namespace Gallop.Live
         {
             public Renderer renderer;
             public Material material;
+            public int materialIndex;
             public string rendererKey;
             public string materialKey;
             public string rendererCompact;
@@ -52,6 +58,7 @@ namespace Gallop.Live
             public float baseAlpha = 1f;
             public Color baseColor = Color.white;
             public Color baseColorFade = Color.clear;
+            public float baseColorPower = 1f;
             public bool hasSrcBlendMode;
             public float baseSrcBlendMode;
             public bool hasDstBlendMode;
@@ -62,7 +69,7 @@ namespace Gallop.Live
 
         private struct MonitorTextureState
         {
-            public Texture2D texture;
+            public Texture texture;
             public Texture2D maskTexture;
             public int imageIndex;
             public Vector2 offset;
@@ -89,16 +96,23 @@ namespace Gallop.Live
             public bool hasFadeTexture;
             public bool useBlendMode;
             public bool useBaseColor;
+            public bool useMonitorCamera;
         }
 
         private LiveTimelineControl _ctl;
         private StageController _stage;
         private MonitorUvMovieProvider _provider;
+        private StageMonitorCameraDriver _cameraDriver;
         private bool _hasBuiltCache;
         private bool _hasMonitorTimelineData;
         private bool _providerContextReady;
         private int _lastPreparedMusicId = -1;
         private int _lastPreparedStageInstanceId = int.MinValue;
+        private float _lastBrightnessMultiplier = float.NaN;
+        private float _nextDiagnosticTime;
+        private bool _initialDiagnosticDumped;
+        private string _statusText = "Monitor: waiting";
+        private MaterialPropertyBlock _propertyBlock;
 
         private readonly List<MonitorMaterialBinding> _bindings = new List<MonitorMaterialBinding>(32);
         private readonly Dictionary<string, List<MonitorMaterialBinding>> _bindingCache =
@@ -112,8 +126,19 @@ namespace Gallop.Live
         private readonly List<MonitorMaterialBinding> _resolveBuffer = new List<MonitorMaterialBinding>(8);
         private static readonly List<MonitorMaterialBinding> EmptyBindingList = new List<MonitorMaterialBinding>(0);
 
+        private void Awake()
+        {
+            _propertyBlock = new MaterialPropertyBlock();
+            _cameraDriver = GetComponent<StageMonitorCameraDriver>();
+            if (_cameraDriver == null)
+                _cameraDriver = gameObject.AddComponent<StageMonitorCameraDriver>();
+        }
+
         private void OnEnable()
         {
+            if (_propertyBlock == null)
+                _propertyBlock = new MaterialPropertyBlock();
+
             BindIfPossible();
             if (rebuildCacheOnEnable)
                 RebuildCache();
@@ -125,8 +150,32 @@ namespace Gallop.Live
             ClearCaches();
         }
 
+        private void OnGUI()
+        {
+            if (!showDiagnosticOverlay || !_hasMonitorTimelineData)
+                return;
+
+            int oldDepth = GUI.depth;
+            GUI.depth = -100;
+            GUI.Label(new Rect(12f, 12f, 760f, 24f), _statusText);
+            GUI.depth = oldDepth;
+        }
+
         private void LateUpdate()
         {
+            if (Input.GetKeyDown(KeyCode.F9))
+                DumpDiagnostics();
+
+            float clampedBrightness = Mathf.Clamp01(brightnessMultiplier);
+            if (!Mathf.Approximately(_lastBrightnessMultiplier, clampedBrightness))
+            {
+                brightnessMultiplier = clampedBrightness;
+                _lastBrightnessMultiplier = clampedBrightness;
+                InvalidateAppliedStates();
+                if (verboseLog)
+                    Debug.Log($"[MonitorDiag] brightness={brightnessMultiplier:F3}, bindings={_bindings.Count}");
+            }
+
             if (_ctl == null || _stage == null || _provider == null)
                 BindIfPossible();
 
@@ -139,7 +188,11 @@ namespace Gallop.Live
             if (!_hasBuiltCache)
                 RebuildCache();
 
+            if (_cameraDriver != null)
+                _cameraDriver.UpdateCapture(_ctl, _ctl.currentLiveTime * LiveTimelineControl.kTargetFpsF, _ctl.data);
+
             ApplyMonitorTimeline();
+            ApplyMonitorLightOverlay();
         }
 
         private void BindIfPossible()
@@ -206,6 +259,132 @@ namespace Gallop.Live
             _rebuildAttemptedForMissingBinding.Clear();
             _resolveBuffer.Clear();
             _hasBuiltCache = false;
+            _initialDiagnosticDumped = false;
+            _nextDiagnosticTime = 0f;
+        }
+
+        public void SetBrightnessMultiplier(float value)
+        {
+            brightnessMultiplier = Mathf.Clamp01(value);
+            _lastBrightnessMultiplier = brightnessMultiplier;
+            InvalidateAppliedStates();
+            if (verboseLog)
+                Debug.Log($"[MonitorDiag] brightness set to {brightnessMultiplier:F3}, bindings={_bindings.Count}");
+        }
+
+        public void SetMonitorLightIntensity(float value)
+        {
+            monitorLightIntensity = Mathf.Clamp01(value);
+        }
+
+        private void InvalidateAppliedStates()
+        {
+            for (int i = 0; i < _bindings.Count; i++)
+            {
+                if (_bindings[i] != null)
+                    _bindings[i].hasAppliedState = false;
+            }
+        }
+
+        public void DumpDiagnostics()
+        {
+            Debug.Log(
+                $"[MonitorDiag] dump brightness={brightnessMultiplier:F3}, bindings={_bindings.Count}, " +
+                $"timeline={_hasMonitorTimelineData}, providerReady={_providerContextReady}, " +
+                $"clips={_provider?.clips?.Count ?? 0}, slots={_provider?.ContextSlotCount ?? 0}");
+
+            int count = Mathf.Min(_bindings.Count, 64);
+            for (int i = 0; i < count; i++)
+            {
+                MonitorMaterialBinding binding = _bindings[i];
+                if (binding == null || binding.renderer == null || binding.material == null)
+                    continue;
+
+                Material material = binding.material;
+                _propertyBlock.Clear();
+                binding.renderer.GetPropertyBlock(_propertyBlock, binding.materialIndex);
+
+                Texture mainTexture = GetEffectiveTexture(material, _propertyBlock, mainTexProperty);
+                Texture filterTexture = GetEffectiveTexture(material, _propertyBlock, filterTexProperty);
+                Texture fadeTexture = GetEffectiveTexture(material, _propertyBlock, fadeTexProperty);
+                Color materialFade = TryHasProperty(material, colorFadeProperty)
+                    ? material.GetColor(colorFadeProperty) : Color.clear;
+                Color blockFade = _propertyBlock.HasProperty(Shader.PropertyToID(colorFadeProperty))
+                    ? _propertyBlock.GetColor(colorFadeProperty) : Color.clear;
+                float materialAlpha = TryHasProperty(material, alphaProperty)
+                    ? material.GetFloat(alphaProperty) : float.NaN;
+                float blockAlpha = _propertyBlock.HasProperty(Shader.PropertyToID(alphaProperty))
+                    ? _propertyBlock.GetFloat(alphaProperty) : float.NaN;
+
+                Debug.Log(
+                    $"[MonitorDiag] #{i} renderer='{GetHierarchyPath(binding.renderer.transform)}' " +
+                    $"slot={binding.materialIndex} enabled={binding.renderer.enabled} active={binding.renderer.gameObject.activeInHierarchy} " +
+                    $"material='{material.name}' shader='{material.shader?.name}' queue={material.renderQueue} " +
+                    $"mpbEmpty={_propertyBlock.isEmpty} main='{DescribeTexture(mainTexture)}' " +
+                    $"mainST={DescribeTextureTransform(material, _propertyBlock, mainTexProperty)} " +
+                    $"filter='{DescribeTexture(filterTexture)}' filterST={DescribeTextureTransform(material, _propertyBlock, filterTexProperty)} " +
+                    $"fade='{DescribeTexture(fadeTexture)}' materialAlpha={materialAlpha:F3} blockAlpha={blockAlpha:F3} " +
+                     $"materialColorFade={materialFade} blockColorFade={blockFade}");
+
+                if (material.shader != null && !string.Equals(material.shader.name, monitorShaderName, StringComparison.OrdinalIgnoreCase))
+                {
+                    Debug.Log(
+                        $"[MonitorDiag] #{i} overlayProps " +
+                        $"srcBlend={GetMaterialFloat(material, srcBlendProperty)} dstBlend={GetMaterialFloat(material, dstBlendProperty)} " +
+                        $"srcBlendMode={GetMaterialFloat(material, srcBlendModeProperty)} dstBlendMode={GetMaterialFloat(material, dstBlendModeProperty)} " +
+                        $"mulColor0={GetMaterialColor(material, "_MulColor0")} colorPower={GetMaterialFloat(material, "_ColorPower")} " +
+                        $"baseColor={GetMaterialColor(material, baseColorProperty)}");
+                }
+            }
+
+            if (_bindings.Count > count)
+                Debug.Log($"[MonitorDiag] dump truncated: {_bindings.Count - count} additional bindings");
+        }
+
+        private static Texture GetEffectiveTexture(Material material, MaterialPropertyBlock block, string propertyName)
+        {
+            int propertyId = Shader.PropertyToID(propertyName);
+            if (block.HasProperty(propertyId))
+                return block.GetTexture(propertyId);
+            return HasTextureProperty(material, propertyName) ? material.GetTexture(propertyName) : null;
+        }
+
+        private static float GetMaterialFloat(Material material, string propertyName)
+        {
+            return TryHasProperty(material, propertyName) ? material.GetFloat(propertyName) : float.NaN;
+        }
+
+        private static Color GetMaterialColor(Material material, string propertyName)
+        {
+            return TryHasProperty(material, propertyName) ? material.GetColor(propertyName) : Color.clear;
+        }
+
+        private static string DescribeTexture(Texture texture)
+        {
+            return texture == null ? "<null>" : $"{texture.name} {texture.width}x{texture.height} {texture.graphicsFormat}";
+        }
+
+        private static string DescribeTextureTransform(Material material, MaterialPropertyBlock block, string textureProperty)
+        {
+            int propertyId = Shader.PropertyToID(textureProperty + "_ST");
+            Vector4 value;
+            if (block.HasProperty(propertyId))
+                value = block.GetVector(propertyId);
+            else
+            {
+                Vector2 scale = material.GetTextureScale(textureProperty);
+                Vector2 offset = material.GetTextureOffset(textureProperty);
+                value = new Vector4(scale.x, scale.y, offset.x, offset.y);
+            }
+            return value.ToString("F5");
+        }
+
+        private static string GetHierarchyPath(Transform target)
+        {
+            string path = target != null ? target.name : "<null>";
+            for (Transform parent = target != null ? target.parent : null; parent != null; parent = parent.parent)
+                path = parent.name + "/" + path;
+            return path;
         }
 
         private bool EnsureProviderReady()
@@ -312,6 +491,7 @@ namespace Gallop.Live
                     {
                         renderer = renderer,
                         material = material,
+                        materialIndex = j,
                         rendererKey = NormalizeName(renderer.name),
                         materialKey = NormalizeName(material.name),
                         rendererCompact = CompactName(renderer.name),
@@ -332,6 +512,8 @@ namespace Gallop.Live
                         binding.baseColorFade = material.GetColor(colorFadeProperty);
                     if (TryHasProperty(material, baseColorProperty))
                         binding.baseColor = material.GetColor(baseColorProperty);
+                    if (TryHasProperty(material, "_ColorPower"))
+                        binding.baseColorPower = material.GetFloat("_ColorPower");
 
                     if (TryHasProperty(material, srcBlendModeProperty))
                     {
@@ -374,6 +556,27 @@ namespace Gallop.Live
 
             if (verboseLog)
                 Debug.Log($"[StageMonitorDriver] cache rebuilt: bindings={_bindings.Count}");
+        }
+
+        private void ApplyMonitorLightOverlay()
+        {
+            float intensity = Mathf.Clamp01(brightnessMultiplier) * Mathf.Clamp01(monitorLightIntensity);
+            for (int i = 0; i < _bindings.Count; i++)
+            {
+                MonitorMaterialBinding binding = _bindings[i];
+                if (binding == null || binding.renderer == null || binding.material == null ||
+                    !string.Equals(binding.rendererKey, "monitorlight000", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                binding.renderer.enabled = !suppressMonitorLightOverlay;
+                if (suppressMonitorLightOverlay)
+                    continue;
+
+                _propertyBlock.Clear();
+                binding.renderer.GetPropertyBlock(_propertyBlock, binding.materialIndex);
+                TrySetFloat(binding.material, _propertyBlock, "_ColorPower", binding.baseColorPower * intensity);
+                binding.renderer.SetPropertyBlock(_propertyBlock, binding.materialIndex);
+            }
         }
 
         private void ApplyMonitorTimeline()
@@ -484,6 +687,32 @@ namespace Gallop.Live
 
                     for (int j = 0; j < targets.Count; j++)
                         ApplyShaderState(targets[j], state);
+
+                    string mode = state.useMonitorCamera
+                        ? (_cameraDriver != null && _cameraDriver.Texture != null ? "CAMERA" : "CAMERA/UNRESOLVED")
+                        : (state.hasMainTexture ? "REC" : "CAMERA/UNRESOLVED");
+                    string textureName = state.hasMainTexture && state.main.texture != null
+                        ? state.main.texture.name : "<none>";
+                    _statusText =
+                        $"Monitor: {mode}  dispID={curKey.dispID}  tex={textureName}  " +
+                        $"targets={targets.Count}  brightness={brightnessMultiplier:F2}";
+
+                    if (autoDiagnosticLog && Time.unscaledTime >= _nextDiagnosticTime)
+                    {
+                        _nextDiagnosticTime = Time.unscaledTime + Mathf.Max(0.25f, diagnosticIntervalSeconds);
+                        Debug.Log(
+                            $"[MonitorDiag] auto mode={mode}, monitor='{bindingName}', dispID={curKey.dispID}, " +
+                            $"dispID2={curKey.DispID2}, main='{textureName}', mainST={state.main.scale}/{state.main.offset}, " +
+                            $"fade={(state.hasFadeTexture ? state.fade.texture?.name : "<none>")}, " +
+                            $"alpha={state.alpha:F3}, colorFade={state.colorFade}, brightness={brightnessMultiplier:F3}, " +
+                            $"targets={targets.Count}");
+
+                        if (!_initialDiagnosticDumped)
+                        {
+                            _initialDiagnosticDumped = true;
+                            DumpDiagnostics();
+                        }
+                    }
                 }
             }
         }
@@ -538,6 +767,7 @@ namespace Gallop.Live
 
             MonitorUvMovieContextSlot primarySlot = ResolvePrimarySlot(monitorData, curKey);
             MonitorUvMovieContextSlot fadeSlot = ResolveFadeSlot(monitorData, curKey);
+            state.useMonitorCamera = curKey.IsMonitorCameraFlag() && _cameraDriver != null && _cameraDriver.IsActive;
 
             if (primarySlot != null && primarySlot.clip != null &&
                 TryBuildTextureState(primarySlot, primarySlot.clip, localTime, playbackSpeed, isReversePlay, curKey.playStartOffsetFrame, curKey.LightImageNo, out MonitorTextureState mainTexture))
@@ -553,13 +783,21 @@ namespace Gallop.Live
                 state.hasFadeTexture = true;
             }
 
+            if (state.useMonitorCamera && _cameraDriver != null && _cameraDriver.Texture != null)
+            {
+                state.main.texture = _cameraDriver.Texture;
+                state.main.scale = Vector2.one;
+                state.main.offset = Vector2.zero;
+                state.hasMainTexture = true;
+                state.hasFadeTexture = false;
+            }
+
             if (assignMaskTextureToFilterTex && state.hasMainTexture)
                 state.filterTexture = state.main.maskTexture;
 
-            // 保持 _Alpha 为材质原本的值
-            // 时间轴的监视器数据没有提供专用的透明度字段；
-            // colorFade 和 BaseColor 会分别传递给对应的着色器参数
-            state.alpha = 0f;
+            // _Alpha only cross-fades _MainTex into _FadeTex. The shader's default
+            // fade texture is white, so keep it at zero when no second clip exists.
+            state.alpha = state.hasFadeTexture ? Mathf.Clamp01(crossFadeRate) : 0f;
             state.colorFade = colorFade;
             state.useBaseColor = !IsColorEffectivelyClear(baseColor);
             state.baseColor = state.useBaseColor ? baseColor : Color.white;
@@ -914,36 +1152,25 @@ namespace Gallop.Live
         private void ApplyShaderState(MonitorMaterialBinding binding, MonitorShaderState state)
         {
             Material material = binding.material;
-            if (material == null)
+            Renderer renderer = binding.renderer;
+            if (material == null || renderer == null)
                 return;
+
+            _propertyBlock.Clear();
+            renderer.GetPropertyBlock(_propertyBlock, binding.materialIndex);
 
             if (state.hasMainTexture && HasTextureProperty(material, mainTexProperty))
             {
-                if (!binding.hasAppliedState ||
-                    binding.appliedState.main.texture != state.main.texture ||
-                    !Approximately(binding.appliedState.main.scale, state.main.scale) ||
-                    !Approximately(binding.appliedState.main.offset, state.main.offset))
-                {
-                    material.SetTexture(mainTexProperty, state.main.texture);
-                    material.SetTextureScale(mainTexProperty, state.main.scale);
-                    material.SetTextureOffset(mainTexProperty, state.main.offset);
-                }
+                _propertyBlock.SetTexture(mainTexProperty, state.main.texture);
+                SetTextureTransform(_propertyBlock, mainTexProperty, state.main.scale, state.main.offset);
             }
 
             if (HasTextureProperty(material, fadeTexProperty))
             {
                 if (state.hasFadeTexture)
                 {
-                    if (!binding.hasAppliedState ||
-                        !binding.appliedState.hasFadeTexture ||
-                        binding.appliedState.fade.texture != state.fade.texture ||
-                        !Approximately(binding.appliedState.fade.scale, state.fade.scale) ||
-                        !Approximately(binding.appliedState.fade.offset, state.fade.offset))
-                    {
-                        material.SetTexture(fadeTexProperty, state.fade.texture);
-                        material.SetTextureScale(fadeTexProperty, state.fade.scale);
-                        material.SetTextureOffset(fadeTexProperty, state.fade.offset);
-                    }
+                    _propertyBlock.SetTexture(fadeTexProperty, state.fade.texture);
+                    SetTextureTransform(_propertyBlock, fadeTexProperty, state.fade.scale, state.fade.offset);
                 }
                 else if (clearFadeTextureWhenUnused &&
                          (!binding.hasAppliedState || binding.appliedState.hasFadeTexture))
@@ -957,38 +1184,21 @@ namespace Gallop.Live
             if (HasTextureProperty(material, filterTexProperty))
             {
                 Vector2 filterScale = binding.baseFilterScale * state.filterTexScale;
-                if (assignMaskTextureToFilterTex &&
-                    (!binding.hasAppliedState || binding.appliedState.filterTexture != state.filterTexture))
-                    material.SetTexture(filterTexProperty, state.filterTexture);
-
-                if (!binding.hasAppliedState ||
-                    !Approximately(binding.appliedState.filterTexScale, state.filterTexScale))
-                {
-                    material.SetTextureScale(filterTexProperty, filterScale);
-                }
-
-                if (!binding.hasAppliedState)
-                {
-                    material.SetTextureOffset(filterTexProperty, binding.baseFilterOffset);
-                }
+                if (assignMaskTextureToFilterTex && state.filterTexture != null)
+                    _propertyBlock.SetTexture(filterTexProperty, state.filterTexture);
+                SetTextureTransform(_propertyBlock, filterTexProperty, filterScale, binding.baseFilterOffset);
             }
 
-            float appliedAlpha = binding.baseAlpha;
-            Color appliedColorFade = ScaleBrightness(state.colorFade);
-            Color appliedBaseColor = ScaleBrightness(state.useBaseColor ? state.baseColor : binding.baseColor);
+            float appliedAlpha = state.alpha;
+            Color appliedColorFade = ApplyBrightnessToColorFade(state.colorFade);
+            Color appliedBaseColor = state.useBaseColor ? state.baseColor : binding.baseColor;
 
-            if (!binding.hasAppliedState || !Approximately(binding.appliedState.alpha, appliedAlpha))
-                TrySetFloat(material, alphaProperty, appliedAlpha);
-            if (!binding.hasAppliedState || !Approximately(binding.appliedState.colorFade, appliedColorFade))
-                TrySetColor(material, colorFadeProperty, appliedColorFade);
-            if (!binding.hasAppliedState || !Approximately(binding.appliedState.baseColor, appliedBaseColor))
-                TrySetColor(material, baseColorProperty, appliedBaseColor);
-            if (!binding.hasAppliedState || !Approximately(binding.appliedState.width, state.width))
-                TrySetFloat(material, monitorWidthProperty, state.width);
-            if (!binding.hasAppliedState || !Approximately(binding.appliedState.height, state.height))
-                TrySetFloat(material, monitorHeightProperty, state.height);
-            if (!binding.hasAppliedState || !Approximately(binding.appliedState.crossFadeRate, state.crossFadeRate))
-                TrySetFloat(material, crossFadeRateProperty, state.crossFadeRate);
+            TrySetFloat(material, _propertyBlock, alphaProperty, appliedAlpha);
+            TrySetColor(material, _propertyBlock, colorFadeProperty, appliedColorFade);
+            TrySetColor(material, _propertyBlock, baseColorProperty, appliedBaseColor);
+            TrySetFloat(material, _propertyBlock, monitorWidthProperty, state.width);
+            TrySetFloat(material, _propertyBlock, monitorHeightProperty, state.height);
+            TrySetFloat(material, _propertyBlock, crossFadeRateProperty, state.crossFadeRate);
 
             if (applyBlendModeProperties)
             {
@@ -1040,6 +1250,8 @@ namespace Gallop.Live
             {
                 material.renderQueue = state.renderQueue;
             }
+
+            renderer.SetPropertyBlock(_propertyBlock, binding.materialIndex);
 
             MonitorShaderState storedState = state;
             storedState.alpha = appliedAlpha;
@@ -1239,13 +1451,43 @@ namespace Gallop.Live
             return true;
         }
 
-        private Color ScaleBrightness(Color color)
+        private static void TrySetFloat(Material material, MaterialPropertyBlock block, string propertyName, float value)
         {
-            float multiplier = Mathf.Clamp(brightnessMultiplier, 0f, 1.5f);
-            color.r *= multiplier;
-            color.g *= multiplier;
-            color.b *= multiplier;
-            return color;
+            if (TryHasProperty(material, propertyName))
+                block.SetFloat(propertyName, value);
+        }
+
+        private static void TrySetColor(Material material, MaterialPropertyBlock block, string propertyName, Color value)
+        {
+            if (TryHasProperty(material, propertyName))
+                block.SetColor(propertyName, value);
+        }
+
+        private static void SetTextureTransform(MaterialPropertyBlock block, string textureProperty, Vector2 scale, Vector2 offset)
+        {
+            block.SetVector(textureProperty + "_ST", new Vector4(scale.x, scale.y, offset.x, offset.y));
+        }
+
+        private Color ApplyBrightnessToColorFade(Color colorFade)
+        {
+            float multiplier = Mathf.Clamp01(brightnessMultiplier);
+            if (Mathf.Approximately(multiplier, 1f))
+                return colorFade;
+
+            // Monitor.shader outputs lerp(ColorFade.rgb, screen.rgb, ColorFade.a) * 2.
+            // Re-encode both terms so this scales the full result even when alpha is one.
+            float sourceAlpha = Mathf.Clamp01(colorFade.a);
+            float scaledAlpha = sourceAlpha * multiplier;
+            float remainingWeight = 1f - scaledAlpha;
+            float colorScale = remainingWeight > 0.0001f
+                ? multiplier * (1f - sourceAlpha) / remainingWeight
+                : 0f;
+
+            colorFade.r *= colorScale;
+            colorFade.g *= colorScale;
+            colorFade.b *= colorScale;
+            colorFade.a = scaledAlpha;
+            return colorFade;
         }
 
         private static bool IsColorEffectivelyClear(Color value)

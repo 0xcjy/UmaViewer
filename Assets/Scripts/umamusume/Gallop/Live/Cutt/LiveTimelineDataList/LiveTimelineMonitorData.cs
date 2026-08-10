@@ -58,6 +58,21 @@ namespace Gallop.Live.Cutt
         public bool IsEnabledBlendMode => (((int)attribute) & AttrEnableBlendMode) != 0;
     }
 
+    // Monitor-camera tracks carry these fields in addition to the shared camera schema.
+    // Names are case-sensitive and must match the Cutt TypeTree.
+    [Serializable]
+    public class LiveTimelineKeyMonitorCameraPositionData : LiveTimelineKeyCameraPositionData
+    {
+        public Vector3 CharaPositionAtStartFrame;
+        public bool IsUseCharaPositionAtPrevKeyStartFrame;
+        public bool IsAttachedToProps;
+        public int PropsIndex;
+        public int PropsAttachNodeIndex;
+        public bool enable;
+        public float fov = 30f;
+        public float roll;
+    }
+
     [Serializable]
     public class LiveTimelineKeyMonitorControlDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyMonitorControlData> { }
 
@@ -69,9 +84,6 @@ namespace Gallop.Live.Cutt
     }
 
     [Serializable]
-    public class LiveTimelineKeyMonitorCameraPositionData : LiveTimelineKeyCameraPositionData { }
-
-    [Serializable]
     public class LiveTimelineKeyMonitorCameraPositionDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyMonitorCameraPositionData> { }
 
     [Serializable]
@@ -81,7 +93,14 @@ namespace Gallop.Live.Cutt
     }
 
     [Serializable]
-    public class LiveTimelineKeyMonitorCameraLookAtData : LiveTimelineKeyCameraLookAtData { }
+    public class LiveTimelineKeyMonitorCameraLookAtData : LiveTimelineKeyCameraLookAtData
+    {
+        public Vector3 CharaPositionAtStartFrame;
+        public bool IsUseCharaPositionAtPrevKeyStartFrame;
+        public bool IsAttachedToProps;
+        public int PropsIndex;
+        public int PropsAttachNodeIndex;
+    }
 
     [Serializable]
     public class LiveTimelineKeyMonitorCameraLookAtDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyMonitorCameraLookAtData> { }
