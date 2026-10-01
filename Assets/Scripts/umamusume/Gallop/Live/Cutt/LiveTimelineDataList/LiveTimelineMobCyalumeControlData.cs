@@ -6,12 +6,19 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyMobCyalumeControlData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.CyalumeControl;}
+        }
         public Vector3 position;
         public Vector3 angle;
         public Vector3 scale = Vector3.one;
 
-        [NonSerialized] private Quaternion _rotationCache = Quaternion.identity;
-        [NonSerialized] private bool _hasRotationCache;
+        [NonSerialized]
+        private Quaternion _rotationCache = Quaternion.identity;
+
+        [NonSerialized]
+        private bool _hasRotationCache;
 
         public Quaternion GetRotation()
         {

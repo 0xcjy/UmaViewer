@@ -14,6 +14,10 @@ namespace Gallop.Live.Cutt
     [System.Serializable]
     public class LiveTimelineKeyLipSyncData : LiveTimelineKey
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.LipSync;}
+        }
         public LiveCharaPositionFlag character;
         public int facialId;
         public int weight;

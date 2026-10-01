@@ -1,100 +1,106 @@
-name: Build Windows Player and Android APK
+name: Build and release Windows IL2CPP
 
-on: 
+on:
   push:
     branches:
       - master
+    tags:
+      - "v*"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional release tag, for example v1.0.0 (leave empty for build only)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: unity-windows-il2cpp-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  buildForPlatform:
-    name: build Player
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        buildName:
-          - UmaViewer
-        projectPath:
-          - ./
-        unityVersion:
-          - 2022.3.56f1
-        targetPlatform:
-          - Android # Build an Android APK.
-          - StandaloneWindows64 # Build a Windows 64-bit standalone
+  build:
+    name: Windows x64 IL2CPP
+    # unity-builder@v4 uses a Docker-based Unity image, so it must run on Linux.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Verify Unity license secrets
+        shell: pwsh
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          $missing = @()
+          if ([string]::IsNullOrWhiteSpace($env:UNITY_LICENSE) -and [string]::IsNullOrWhiteSpace($env:UNITY_SERIAL)) {
+            $missing += "UNITY_LICENSE or UNITY_SERIAL"
+          }
+          if ([string]::IsNullOrWhiteSpace($env:UNITY_EMAIL)) { $missing += "UNITY_EMAIL" }
+          if ([string]::IsNullOrWhiteSpace($env:UNITY_PASSWORD)) { $missing += "UNITY_PASSWORD" }
+          if ($missing.Count -gt 0) {
+            Write-Error "Missing repository secrets: $($missing -join ', '). See .github/UNITY_LICENSE_SETUP.md."
+            exit 1
+          }
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           lfs: true
 
-      - uses: game-ci/unity-builder@v4
-        env:
-            UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-            UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-            UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      - name: Cache Unity Library
+        uses: actions/cache@v4
         with:
-          buildName: ${{ matrix.buildName }}
-          projectPath: ${{ matrix.projectPath }}
-          unityVersion: ${{ matrix.unityVersion }}
-          targetPlatform: ${{ matrix.targetPlatform }}
+          path: Library
+          key: Library-${{ runner.os }}-StandaloneWindows64-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-${{ runner.os }}-StandaloneWindows64-
 
-      - name: Zip Binary
-        if: matrix.targetPlatform == 'StandaloneWindows64'
-        run: zip -r UmaViewer_${{ matrix.targetPlatform }}.zip build/${{ matrix.targetPlatform }}/*
+      - name: Build Windows player with IL2CPP
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: 2022.3.62f3
+          targetPlatform: StandaloneWindows64
+          buildName: UmaViewer
+          buildsPath: build
 
-      - name: Upload Artifact for Android
-        if: matrix.targetPlatform == 'Android'
+      - name: Package Windows build
+        shell: pwsh
+        run: >-
+          Compress-Archive
+          -Path "build/StandaloneWindows64/*"
+          -DestinationPath "UmaViewer-Windows-x64.zip"
+          -CompressionLevel Optimal
+
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Build-${{ matrix.targetPlatform }}
-          path: build/${{ matrix.targetPlatform }}/*
-      
-      - name: Upload Artifact for Windows
-        if: matrix.targetPlatform == 'StandaloneWindows64'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Build-${{ matrix.targetPlatform }}
-          path: UmaViewer_StandaloneWindows64.zip
+          name: UmaViewer-Windows-x64
+          path: UmaViewer-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
-  createRelease:
-    needs: buildForPlatform
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: build/
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        with:
-          tag_name: AutoBuild_${{ github.event.head_commit.id }}
-          release_name: UmaViewer_${{ github.event.head_commit.id }}
-          draft: false
-          prerelease: false
-
-      - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/Build-StandaloneWindows64/UmaViewer_StandaloneWindows64.zip
-          asset_name: UmaViewer.zip
-          asset_content_type: application/zip
-
-      - name: Upload Android Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/Build-Android/UmaViewer.apk
-          asset_name: UmaViewer_Unstable.apk
-          asset_content_type: application/vnd.android.package-archive
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        run: |
+          gh release create $env:RELEASE_TAG `
+            "UmaViewer-Windows-x64.zip#UmaViewer Windows x64 (IL2CPP)" `
+            --target $env:GITHUB_SHA `
+            --title "UmaViewer $env:RELEASE_TAG" `
+            --generate-notes

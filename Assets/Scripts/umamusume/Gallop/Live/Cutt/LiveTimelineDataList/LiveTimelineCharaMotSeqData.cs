@@ -4,15 +4,18 @@ using UnityEngine;
 
 namespace Gallop.Live.Cutt
 {
-    [System.Serializable]
-    public class ILiveTimelineGroupData
-    {
-
-    }
+    
 
     [System.Serializable]
     public class LiveTimelineKeyCharaMotionData : LiveTimelineKey
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get
+            {
+                return LiveTimelineKeyDataType.CharaMotionSequecne;
+            }
+        }
         public string motionName;
         public string motionName2;
         public string motionName3;
@@ -25,6 +28,8 @@ namespace Gallop.Live.Cutt
         public int playFrameLength;
         public float playSpeed;
         public bool loop;
+        [SerializeField] private bool _isTimescaleDisabled;
+        public bool IsTimescaleDisabled => _isTimescaleDisabled;
         public bool isMotionHeadFrameAll;
         public int[] motionHeadFrameSeparetes;
     }

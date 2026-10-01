@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#131b24">
+  <title>无声铃鹿 · PMX 模型查看器</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    { "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="PMX 查看器首页"><span class="brand-icon">U</span> UMA <span>MODEL VIEWER</span></a>
+    <span class="format-label">PMX 2.0 <span class="divider">/</span> WEBGL</span>
+  </header>
+  <main>
+    <aside class="sidebar">
+      <div class="eyebrow">CHARACTER / 1002</div>
+      <h1>无声铃鹿</h1>
+      <p class="subtitle">サイレンススズカ<br><span>Silence Suzuka</span></p>
+      <div class="tags"><span>普通角色</span><span>服装 00</span><span>VMD 动作</span></div>
+      <section class="section motion-section" aria-labelledby="motion-heading">
+        <h2 id="motion-heading">动作播放 <span>MOTION</span></h2>
+        <fieldset id="motion-sources" disabled>
+          <button id="motion-demo" type="button">载入待机动作 <span>DEMO</span></button>
+          <button id="motion-import" type="button">导入本地 VMD <span>＋</span></button>
+          <input id="motion-file" type="file" accept=".vmd" aria-label="选择 VMD 动作文件" hidden>
+        </fieldset>
+        <p id="motion-name" class="motion-name">尚未选择动作</p>
+        <p id="motion-status" class="motion-status" role="status" aria-live="polite">可载入待机动作，或导入本地角色 VMD。</p>
+        <fieldset id="motion-controls" disabled>
+          <div class="playback-buttons">
+            <button id="motion-play" type="button">播放</button>
+            <button id="motion-restart" type="button">从头播放</button>
+          </div>
+          <label class="timeline-label" for="motion-time">动作进度 <output id="motion-time-text">00:00.00 / 00:00.00</output></label>
+          <input id="motion-time" type="range" min="0" max="0" step="any" value="0">
+          <div class="motion-options">
+            <label class="toggle">循环<input id="motion-loop" type="checkbox" checked><span class="switch"></span></label>
+            <label class="speed-label" for="motion-speed">速度
+              <select id="motion-speed">
+                <option value="0.25">0.25×</option>
+                <option value="0.5">0.5×</option>
+                <option value="1" selected>1×</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2×</option>
+              </select>
+            </label>
+          </div>
+          <button id="motion-clear" type="button">清除动作 / 还原姿势</button>
+        </fieldset>
+        <p class="download-note">VMD 仅在本机浏览器解析，不上传。支持角色骨骼与顶点表情，不含镜头、音乐与物理。</p>
+      </section>
+      <section class="section">
+        <h2>模型信息 <span>MODEL</span></h2>
+        <dl class="stats">
+          <div><dt>顶点</dt><dd id="vertices">—</dd></div>
+          <div><dt>三角形</dt><dd id="triangles">—</dd></div>
+          <div><dt>骨骼</dt><dd id="bones">—</dd></div>
+          <div><dt>表情</dt><dd id="morphs">—</dd></div>
+        </dl>
+      </section>
+      <section class="section">
+        <h2>显示设置 <span>DISPLAY</span></h2>
+        <fieldset id="display-controls" disabled>
+          <label class="toggle">自动旋转<input id="rotate" type="checkbox"><span class="switch"></span></label>
+          <label class="toggle">地面网格<input id="grid" type="checkbox" checked><span class="switch"></span></label>
+          <label class="toggle">线框模式<input id="wireframe" type="checkbox"><span class="switch"></span></label>
+          <button id="reset" type="button">重置视角 <span>↺</span></button>
+        </fieldset>
+      </section>
+      <p class="note">直接读取导出的 PMX、贴图与 VMD。<br>使用网页材质显示，不含 Unity 原版着色器与物理模拟。</p>
+      <a class="download" href="./model/1002_00.pmx" download>下载 PMX <span>↗</span></a>
+      <p class="download-note">贴图位于导出目录的 Texture2D 文件夹；使用模型时请一并保留。</p>
+    </aside>
+    <section id="viewport" aria-label="可交互的角色三维模型">
+      <div class="view-label"><span class="dot"></span> MODEL PREVIEW</div>
+      <div id="loading" class="loading" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <strong id="loading-title">正在加载模型</strong>
+        <p id="loading-detail">读取 PMX 与本地贴图…</p>
+      </div>
+      <div class="view-footer"><span id="status" role="status">准备加载</span><span>左键旋转 · 滚轮缩放 · 右键平移<br class="mobile-break">触屏：单指旋转 · 双指缩放 / 平移</span></div>
+    </section>
+  </main>
+  <script type="module">
+    import('./viewer.js').catch(error => {
+      console.error(error);
+      document.querySelector('.spinner').hidden = true;
+      document.querySelector('#loading-title').textContent = '查看器启动失败';
+      document.querySelector('#loading-detail').textContent = '请通过 npm start 启动后访问网页，并确认浏览器支持 WebGL。' + error.message;
+      document.querySelector('#status').textContent = '加载失败';
+    });
+  </script>
+</body>
+</html>

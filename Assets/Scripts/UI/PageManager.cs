@@ -98,6 +98,14 @@ public class PageManager : MonoBehaviour
             if (start + i >= entries.Count) break;
             var entry = entries[start + i];
             var container = Instantiate(ContainerPrefab, ScrollRect.content).GetComponent<UmaUIContainer>();
+            if (entry.EnablePressScaleFeedback)
+            {
+                UIPressScaleFeedback.AddTo(container.gameObject);
+            }
+            if (entry.UseLocalizedText)
+            {
+                container.UseLocalizedText();
+            }
             container.Name = container.name = entry.Name;
             if (entry.FontSize > 0) 
             {
@@ -169,7 +177,8 @@ public class PageManager : MonoBehaviour
         public string Name;
         public int FontSize;
         public Sprite Sprite;
+        public bool UseLocalizedText;
+        public bool EnablePressScaleFeedback;
         public UnityEngine.Events.UnityAction<UmaUIContainer> OnClick;
     }
 }
-

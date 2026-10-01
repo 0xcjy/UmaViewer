@@ -12,7 +12,6 @@ namespace Gallop.Live.Cyalume
     {
         [SerializeField] private bool _initializedObjects;
         [SerializeField] private bool _autoSetupOnStart;
-        [SerializeField] private float _forceReplaceWarmupSeconds = 1.5f;
 
         private readonly List<Renderer> _defaultRenderers = new List<Renderer>();
         private readonly List<Renderer> _randomRenderers = new List<Renderer>();
@@ -21,7 +20,6 @@ namespace Gallop.Live.Cyalume
         private GameObject _randomInstance;
         private bool _usingRandomTarget;
         private Coroutine _setupCoroutine;
-        private Coroutine _forceReplaceCoroutine;
 
         [Header("Mob")]
         [SerializeField] private bool _enableMobController = true;
@@ -96,7 +94,7 @@ namespace Gallop.Live.Cyalume
             LoadTextureBundlesFromIndex(liveKey);
 
             ApplyTargetSelection(false, true);
-            EnsureCustomShaderOnCurrentTargets();
+            InitializeCyalumeMaterials(_targetRendererList);
             CollectTargetMeshAndMaterials();
             CreateVertexColorCacheOfficialConservative();
             yield return null;
@@ -109,9 +107,6 @@ namespace Gallop.Live.Cyalume
             InitializeAudienceUvSpreadOfficialConservative();
             RefreshRendererEnabledState();
             _isInitialized = _targetRendererList.Count > 0 && _materialArray.Length > 0;
-            ForceReplaceOfficialMaterialsInMemory();
-            ForceReplaceCustomShaderInHierarchy(transform, true);
-            ForceReplaceOfficialShaderAcrossLoadedScene();
             LogTargetShaderSummary("SetupOfficialLike");
             WriteCyalumeSceneSnapshot("SetupOfficialLike");
 
@@ -120,7 +115,6 @@ namespace Gallop.Live.Cyalume
                 Debug.Log($"[CyalumeController3D] Setup complete. liveKey={liveKey}, targets={_targetRendererList.Count}, meshes={_meshFilters.Length}, materials={_materialArray.Length}, patterns={_textureSet.Count}");
             }
 
-            StartForceReplaceWarmup();
             _setupCoroutine = null;
         }
 
@@ -136,22 +130,11 @@ namespace Gallop.Live.Cyalume
 
             bool preferRandom = _playbackProvider != null && _playbackProvider.IsRandomPattern(patternId);
             bool targetChanged = ApplyTargetSelection(preferRandom);
-            bool shaderChanged = EnsureCustomShaderOnCurrentTargets() > 0;
-            bool memoryChanged = ForceReplaceOfficialMaterialsInMemory() > 0;
             if (targetChanged)
             {
-                ForceReplaceOfficialMaterialsInMemory();
-                ForceReplaceCustomShaderInHierarchy(transform, true);
-                ForceReplaceOfficialShaderAcrossLoadedScene();
                 CollectTargetMeshAndMaterials();
                 CreateVertexColorCacheOfficialConservative();
                 InitializeAudienceUvSpreadOfficialConservative();
-            }
-            else if (shaderChanged || memoryChanged)
-            {
-                CollectTargetMeshAndMaterials();
-                ForceReplaceOfficialShaderAcrossLoadedScene();
-                LogTargetShaderSummary(memoryChanged ? "ForceReplaceOfficialMaterialsInMemory" : "EnsureCustomShaderOnCurrentTargets");
             }
 
             UpdateCyalumeOfficialConservative(false);
@@ -165,41 +148,6 @@ namespace Gallop.Live.Cyalume
             FlushMobShadowIfNeeded();
         }
 
-        private void StartForceReplaceWarmup()
-        {
-            if (_forceReplaceCoroutine != null)
-            {
-                StopCoroutine(_forceReplaceCoroutine);
-                _forceReplaceCoroutine = null;
-            }
-
-            if (_forceReplaceWarmupSeconds <= 0f)
-                return;
-
-            _forceReplaceCoroutine = StartCoroutine(ForceReplaceWarmupCoroutine());
-        }
-
-        private IEnumerator ForceReplaceWarmupCoroutine()
-        {
-            float endTime = Time.unscaledTime + _forceReplaceWarmupSeconds;
-            while (Time.unscaledTime < endTime)
-            {
-                int replacedCount = 0;
-                replacedCount += ForceReplaceOfficialMaterialsInMemory();
-                replacedCount += ForceReplaceCustomShaderInHierarchy(transform, true);
-                replacedCount += ForceReplaceOfficialShaderAcrossLoadedScene();
-                if (replacedCount > 0)
-                {
-                    CollectTargetMeshAndMaterials();
-                    LogTargetShaderSummary("ForceReplaceWarmup");
-                    WriteCyalumeSceneSnapshot("ForceReplaceWarmup");
-                }
-
-                yield return null;
-            }
-
-            _forceReplaceCoroutine = null;
-        }
 
         public override void InitializeCyalumeObjectsOnly(bool forceRebuild = false)
         {
@@ -466,7 +414,7 @@ namespace Gallop.Live.Cyalume
             if (destination != null)
             {
                 var renderers = instance.GetComponentsInChildren<Renderer>(true);
-                ApplyCustomShaderOverrideToRenderers(renderers);
+                InitializeCyalumeMaterials(renderers);
                 destination.AddRange(renderers);
             }
 

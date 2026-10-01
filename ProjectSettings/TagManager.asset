@@ -11,14 +11,14 @@ TagManager:
   - 
   - Water
   - UI
-  - A
+  - 3D
   - B
-  - C
+  - 3D_UI
   - D
   - E
-  - F
-  - G
-  - H
+  - EFFECT
+  - BG
+  - CHAR
   - I
   - J
   - K
@@ -27,16 +27,16 @@ TagManager:
   - N
   - O
   - P
-  - Q
+  - TouchEffect
   - Background
   - UIHandle
+  - Background3D_NotReflect
+  - Character3D_NotReflect
+  - Character3D_0
+  - Character3D_1
   - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  - CircleProfile
+  - NO_VISIBLE
   m_SortingLayers:
   - name: Default
     uniqueID: 0

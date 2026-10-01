@@ -1,4 +1,4 @@
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
 using SFB;
 #endif
 
@@ -99,7 +99,7 @@ public class UISettingsModel : MonoBehaviour
 
     public void ExportModel()
     {
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
         var container = Builder.CurrentUMAContainer;
         if (container)
         {

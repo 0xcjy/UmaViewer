@@ -7,6 +7,10 @@ namespace Gallop.Live.Cutt
     [System.Serializable]
     public class LiveTimelineKeyCameraSwitcherData : LiveTimelineKey
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.CameraSwitcher;}
+        }
         public int cameraIndex;
     }
 

@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using static Gallop.Live.Cutt.LiveTimelineDefine;
 
@@ -18,70 +16,75 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyBgColor1Data : LiveTimelineKeyWithInterpolate
     {
-        // Fields
-        public Color color; // 0x2c
-        public float power; // 0x3c
-        public float scale; // 0x40
-        public int flags; // 0x44
-        public ColorType ColorType; // 0x48
-        public float Saturation; // 0x4c
-        public Color toonDarkColor; // 0x50
-        public Color toonBrightColor; // 0x60
-        public float vertexColorToonPower; // 0x70
-        public float outlineWidthPower; // 0x74
-        public Color outlineColor; // 0x78
-        public OutlineColorBlend outlineColorBlend; // 0x88
-        public LightBlendMode LightBlendMode; // 0x8c
-        public bool IsProjector; // 0x90
-        public string BlinkLightName; // 0x98
-        public int BlinkLightNameHash; // 0xa0
-        public int BlinkLightContainerIndex; // 0xa4
-        public float BlinkLightBrightnessPower; // 0xa8
-        public bool IsAdjustedBlinkLightColor; // 0xac
-        public LiveTimelineKeyLoopType loopType; // 0xb0
-        public int loopCount; // 0xb4
-        public int loopExecutedCount; // 0xb8
-        public int loopIntervalFrame; // 0xbc
-        public bool isPasteLoopUnit; // 0xc0
-        public bool isChangeLoopInterpolate; // 0xc1
-        public float f32; // 0xc4
-        public LiveTimelineKeyLoopType _loopType; // 0xc8
-        public int _loopCount; // 0xcc
-        public int _loopExecutedCount; // 0xd0
-        public int _loopIntervalFrame; // 0xd4
-        public bool _isChangeLoopInterpolate; // 0xd8
-        //private const Int32 ATTR_SILHOUETTE; // 0x0
-        //private const Int32 ATTR_SYNC_BLINKLIGHT; // 0x0
+        public override LiveTimelineKeyDataType dataType
+        {
+            get
+            {
+                return LiveTimelineKeyDataType.BgColor1;
+            }
+        }
+        private const int ATTR_SILHOUETTE = 1 << 15;
+        private const int ATTR_SYNC_BLINKLIGHT = 1 << 16;
 
-        public bool IsSilhouette { get; set; }
-        public bool IsSyncBlinkLight { get; set; }
+        public Color color;
+        public float power;
+        public float scale;
+        public int flags;
+        public ColorType ColorType;
+        public float Saturation;
+        public Color toonDarkColor;
+        public Color toonBrightColor;
+        public float vertexColorToonPower;
+        public float outlineWidthPower;
+        public Color outlineColor;
+        public OutlineColorBlend outlineColorBlend;
+        public LightBlendMode LightBlendMode;
+        public bool IsProjector;
+        public string BlinkLightName;
+        public int BlinkLightNameHash;
+        public int BlinkLightContainerIndex;
+        public float BlinkLightBrightnessPower;
+        public bool IsAdjustedBlinkLightColor;
+        public LiveTimelineKeyLoopType loopType;
+        public int loopCount;
+        public int loopExecutedCount;
+        public int loopIntervalFrame;
+        public bool isPasteLoopUnit;
+        public bool isChangeLoopInterpolate;
+        public float f32;
+        public LiveTimelineKeyLoopType _loopType;
+        public int _loopCount;
+        public int _loopExecutedCount;
+        public int _loopIntervalFrame;
+        public bool _isChangeLoopInterpolate;
 
+        public bool IsSilhouette => (flags & ATTR_SILHOUETTE) != 0;
+        public bool IsSyncBlinkLight => (flags & ATTR_SYNC_BLINKLIGHT) != 0;
     }
 
     [Serializable]
     public class LiveTimelineKeyBgColor1DataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyBgColor1Data>
     {
-
     }
 
     [Serializable]
     public class LiveTimelineBgColor1Data : ILiveTimelineGroupDataWithName
     {
-        // Fields
-        private const string DEFAULT_NAME = "BgColor1"; // 0x0
-        public LiveTimelineKeyBgColor1DataList keys; // 0x28
-        private int[] _targetCharaIdArray; // 0x30
-        private int[] _targetDressIdArray; // 0x38
+        private const string DEFAULT_NAME = "BgColor1";
+        public LiveTimelineKeyBgColor1DataList keys = new LiveTimelineKeyBgColor1DataList();
 
-        // Properties
-        public int[] TargetCharaIdArray { get; }
-        public int[] TargetDressIdArray { get; }
+        [SerializeField] private int[] _targetCharaIdArray;
+        [SerializeField] private int[] _targetDressIdArray;
 
+        public int[] TargetCharaIdArray => _targetCharaIdArray;
+        public int[] TargetDressIdArray => _targetDressIdArray;
+
+        public LiveTimelineBgColor1Data()
+        {
+            if (string.IsNullOrEmpty(name))
+                name = DEFAULT_NAME;
+        }
     }
 
-    [Serializable]
-    public class ILiveTimelineGroupDataWithName : ILiveTimelineGroupData
-    {
-        public string name;
-    }
+    
 }

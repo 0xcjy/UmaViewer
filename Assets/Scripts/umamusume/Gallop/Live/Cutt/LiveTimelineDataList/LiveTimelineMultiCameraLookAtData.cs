@@ -8,6 +8,7 @@ namespace Gallop.Live.Cutt
     public class LiveTimelineKeyMultiCameraLookAtData : LiveTimelineKeyCameraLookAtData
     {
 
+        public override LiveTimelineKeyDataType dataType => LiveTimelineKeyDataType.MultiCameraLookAt;
     }
 
     [System.Serializable]
@@ -20,6 +21,8 @@ namespace Gallop.Live.Cutt
     public class LiveTimelineMultiCameraLookAtData : ILiveTimelineGroupDataWithName
     {
         private const string default_name = "MultiCameraLookAt";
+        public int MultiCameraNo;
         public LiveTimelineKeyMultiCameraLookAtDataList keys;
+        public override ILiveTimelineKeyDataList GetKeyList() => keys;
     }
 }

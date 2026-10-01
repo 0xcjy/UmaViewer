@@ -68,6 +68,24 @@ public class UmaViewerUI : MonoBehaviour
     public ScrollRect NormalSubSoundList;
     public PageManager NormalSoundCtrl;
 
+    [Header("jukebox ui resources")]
+    public Button JukeboxButton;
+    public JukeboxSelectionView JukeboxPanel;
+
+    private GameObject JukeboxSoundPanel;
+    private ScrollRect JukeboxSoundList;
+    private Image JukeboxSelectedJacket;
+    private GameObject JukeboxSelectedPlaceholder;
+    private Text JukeboxSelectedInfo;
+    private Toggle JukeboxShortVersionToggle;
+    private Toggle JukeboxGameSizeVersionToggle;
+    private UmaUIContainer JukeboxMusicItemPrefab;
+    private JukeboxMusicSelect JukeboxSelectedItem;
+    private MasterJukeboxMusicData.JukeboxMusicData JukeboxSelectedMusic;
+    private bool JukeboxUseGameSize;
+    private bool JukeboxListLoaded;
+    private bool JukeboxListLoading;
+
     [Header("pose mode")]
     public Transform HandlesPanel;
 
@@ -128,6 +146,7 @@ public class UmaViewerUI : MonoBehaviour
     private void Start()
     {
         OtherSettings.ApplySettings();
+        SetupJukeboxSoundUI();
         CameraSettings.AAModeDropdown.SetValueWithoutNotify(Config.Instance.AntiAliasing);
         AssetSettings.LoadedAssetsClear();
         UmaAssetManager.OnLoadedBundleUpdate += AssetSettings.LoadedAssetsAdd;
@@ -150,20 +169,17 @@ public class UmaViewerUI : MonoBehaviour
 
     private void Update()
     {
-        if (Builder == null)
-            return;
-
-        if (Builder.CurrentAudioSources != null && Builder.CurrentAudioSources.Count > 0 && Builder.CurrentAudioSources[0])
+        if (Builder.CurrentAudioSources.Count > 0 && Builder.CurrentAudioSources[0])
         {
             AudioSource MianSource = Builder.CurrentAudioSources[0];
-            if (MianSource.clip && AudioSettings != null)
+            if (MianSource.clip)
             {
                 AudioSettings.UpdateTrack(MianSource);
             }
         }
 
         var umaContainer = Builder.CurrentUMAContainer;
-        if (umaContainer != null && umaContainer.OverrideController != null && AnimationSettings != null)
+        if (umaContainer != null && umaContainer.OverrideController != null)
         {
             AnimationSettings.UpdateAnimationInfo(umaContainer);
         }
@@ -216,7 +232,9 @@ public class UmaViewerUI : MonoBehaviour
         {
             var charaInstance = chara;
 
-            var container3 = Instantiate(UmaContainerPrefab, CharactersList.content).GetComponent<UmaUIContainer>();
+            var container3 = Instantiate(UmaContainerPrefab,CharactersList.content).GetComponent<UmaUIContainer>();
+            UIPressScaleFeedback.AddTo(container3.gameObject);
+            container3.UseLocalizedText();
             container3.Name = container3.name = chara.Id + " " + chara.GetName();
             container3.Button.onClick.AddListener(() =>
             {
@@ -230,7 +248,10 @@ public class UmaViewerUI : MonoBehaviour
                 container3.Image.enabled = true;
             }
 
-            var container4 = Instantiate(UmaContainerPrefab, AnimationSetList.content).GetComponent<UmaUIContainer>();
+            var container4 = Instantiate(UmaContainerPrefab,AnimationSetList.content).GetComponent<UmaUIContainer>();
+
+            container4.UseLocalizedText();
+
             container4.Name = container4.name = chara.Id + " " + chara.GetName();
             container4.Button.onClick.AddListener(() =>
             {
@@ -252,6 +273,8 @@ public class UmaViewerUI : MonoBehaviour
             var pageentry = new PageManager.Entry();
 
             pageentry.Name = chara.GetName();
+            pageentry.UseLocalizedText = true;
+            pageentry.EnablePressScaleFeedback = true;
             pageentry.OnClick = (container) =>
             {
                 HighlightChildImage(MobCharactersList.content, container);
@@ -279,8 +302,11 @@ public class UmaViewerUI : MonoBehaviour
         foreach (var chara in Main.Characters.OrderBy(c => c.Id))
         {
             var charaInstance = chara;
-            var container2 = Instantiate(UmaContainerPrefab, MiniCharactersList.content).GetComponent<UmaUIContainer>();
+            var container2 = Instantiate(UmaContainerPrefab,MiniCharactersList.content).GetComponent<UmaUIContainer>();
+            UIPressScaleFeedback.AddTo(container2.gameObject);
+            container2.UseLocalizedText();
             container2.Name = container2.name = chara.Id + " " + chara.GetName();
+            
             container2.Button.onClick.AddListener(() =>
             {
                 HighlightChildImage(MiniCharactersList.content, container2);
@@ -294,6 +320,7 @@ public class UmaViewerUI : MonoBehaviour
             }
 
             var container3 = Instantiate(UmaContainerPrefab, MiniAnimationSetList.content).GetComponent<UmaUIContainer>();
+            container3.UseLocalizedText();
             container3.Name = container3.name = chara.Id + " " + chara.GetName();
             container3.Button.onClick.AddListener(() =>
             {
@@ -521,10 +548,260 @@ public class UmaViewerUI : MonoBehaviour
         NormalSoundCtrl.Initialize(pageentrys, NormalSoundList);
     }
 
+    private void SetupJukeboxSoundUI()
+    {
+        if (JukeboxButton == null || JukeboxPanel == null || JukeboxPanel.SongItemPrefab == null)
+        {
+            Debug.LogWarning(
+                "[UmaViewerUI] Assign JukeboxButton, JukeboxPanel and its SongItemPrefab in the Inspector.");
+            return;
+        }
+
+        if (JukeboxPanel.CloseButton == null ||
+            JukeboxPanel.ShortVersionToggle == null ||
+            JukeboxPanel.GameSizeVersionToggle == null ||
+            JukeboxPanel.SelectedJacket == null ||
+            JukeboxPanel.SelectedInfo == null ||
+            JukeboxPanel.SongList == null ||
+            JukeboxPanel.SongList.content == null ||
+            JukeboxPanel.SongItemPrefab.Button == null ||
+            JukeboxPanel.SongItemPrefab.Image == null)
+        {
+            Debug.LogWarning("[UmaViewerUI] JukeboxPanel has missing Inspector references.");
+            return;
+        }
+
+        JukeboxSoundPanel = JukeboxPanel.gameObject;
+        JukeboxSoundList = JukeboxPanel.SongList;
+        JukeboxSelectedJacket = JukeboxPanel.SelectedJacket;
+        JukeboxSelectedPlaceholder = JukeboxPanel.SelectedJacketPlaceholder;
+        JukeboxSelectedInfo = JukeboxPanel.SelectedInfo;
+        JukeboxShortVersionToggle = JukeboxPanel.ShortVersionToggle;
+        JukeboxGameSizeVersionToggle = JukeboxPanel.GameSizeVersionToggle;
+        JukeboxMusicItemPrefab = JukeboxPanel.SongItemPrefab;
+
+        JukeboxButton.onClick.AddListener(OpenJukeboxSoundPanel);
+        JukeboxPanel.CloseButton.onClick.AddListener(CloseJukeboxSoundPanel);
+        JukeboxShortVersionToggle.onValueChanged.AddListener(OnJukeboxShortVersionChanged);
+        JukeboxGameSizeVersionToggle.onValueChanged.AddListener(OnJukeboxGameSizeVersionChanged);
+        JukeboxShortVersionToggle.SetIsOnWithoutNotify(true);
+        JukeboxGameSizeVersionToggle.SetIsOnWithoutNotify(false);
+        JukeboxSoundPanel.SetActive(false);
+        RefreshJukeboxVersionUI();
+    }
+
+    private void OpenJukeboxSoundPanel()
+    {
+        JukeboxButton.interactable = false;
+        JukeboxSoundPanel.transform.SetAsLastSibling();
+        JukeboxSoundPanel.SetActive(true);
+        LoadJukeboxSoundPanels();
+    }
+
+    private void CloseJukeboxSoundPanel()
+    {
+        if (JukeboxSoundPanel != null)
+            JukeboxSoundPanel.SetActive(false);
+        if (JukeboxButton != null)
+            JukeboxButton.interactable = true;
+    }
+
+    private IEnumerator PopulateJukeboxGrid(List<MasterJukeboxMusicData.JukeboxMusicData> musicEntries)
+    {
+        for (int i = JukeboxSoundList.content.childCount - 1; i >= 0; i--)
+            Destroy(JukeboxSoundList.content.GetChild(i).gameObject);
+
+        for (int i = 0; i < musicEntries.Count; i++)
+        {
+            if (JukeboxSoundPanel == null || JukeboxSoundList == null)
+                yield break;
+
+            MasterJukeboxMusicData.JukeboxMusicData music = musicEntries[i];
+            Sprite jacket = null;
+            try
+            {
+                jacket = Builder.LoadLiveIcon(music.MusicId);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[UmaViewerUI] Could not load jacket for music {music.MusicId}: {ex.Message}");
+            }
+
+            JukeboxMusicSelect item = CreateJukeboxGridItem(music, jacket);
+            if (JukeboxSelectedMusic == null)
+                SelectJukeboxMusic(item, false);
+
+            // AssetBundle loading is synchronous. Yield in small batches so opening
+            // a large regional jukebox does not freeze the UI for one long frame.
+            if ((i + 1) % 8 == 0)
+                yield return null;
+        }
+
+        JukeboxSoundList.verticalNormalizedPosition = 1f;
+        JukeboxListLoaded = true;
+        JukeboxListLoading = false;
+
+        if (musicEntries.Count == 0)
+        {
+            JukeboxSelectedInfo.text = "No playable music found";
+        }
+    }
+
+    private JukeboxMusicSelect CreateJukeboxGridItem(
+        MasterJukeboxMusicData.JukeboxMusicData music,
+        Sprite jacket)
+    {
+        UmaUIContainer view = Instantiate(JukeboxMusicItemPrefab, JukeboxSoundList.content);
+        JukeboxMusicSelect item = view.GetComponent<JukeboxMusicSelect>();
+        if (item == null)
+            item = view.gameObject.AddComponent<JukeboxMusicSelect>();
+
+        string title = JukeboxUtil.ResolveSongTitle(music, UmaDatabaseController.Instance.LiveData);
+        item.Initialize(this, view, music, jacket, title);
+        return item;
+    }
+
+    public void SelectJukeboxMusic(JukeboxMusicSelect item, bool playImmediately = true)
+    {
+        if (item == null || item.Music == null)
+            return;
+
+        if (JukeboxSelectedItem != null)
+            JukeboxSelectedItem.SetSelected(false);
+
+        JukeboxSelectedItem = item;
+        JukeboxSelectedItem.SetSelected(true);
+        JukeboxSelectedMusic = item.Music;
+        JukeboxSelectedJacket.sprite = item.Jacket;
+        JukeboxSelectedJacket.enabled = item.Jacket != null;
+        if (JukeboxSelectedPlaceholder != null)
+            JukeboxSelectedPlaceholder.SetActive(item.Jacket == null);
+
+        if (JukeboxUseGameSize && !item.Music.HasGameSizeAudio)
+            JukeboxUseGameSize = false;
+        else if (!JukeboxUseGameSize && !item.Music.HasShortAudio && item.Music.HasGameSizeAudio)
+            JukeboxUseGameSize = true;
+
+        RefreshJukeboxVersionUI();
+        if (playImmediately)
+            PlaySelectedJukeboxMusic();
+    }
+
+    private void SelectJukeboxVersion(bool useGameSize)
+    {
+        if (JukeboxSelectedMusic != null)
+        {
+            if (useGameSize && !JukeboxSelectedMusic.HasGameSizeAudio)
+                return;
+            if (!useGameSize && !JukeboxSelectedMusic.HasShortAudio)
+                return;
+        }
+
+        JukeboxUseGameSize = useGameSize;
+        RefreshJukeboxVersionUI();
+        PlaySelectedJukeboxMusic();
+    }
+
+    private void OnJukeboxShortVersionChanged(bool isOn)
+    {
+        if (!isOn)
+        {
+            if (!JukeboxGameSizeVersionToggle.isOn)
+                JukeboxShortVersionToggle.SetIsOnWithoutNotify(true);
+            return;
+        }
+
+        JukeboxGameSizeVersionToggle.SetIsOnWithoutNotify(false);
+        SelectJukeboxVersion(false);
+    }
+
+    private void OnJukeboxGameSizeVersionChanged(bool isOn)
+    {
+        if (!isOn)
+        {
+            if (!JukeboxShortVersionToggle.isOn)
+                JukeboxGameSizeVersionToggle.SetIsOnWithoutNotify(true);
+            return;
+        }
+
+        JukeboxShortVersionToggle.SetIsOnWithoutNotify(false);
+        SelectJukeboxVersion(true);
+    }
+
+    private void RefreshJukeboxVersionUI()
+    {
+        bool hasShort = JukeboxSelectedMusic == null || JukeboxSelectedMusic.HasShortAudio;
+        bool hasGameSize = JukeboxSelectedMusic == null || JukeboxSelectedMusic.HasGameSizeAudio;
+
+        if (JukeboxShortVersionToggle != null)
+        {
+            JukeboxShortVersionToggle.interactable = hasShort;
+            JukeboxShortVersionToggle.SetIsOnWithoutNotify(!JukeboxUseGameSize);
+        }
+        if (JukeboxGameSizeVersionToggle != null)
+        {
+            JukeboxGameSizeVersionToggle.interactable = hasGameSize;
+            JukeboxGameSizeVersionToggle.SetIsOnWithoutNotify(JukeboxUseGameSize);
+        }
+
+        if (JukeboxSelectedMusic != null && JukeboxSelectedInfo != null)
+        {
+            string title = JukeboxUtil.ResolveSongTitle(
+                JukeboxSelectedMusic,
+                UmaDatabaseController.Instance.LiveData);
+            string version = JukeboxUseGameSize ? "GAME SIZE Ver." : "SHORT Ver.";
+            JukeboxSelectedInfo.text =
+                $"{title}\nMUSIC ID  {JukeboxSelectedMusic.MusicId}\n{version}";
+        }
+    }
+
+    private void PlaySelectedJukeboxMusic()
+    {
+        if (JukeboxSelectedMusic != null)
+            HomeJukeboxController.Instance.SetupMusicAndPlay(
+                JukeboxSelectedMusic.MusicId,
+                JukeboxUseGameSize);
+    }
+
+    public void LoadJukeboxSoundPanels()
+    {
+        if (JukeboxSoundList == null || JukeboxListLoaded || JukeboxListLoading)
+            return;
+
+        try
+        {
+            MasterJukeboxMusicData master = UmaDatabaseController.Instance.JukeboxMusicData;
+            if (master == null)
+            {
+                ShowMessage("Jukebox master data is not available.", UIMessageType.Warning);
+                return;
+            }
+
+            var musicEntries = new List<MasterJukeboxMusicData.JukeboxMusicData>();
+            foreach (MasterJukeboxMusicData.JukeboxMusicData music in master.GetAll())
+            {
+                if (!music.TryGetPreferredAudio(out _, out _))
+                    continue;
+                musicEntries.Add(music);
+            }
+
+            JukeboxListLoading = true;
+            StartCoroutine(PopulateJukeboxGrid(musicEntries));
+        }
+        catch (Exception ex)
+        {
+            JukeboxListLoading = false;
+            Debug.LogError($"[UmaViewerUI] Could not load Jukebox UI: {ex}");
+            ShowMessage($"Could not load Jukebox: {ex.Message}", UIMessageType.Error);
+        }
+    }
+
     public void LoadPropPanel()
     {
         var pageentrys = new List<PageManager.Entry>();
-        foreach (var prop in Main.AbList.Where(a => a.Key.Contains("pfb_chr_prop") && !a.Key.Contains("clothes")))
+        foreach (var prop in Main.AbList
+            .Where(a => IsPreviewableProp(a.Key))
+            .OrderBy(a => a.Key, StringComparer.OrdinalIgnoreCase))
         {
             var pageentry = new PageManager.Entry();
             pageentry.Name = Path.GetFileName(prop.Key);
@@ -536,6 +813,26 @@ public class UmaViewerUI : MonoBehaviour
             pageentrys.Add(pageentry);
         }
         PropPageCtrl.Initialize(pageentrys, PropList);
+    }
+
+    private static bool IsPreviewableProp(string path)
+    {
+        if (string.IsNullOrEmpty(path) || path.IndexOf("clothes", StringComparison.OrdinalIgnoreCase) >= 0)
+            return false;
+
+        string fileName = Path.GetFileName(path);
+        if (!fileName.StartsWith("pfb_", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Legacy assets use pfb_chr_prop; newer hand-held assets may be filed under
+        // prop/item/accessory directories with different prefab names.
+        return path.IndexOf("/prop/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               path.IndexOf("/props/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               path.IndexOf("/item/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               path.IndexOf("/accessory/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               fileName.IndexOf("prop", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               fileName.IndexOf("item", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               fileName.IndexOf("accessory", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     public void LoadMapPanel()
@@ -642,6 +939,7 @@ public class UmaViewerUI : MonoBehaviour
             foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(bodyPath) && !a.Name.Contains("clothes") && a.Name.Contains(nameVar)))
             {
                 var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
+                UIPressScaleFeedback.AddTo(container.gameObject);
                 string[] split = entry.Name.Split('_');
                 string costumeId = split[split.Length - 1];
                 var dressdata = Main.Costumes.FirstOrDefault(a => (a.CharaId == achara.Id && a.BodyTypeSub == int.Parse(costumeId)));
@@ -700,6 +998,7 @@ public class UmaViewerUI : MonoBehaviour
                 costumes.Add(id);
                 string costumeId = id;
                 var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
+                UIPressScaleFeedback.AddTo(container.gameObject);
                 var data = costumeId.Split('_');
                 var bodytype = int.Parse(data[0]);
                 var bodysub = int.Parse(data[1]);
@@ -753,6 +1052,7 @@ public class UmaViewerUI : MonoBehaviour
             foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{chara.Id}_") && !a.Name.Contains("clothes") && a.Name.Contains(nameVar)))
             {
                 var container = Instantiate(UmaContainerCostumePrefab, HeadCostumeList.content).GetComponent<UmaUIContainer>();
+                UIPressScaleFeedback.AddTo(container.gameObject);
                 string[] split = entry.Name.Split('_');
                 string head_costumeId = split[split.Length - 1];
                 var dressdata = Main.Costumes.FirstOrDefault(a => (a.CharaId == chara.Id && a.BodyTypeSub == int.Parse(head_costumeId)));
@@ -1055,8 +1355,11 @@ public class UmaViewerUI : MonoBehaviour
                 if (camera.enabled)
                 {
                     var cameraRecorder = camera.GetComponent<UnityCameraVMDRecorder>();
-                    cameraRecorder.StopRecording();
-                    cameraRecorder.SaveVMD();
+                    if (cameraRecorder != null)
+                    {
+                        cameraRecorder.StopRecording();
+                        cameraRecorder.SaveVMD();
+                    }
                 }
                 recorder.StopRecording();
                 buttonText.text = "Saving";

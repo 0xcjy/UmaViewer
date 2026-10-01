@@ -7,6 +7,11 @@ namespace Gallop.Live.Cutt
     [System.Serializable]
     public class LiveTimelineKeyCameraRollData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.CameraRoll;}
+        }
+
         public float degree;
     }
 

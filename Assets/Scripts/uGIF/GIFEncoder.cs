@@ -16,11 +16,16 @@ namespace uGIF
 
 		public float FPS {
 			set {
-				delay = Mathf.RoundToInt (100f / value);
+				delay = Mathf.Max(1, Mathf.RoundToInt(100f / Mathf.Max(1f, value)));
 			}
 		}
 
 		public void AddFrame (Image im)
+		{
+			AddFrame(im, false);
+		}
+
+		public void AddFrame (Image im, bool flipVertical)
 		{
 			if (im == null)
 				throw new ArgumentNullException ("im");
@@ -33,7 +38,7 @@ namespace uGIF
 			}
 
 			pixels = im.pixels;
-			RemapPixels (); // build color table & map pixels
+			RemapPixels (im.width, im.height, flipVertical); // build color table & map pixels
 			pixels = null;
 			if (firstFrame) {
 				WriteLSD (); // logical screen descriptior
@@ -82,66 +87,59 @@ namespace uGIF
 			WriteString ("GIF89a"); // header
 		}
 
-		void RemapPixels ()
+		void RemapPixels(int imageWidth, int imageHeight, bool flipVertical)
 		{
 			int len = pixels.Length;
-			indexedPixels = new byte[len];
+			bool mappedDuringTraining = false;
 
-			if (firstFrame || !useGlobalColorTable) {
-				// initialize quantizer
-				nq = new NeuQuant (pixels, len, quality);
-				colorTab = nq.Process (); // create reduced palette
+			if (firstFrame || !useGlobalColorTable)
+			{
+				nq = new NeuQuant(pixels, len, quality, imageWidth, imageHeight, flipVertical);
+				nq.ProcessAndMap(
+					transparent.HasValue,
+					255,
+					out colorTab,
+					out indexedPixels);
+				mappedDuringTraining = true;
 			}
 
-			for (int i = 0; i < len; i++) {
-				int index = nq.Map (pixels [i].r & 0xff, pixels [i].g & 0xff, pixels [i].b & 0xff);
-				usedEntry [index] = true;
-				indexedPixels [i] = (byte)index;
-
-				if (dispose == 1 && prevIndexedPixels != null) {
-					if (indexedPixels [i] == prevIndexedPixels [i]) {
-						indexedPixels [i] = (byte)transIndex;
-					} else {
-						prevIndexedPixels [i] = (byte)index;
-					}
-				}
-			}
 			colorDepth = 8;
 			palSize = 7;
-			// get closest match to transparent color if specified
-			if (transparent.HasValue) {
-				var c = transparent.Value;
-				//transIndex = FindClosest(transparent);
-				transIndex = nq.Map (c.b, c.g, c.r);
+
+			bool useTransparency = transparent.HasValue;
+
+			// 固定保留调色板最后一个索引作为透明色。
+			transIndex = 255;
+
+			if (!mappedDuringTraining)
+			{
+				indexedPixels = nq.MapPixels(
+					pixels,
+					colorTab,
+					useTransparency,
+					transIndex,
+					imageWidth,
+					imageHeight,
+					flipVertical);
+			}
+
+			if (useTransparency && colorTab != null)
+			{
+				int paletteOffset = transIndex * 3;
+
+				if (paletteOffset + 2 < colorTab.Length)
+				{
+					// 透明索引对应的 RGB 实际不会显示。
+					colorTab[paletteOffset] = 0;
+					colorTab[paletteOffset + 1] = 0;
+					colorTab[paletteOffset + 2] = 0;
+				}
 			}
 
 			if (dispose == 1 && prevIndexedPixels == null)
-				prevIndexedPixels = indexedPixels.Clone () as byte[];
-		}
-	
-		int FindClosest (Color32 c)
-		{
-			if (colorTab == null)
-				return -1;
-			int r = c.r;
-			int g = c.g;
-			int b = c.b;
-			int minpos = 0;
-			int dmin = 256 * 256 * 256;
-			int len = colorTab.Length;
-			for (int i = 0; i < len;) {
-				int dr = r - (colorTab [i++] & 0xff);
-				int dg = g - (colorTab [i++] & 0xff);
-				int db = b - (colorTab [i] & 0xff);
-				int d = dr * dr + dg * dg + db * db;
-				int index = i / 3;
-				if (usedEntry [index] && (d < dmin)) {
-					dmin = d;
-					minpos = index;
-				}
-				i++;
+			{
+				prevIndexedPixels = indexedPixels.Clone() as byte[];
 			}
-			return minpos;
 		}
 
 		void WriteGraphicCtrlExt ()
@@ -180,9 +178,14 @@ namespace uGIF
 			WriteShort (0);
 			WriteShort (width); // image size
 			WriteShort (height);
-			// no LCT  - GCT is used for first (or only) frame
-			ms.WriteByte (0);
 
+			if (!firstFrame && !useGlobalColorTable) {
+				// bit 7 = Local Color Table 存在；palSize=7 表示 256 色。
+				ms.WriteByte(Convert.ToByte(0x80 | palSize));
+			} else {
+				// 第一帧使用 Logical Screen Descriptor 中的 Global Color Table。
+				ms.WriteByte(0);
+			}
 		}
 	
 		void WriteLSD ()
@@ -252,7 +255,6 @@ namespace uGIF
 		byte[] prevIndexedPixels;
 		int colorDepth;
 		byte[] colorTab;
-		bool[] usedEntry = new bool[256]; // active palette entries
 		int palSize = 7; // color table size (bits-1)
 		bool firstFrame = true;
 		NeuQuant nq;

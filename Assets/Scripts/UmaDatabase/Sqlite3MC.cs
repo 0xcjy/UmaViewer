@@ -10,7 +10,19 @@ using UnityEngine;
 public static class Sqlite3MC
 {
     // ---- DLL name: change if you use different file name / arch ----
-    private const string DLL = "sqlite3mc_x64"; // ensure sqlite3mc_x64.dll is available for x64 build
+    #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+	private const string DLL = "sqlite3mc_x64";   // sqlite3mc_x64.dll
+	#elif UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+	private const string DLL = "sqlite3mc_mac";   // libsqlite3mc_mac.dylib
+	#elif UNITY_ANDROID
+	private const string DLL = "sqlite3mcandroid"; // libsqlite3mcandroid.so
+	#elif (UNITY_IOS || UNITY_IPHONE) && !UNITY_EDITOR
+	private const string DLL = "__Internal";      // libsqlite3mc_static.a
+	#else
+	private const string DLL = "sqlite3mc";
+	#endif
+
+
 
     // ---- Common SQLite constants ----
     public const int SQLITE_OK = 0;

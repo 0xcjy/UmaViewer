@@ -12,6 +12,10 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyTransformData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.Transform;}
+        }
         public Vector3 position;
         public Vector3 rotate;
         public Vector3 scale;

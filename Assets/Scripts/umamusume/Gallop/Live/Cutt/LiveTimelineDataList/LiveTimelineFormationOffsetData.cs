@@ -10,7 +10,11 @@ namespace Gallop.Live.Cutt
 	[System.Serializable]
 	public class LiveTimelineKeyFormationOffsetData : LiveTimelineKeyWithInterpolate
 	{
-		private enum IKTargetChara
+		public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.FormationOffset;}
+        }
+        private enum IKTargetChara
 		{
 			_1st = 0,
 			_2nd = 1,

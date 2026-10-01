@@ -1,4 +1,0 @@
-# generated output of the asset tools (meta_plain.db, scan_*.csv, ...)
-out/
-__pycache__/
-*.pyc

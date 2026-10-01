@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace SFB {
+namespace SFB.LegacyWindows {
     public interface IStandaloneFileBrowser {
         string[] OpenFilePanel(string title, string directory, ExtensionFilter[] extensions, bool multiselect);
         string[] OpenFolderPanel(string title, string directory, bool multiselect);
@@ -11,3 +11,4 @@ namespace SFB {
         void SaveFilePanelAsync(string title, string directory, string defaultName, ExtensionFilter[] extensions, Action<string> cb);
     }
 }
+

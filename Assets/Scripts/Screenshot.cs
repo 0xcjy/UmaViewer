@@ -56,39 +56,56 @@ public class Screenshot : MonoBehaviour
     {
         var camera = GetActiveCamera();
         var ppLayer = camera.GetComponent<PostProcessLayer>();
-        bool oldPpState = ppLayer.enabled;
-        ppLayer.enabled = false;
+        bool oldPpState = ppLayer != null && ppLayer.enabled;
+
+        if (ppLayer != null)
+            ppLayer.enabled = false;
 
         var uma = UmaViewerBuilder.Instance.CurrentUMAContainer;
         var animator = uma.UmaAnimator;
-        if (animator == null) yield break;
+        if (animator == null)
+        {
+            recording = false;
+            ScreenshotSettings.GifButton.interactable = true;
+            yield break;
+        }
 
         int frame = 0;
         var animeClip = uma.OverrideController["clip_2"];
         var clipLength = animeClip.length;
         var frameRate = animeClip.frameRate;
         var clipFrameCount = Mathf.RoundToInt(clipLength * frameRate);
-        
+
+        //把UI的GIF透明选项传给编码器
+        CaptureToGIFCustom.Instance.transparentBackground = transparent;
+        CaptureToGIFCustom.Instance.stop = false;
+        CaptureToGIFCustom.Instance.Frames.Clear();
+
         StartCoroutine(CaptureToGIFCustom.Instance.Encode(frameRate, quality));
 
         AnimationSettings.ChangeSpeed(0);
         AnimationSettings.ChangeProgress(0);
-        yield return new WaitForSeconds(1); //wait for dynamicBone to settle;
+        yield return new WaitForSeconds(1); // wait for model pose to settle
 
         while (frame < clipFrameCount)
         {
             AnimationSettings.ChangeProgress((float)frame / clipFrameCount);
             yield return new WaitForEndOfFrame();
+
             var tex = GrabFrame(camera, width, height, transparent);
             CaptureToGIFCustom.Instance.Frames.Add(new Image(tex));
             Destroy(tex);
+
             frame++;
         }
 
         recording = false;
         AnimationSettings.ChangeProgress(0);
         AnimationSettings.ChangeSpeed(1);
-        ppLayer.enabled = oldPpState;
+
+        if (ppLayer != null)
+            ppLayer.enabled = oldPpState;
+
         CaptureToGIFCustom.Instance.stop = true;
         ScreenshotSettings.GifButton.interactable = true;
     }
@@ -130,7 +147,7 @@ public class Screenshot : MonoBehaviour
 
         AnimationSettings.ChangeSpeed(0);
         AnimationSettings.ChangeProgress(0);
-        yield return new WaitForSeconds(1); //wait for dynamicBone to settle;
+        yield return new WaitForSeconds(1); // wait for model pose to settle
 
         while (frame < clipFrameCount)
         {

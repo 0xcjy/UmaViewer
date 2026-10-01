@@ -1,7 +1,9 @@
 using System;
-
 namespace Gallop.Live.Cutt
 {
+    //这里面的Math.并非system.Math,而是gallop专用数学库gallop math!
+    //时间轴缓动函数工具类
+    //缓动函数用于改变普通线性插值的运动节奏
     public static class LiveTimelineEasing
     {
         public enum Type
@@ -133,37 +135,38 @@ namespace Gallop.Live.Cutt
 
         public static double ExpoEaseOut(double t, double b, double c, double d)
         {
-            if (t != d)
-            {
-                return c * (0.0 - Math.Pow(2.0, -10.0 * t / d) + 1.0) + b;
-            }
-            return b + c;
+            if (Math.IsDoubleEqual(t, d))
+                return b + c;
+
+            return (1.0 - System.Math.Pow(2.0, t * -10.0 / d)) * c + b;
         }
 
         public static double ExpoEaseIn(double t, double b, double c, double d)
         {
-            if (t != 0.0)
-            {
-                return c * Math.Pow(2.0, 10.0 * (t / d - 1.0)) + b;
-            }
-            return b;
+            if (Math.IsDoubleEqual(t, 0.0))
+                return b;
+
+            return System.Math.Pow(2.0, (t / d - 1.0) * 10.0) * c + b;
         }
 
         public static double ExpoEaseInOut(double t, double b, double c, double d)
         {
-            if (t == 0.0)
-            {
+            if (Gallop.Math.IsDoubleEqual(t, 0.0))
                 return b;
-            }
-            if (t == d)
-            {
+
+            if (Gallop.Math.IsDoubleEqual(t, d))
                 return b + c;
-            }
-            if ((t /= d / 2.0) < 1.0)
+
+            double t2 = t / (d * 0.5);
+
+            if (t2 < 1.0)
             {
-                return c / 2.0 * Math.Pow(2.0, 10.0 * (t - 1.0)) + b;
+                return (c * 0.5) * System.Math.Pow(2.0, (t2 - 1.0) * 10.0) + b;
             }
-            return c / 2.0 * (0.0 - Math.Pow(2.0, -10.0 * (t -= 1.0)) + 2.0) + b;
+
+            t2 = t2 - 1.0;
+
+            return (c * 0.5) * (2.0 - System.Math.Pow(2.0, t2 * -10.0)) + b;
         }
 
         public static double ExpoEaseOutIn(double t, double b, double c, double d)
@@ -177,21 +180,21 @@ namespace Gallop.Live.Cutt
 
         public static double CircEaseOut(double t, double b, double c, double d)
         {
-            return c * Math.Sqrt(1.0 - (t = t / d - 1.0) * t) + b;
+            return c * System.Math.Sqrt(1.0 - (t = t / d - 1.0) * t) + b;
         }
 
         public static double CircEaseIn(double t, double b, double c, double d)
         {
-            return (0.0 - c) * (Math.Sqrt(1.0 - (t /= d) * t) - 1.0) + b;
+            return (0.0 - c) * (System.Math.Sqrt(1.0 - (t /= d) * t) - 1.0) + b;
         }
 
         public static double CircEaseInOut(double t, double b, double c, double d)
         {
             if ((t /= d / 2.0) < 1.0)
             {
-                return (0.0 - c) / 2.0 * (Math.Sqrt(1.0 - t * t) - 1.0) + b;
+                return (0.0 - c) / 2.0 * (System.Math.Sqrt(1.0 - t * t) - 1.0) + b;
             }
-            return c / 2.0 * (Math.Sqrt(1.0 - (t -= 2.0) * t) + 1.0) + b;
+            return c / 2.0 * (System.Math.Sqrt(1.0 - (t -= 2.0) * t) + 1.0) + b;
         }
 
         public static double CircEaseOutIn(double t, double b, double c, double d)
@@ -233,21 +236,21 @@ namespace Gallop.Live.Cutt
 
         public static double SineEaseOut(double t, double b, double c, double d)
         {
-            return c * Math.Sin(t / d * (Math.PI / 2.0)) + b;
+            return c * System.Math.Sin(t / d * (System.Math.PI / 2.0)) + b;
         }
 
         public static double SineEaseIn(double t, double b, double c, double d)
         {
-            return (0.0 - c) * Math.Cos(t / d * (Math.PI / 2.0)) + c + b;
+            return (0.0 - c) * System.Math.Cos(t / d * (System.Math.PI / 2.0)) + c + b;
         }
 
         public static double SineEaseInOut(double t, double b, double c, double d)
         {
             if ((t /= d / 2.0) < 1.0)
             {
-                return c / 2.0 * Math.Sin(Math.PI * t / 2.0) + b;
+                return c / 2.0 * System.Math.Sin(System.Math.PI * t / 2.0) + b;
             }
-            return (0.0 - c) / 2.0 * (Math.Cos(Math.PI * (t -= 1.0) / 2.0) - 2.0) + b;
+            return (0.0 - c) / 2.0 * (System.Math.Cos(System.Math.PI * (t -= 1.0) / 2.0) - 2.0) + b;
         }
 
         public static double SineEaseOutIn(double t, double b, double c, double d)
@@ -345,39 +348,50 @@ namespace Gallop.Live.Cutt
 
         public static double ElasticEaseOut(double t, double b, double c, double d)
         {
-            if ((t /= d) == 1.0)
-            {
+            double t2 = t / d;
+
+            if (Gallop.Math.IsDoubleEqual(t2, 1.0))
                 return b + c;
-            }
-            double num = d * 0.3;
-            double num2 = num / 4.0;
-            return c * Math.Pow(2.0, -10.0 * t) * Math.Sin((t * d - num2) * (Math.PI * 2.0) / num) + c + b;
+
+            double p = d * 0.3;
+            double s = p * 0.25;
+
+            return c *System.Math.Pow(2.0, t2 * -10.0) * System.Math.Sin((t2 * d - s) * 6.28318531 / p) + c + b;
         }
 
         public static double ElasticEaseIn(double t, double b, double c, double d)
         {
-            if ((t /= d) == 1.0)
-            {
+            double t2 = t / d;
+
+            if (Gallop.Math.IsDoubleEqual(t2, 1.0))
                 return b + c;
-            }
-            double num = d * 0.3;
-            double num2 = num / 4.0;
-            return 0.0 - c * Math.Pow(2.0, 10.0 * (t -= 1.0)) * Math.Sin((t * d - num2) * (Math.PI * 2.0) / num) + b;
+
+            double p = d * 0.3;
+            double s = p * 0.25;
+
+            t2 = t2 - 1.0;
+
+            return c * System.Math.Pow(2.0, t2 * 10.0) * System.Math.Sin((t2 * d - s) * -6.28318531 / p) + b;
         }
 
         public static double ElasticEaseInOut(double t, double b, double c, double d)
         {
-            if ((t /= d / 2.0) == 2.0)
-            {
+            double t2 = t / (d * 0.5);
+
+            if (Gallop.Math.IsDoubleEqual(t2, 2.0))
                 return b + c;
-            }
-            double num = d * 0.44999999999999996;
-            double num2 = num / 4.0;
-            if (t < 1.0)
+
+            double p = d * 0.45;
+            double s = p * 0.25;
+
+            double t3 = t2 - 1.0;
+
+            if (t2 < 1.0)
             {
-                return -0.5 * (c * Math.Pow(2.0, 10.0 * (t -= 1.0)) * Math.Sin((t * d - num2) * (Math.PI * 2.0) / num)) + b;
+                return (c * 0.5) * System.Math.Pow(2.0, t3 * 10.0) * System.Math.Sin((t3 * d - s) * -6.28318531 / p) + b;
             }
-            return c * Math.Pow(2.0, -10.0 * (t -= 1.0)) * Math.Sin((t * d - num2) * (Math.PI * 2.0) / num) * 0.5 + c + b;
+
+            return (c * 0.5) * System.Math.Pow(2.0, t3 * -10.0) * System.Math.Sin((t3 * d - s) * 6.28318531 / p)+ c + b;
         }
 
         public static double ElasticEaseOutIn(double t, double b, double c, double d)

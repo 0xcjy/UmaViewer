@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -252,7 +252,7 @@ namespace Gallop.Live
         [Header("Auto-load uvmovie data for the current live.")]
         public bool autoLoadForCurrentLive = true;
         public bool loadTexturesOnInitialize = true;
-        public bool verboseLog = true;
+        public bool verboseLog = false;
 
         [Header("Official slot table from decrypted liveSettings data")]
         public string decryptedLiveSettingsRootOverride = string.Empty;
@@ -1057,6 +1057,9 @@ namespace Gallop.Live
                     return null;
 
                 TextAsset textAsset = bundle.LoadAsset<TextAsset>(assetName);
+                if (LiveRuntimeDiagnostics.Enabled)
+                    LiveRuntimeDiagnostics.RecordAssetLoad(asset.Name, "LoadAsset", typeof(TextAsset),
+                        new UnityEngine.Object[] { textAsset }, textAsset, assetName);
                 return textAsset != null ? textAsset.text : null;
             }
             catch (Exception ex)
@@ -1934,7 +1937,11 @@ namespace Gallop.Live
         {
             try
             {
-                return assetBundle.LoadAsset<TextAsset>(assetPath);
+                TextAsset asset = assetBundle.LoadAsset<TextAsset>(assetPath);
+                if (LiveRuntimeDiagnostics.Enabled)
+                    LiveRuntimeDiagnostics.RecordAssetLoad(assetBundle.name, "LoadAsset", typeof(TextAsset),
+                        new UnityEngine.Object[] { asset }, asset, assetPath);
+                return asset;
             }
             catch
             {
@@ -1946,7 +1953,11 @@ namespace Gallop.Live
         {
             try
             {
-                return assetBundle.LoadAsset<Texture2D>(assetPath);
+                Texture2D asset = assetBundle.LoadAsset<Texture2D>(assetPath);
+                if (LiveRuntimeDiagnostics.Enabled)
+                    LiveRuntimeDiagnostics.RecordAssetLoad(assetBundle.name, "LoadAsset", typeof(Texture2D),
+                        new UnityEngine.Object[] { asset }, asset, assetPath);
+                return asset;
             }
             catch
             {

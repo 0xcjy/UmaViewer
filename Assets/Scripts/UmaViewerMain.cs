@@ -3,13 +3,18 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 using System;
-using Newtonsoft.Json.Linq;
 using System.Collections;
 using UnityEngine.Rendering;
+using Newtonsoft.Json.Linq;
 
 public class UmaViewerMain : MonoBehaviour
 {
+    private const string EnglishNamesCacheFileName = "english_names.cache";
+    private const string EnglishNamesCacheMagic = "UmaViewerEnglishNames";
+    private const int EnglishNamesCacheVersion = 1;
+
     public static UmaViewerMain Instance;
+    public static bool WasEscapeConsumedThisFrame { get; private set; }
     private UmaViewerUI UI => UmaViewerUI.Instance;
     private UmaViewerBuilder Builder => UmaViewerBuilder.Instance;
 
@@ -25,19 +30,11 @@ public class UmaViewerMain : MonoBehaviour
     public List<UmaDatabaseEntry> AbEffect = new List<UmaDatabaseEntry>();
     public List<UmaDatabaseEntry> CostumeList = new List<UmaDatabaseEntry>();
 
-    public Dictionary<TranslationTables, Dictionary<int, string>> Translations = new Dictionary<TranslationTables, Dictionary<int, string>>() 
-    { 
-        {TranslationTables.UmaNames, new Dictionary<int,string>() },
-        //{TranslationTables.Costumes, new Dictionary<int,string>() }, //unused (can't correlate costume model IDs with names without more info from the database)
-        {TranslationTables.MobNames, new Dictionary<int,string>() },
-    };
-
     private void Awake()
     {
         Instance = this;
         new Config();
-        QualitySettings.vSyncCount = 0;
-        Application.targetFrameRate = 120;
+        ApplyFrameRateLimit();
 
         AbList = UmaDatabaseController.Instance.MetaEntries;
         if (AbList == null) return;
@@ -48,6 +45,29 @@ public class UmaViewerMain : MonoBehaviour
         AbSounds = AbList.Where(ab => ab.Value.Type == UmaFileType.sound).Select(ab => ab.Value).ToList();
         var outgame = AbList.Where(ab => ab.Value.Type == UmaFileType.outgame).Select(ab => ab.Value).ToList();
         CostumeList = outgame.FindAll(e => e.Name.StartsWith(UmaDatabaseController.CostumePath));
+    }
+
+    public static void ApplyFrameRateLimit()
+    {
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = Config.Instance.GetTargetFrameRate();
+    }
+
+    private void Update()
+    {
+        WasEscapeConsumedThisFrame = false;
+        TryConsumeEscapeForFullScreen();
+    }
+
+    public static bool TryConsumeEscapeForFullScreen()
+    {
+        if (!Input.GetKeyDown(KeyCode.Escape) || !Screen.fullScreen)
+            return false;
+
+        Screen.fullScreenMode = FullScreenMode.Windowed;
+        Screen.fullScreen = false;
+        WasEscapeConsumedThisFrame = true;
+        return true;
     }
 
     private IEnumerator Start()
@@ -65,24 +85,37 @@ public class UmaViewerMain : MonoBehaviour
 
 
 
-        //EN Translations
-        loadingUI.LoadingProgressChange(loadingStep++, loadingStepsTotal, "Downloading Translations");
+        // Online English names take priority. LocalizeEn remains the offline fallback.
+        loadingUI.LoadingProgressChange(
+            loadingStep++,
+            loadingStepsTotal,
+            Config.Instance.Language == Language.En ? "Downloading Translations" : "Loading Translations");
         if (Config.Instance.Language == Language.En)
         {
-            var translationsUrl = "https://raw.githubusercontent.com/UmaTL/hachimi-tl-en/refs/heads/main/localized_data/text_data_dict.json";
-            yield return UmaViewerDownload.DownloadText(translationsUrl, txt =>
+            string cachePath = Path.Combine(
+                Application.persistentDataPath,
+                EnglishNamesCacheFileName);
+            TryLoadEnglishNamesCache(cachePath);
+
+            yield return UmaViewerDownload.DownloadText(LocalizeEn.TranslationUrl, json =>
             {
-                if (string.IsNullOrEmpty(txt)) return;
+                if (string.IsNullOrEmpty(json)) return;
+
                 try
                 {
-                    var translations = JObject.Parse(txt);
-                    //Translations[TranslationTables.Costumes] = translations[((int)TranslationTables.Costumes).ToString()].ToObject<Dictionary<int, string>>();
-                    Translations[TranslationTables.UmaNames] = translations[((int)TranslationTables.UmaNames).ToString()].ToObject<Dictionary<int, string>>();
-                    Translations[TranslationTables.MobNames] = translations[((int)TranslationTables.MobNames).ToString()].ToObject<Dictionary<int, string>>();
+                    if (!TryParseEnglishNames(json, out Dictionary<int, string> charaNames, out Dictionary<int, string> mobNames))
+                    {
+                        Debug.LogWarning("Online English translations did not contain the required name tables. Using LocalizeEn fallback.");
+                        return;
+                    }
+
+                    ApplyEnglishNames(charaNames, mobNames);
+                    TrySaveEnglishNamesCache(cachePath, charaNames, mobNames);
+                    Debug.Log($"Loaded online English names: {charaNames.Count} characters, {mobNames.Count} mobs.");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    UI.ShowMessage("Loading Translations failed", UIMessageType.Error);
+                    Debug.LogWarning($"Could not parse online English translations. Using LocalizeEn fallback: {ex.Message}");
                 }
             });
         }
@@ -107,7 +140,7 @@ public class UmaViewerMain : MonoBehaviour
                 Characters.Add(new CharaEntry()
                 {
                     Name = item["charaname"].ToString(),
-                    EnName = Translations[TranslationTables.UmaNames].ContainsKey(id) ? Translations[TranslationTables.UmaNames][id] : "",
+                    EnName = LocalizeEn.GetCharaName(id),
                     Icon = UmaViewerBuilder.Instance.LoadCharaIcon(id.ToString()),
                     Id = id,
                     ThemeColor = "#" + item["ui_nameplate_color_1"].ToString()
@@ -128,7 +161,7 @@ public class UmaViewerMain : MonoBehaviour
             MobCharacters.Add(new CharaEntry()
             {
                 Name = item["charaname"].ToString(),
-                EnName = Translations[TranslationTables.MobNames].ContainsKey(id) ? Translations[TranslationTables.MobNames][id] : "",
+                EnName = LocalizeEn.GetMobName(id),
                 Icon = UmaViewerBuilder.Instance.LoadMobCharaIcon(id.ToString()),
                 Id = id,
                 IsMob = true
@@ -215,6 +248,122 @@ public class UmaViewerMain : MonoBehaviour
         //Load Shader First
         var shaders = UmaAssetManager.LoadAssetBundle(AbList["shader"], true);
         Builder.ShaderList = new List<Shader>(shaders.LoadAllAssets<Shader>()); 
+        Gallop.ShaderManager.InitManager();
+        Gallop.ShaderManager.WarmupDofBloomShader();
+    }
+
+    private static bool TryParseEnglishNames(
+        string json,
+        out Dictionary<int, string> charaNames,
+        out Dictionary<int, string> mobNames)
+    {
+        JObject translations = JObject.Parse(json);
+        charaNames = translations[LocalizeEn.CharaTranslationTableKey]
+            ?.ToObject<Dictionary<int, string>>();
+        mobNames = translations[LocalizeEn.MobTranslationTableKey]
+            ?.ToObject<Dictionary<int, string>>();
+
+        return charaNames != null && charaNames.Count > 0 &&
+               mobNames != null && mobNames.Count > 0;
+    }
+
+    private static void ApplyEnglishNames(
+        Dictionary<int, string> charaNames,
+        Dictionary<int, string> mobNames)
+    {
+        foreach (KeyValuePair<int, string> pair in charaNames)
+        {
+            if (!string.IsNullOrEmpty(pair.Value))
+                LocalizeEn.SetCharaName(pair.Key, pair.Value);
+        }
+
+        foreach (KeyValuePair<int, string> pair in mobNames)
+        {
+            if (!string.IsNullOrEmpty(pair.Value))
+                LocalizeEn.SetMobName(pair.Key, pair.Value);
+        }
+    }
+
+    private static void TryLoadEnglishNamesCache(string cachePath)
+    {
+        if (!File.Exists(cachePath)) return;
+
+        try
+        {
+            using (var stream = File.OpenRead(cachePath))
+            using (var reader = new BinaryReader(stream))
+            {
+                if (reader.ReadString() != EnglishNamesCacheMagic ||
+                    reader.ReadInt32() != EnglishNamesCacheVersion)
+                {
+                    throw new InvalidDataException("Unsupported English name cache format.");
+                }
+
+                Dictionary<int, string> charaNames = ReadEnglishNameTable(reader);
+                Dictionary<int, string> mobNames = ReadEnglishNameTable(reader);
+                ApplyEnglishNames(charaNames, mobNames);
+                Debug.Log($"Loaded cached English names: {charaNames.Count} characters, {mobNames.Count} mobs.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Could not load the cached English names. Using LocalizeEn fallback: {ex.Message}");
+        }
+    }
+
+    private static void TrySaveEnglishNamesCache(
+        string cachePath,
+        Dictionary<int, string> charaNames,
+        Dictionary<int, string> mobNames)
+    {
+        try
+        {
+            using (var stream = File.Create(cachePath))
+            using (var writer = new BinaryWriter(stream))
+            {
+                writer.Write(EnglishNamesCacheMagic);
+                writer.Write(EnglishNamesCacheVersion);
+                WriteEnglishNameTable(writer, charaNames);
+                WriteEnglishNameTable(writer, mobNames);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Could not save the updated English name cache: {ex.Message}");
+        }
+    }
+
+    private static Dictionary<int, string> ReadEnglishNameTable(BinaryReader reader)
+    {
+        int count = reader.ReadInt32();
+        if (count < 0 || count > 100000)
+            throw new InvalidDataException("Invalid English name cache entry count.");
+
+        var names = new Dictionary<int, string>(count);
+        for (int i = 0; i < count; i++)
+        {
+            int id = reader.ReadInt32();
+            string value = reader.ReadString();
+            if (!string.IsNullOrEmpty(value))
+                names[id] = value;
+        }
+
+        return names;
+    }
+
+    private static void WriteEnglishNameTable(
+        BinaryWriter writer,
+        Dictionary<int, string> names)
+    {
+        List<KeyValuePair<int, string>> validNames = names
+            .Where(pair => !string.IsNullOrEmpty(pair.Value))
+            .ToList();
+        writer.Write(validNames.Count);
+        foreach (KeyValuePair<int, string> pair in validNames)
+        {
+            writer.Write(pair.Key);
+            writer.Write(pair.Value);
+        }
     }
 
     public void OpenUrl(string url)

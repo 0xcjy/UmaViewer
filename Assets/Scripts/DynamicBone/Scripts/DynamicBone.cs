@@ -1,9 +1,11 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 
 [AddComponentMenu("Dynamic Bone/Dynamic Bone")]
 public class DynamicBone : MonoBehaviour
 {
+    private static readonly Unity.Profiling.ProfilerMarker LivePhysicsMarker =
+        new Unity.Profiling.ProfilerMarker("Live.DynamicBone");
 #if UNITY_5_3_OR_NEWER
 	[Tooltip("The root of the transform hierarchy to apply physics.")]
 #endif
@@ -175,6 +177,8 @@ public class DynamicBone : MonoBehaviour
 
     void LateUpdate()
     {
+        using (LivePhysicsMarker.Auto())
+        {
         if (m_DistantDisable)
             CheckDistance();
 
@@ -186,6 +190,7 @@ public class DynamicBone : MonoBehaviour
             float dt = Time.deltaTime;
 #endif
             UpdateDynamicBones(dt);
+        }
         }
     }
 
@@ -326,18 +331,22 @@ public class DynamicBone : MonoBehaviour
             }
         }
 
-        if (loop > 0)
+        using (DynamicBoneCollider.BeginCollisionBatch())
         {
-            for (int i = 0; i < loop; ++i)
+            if (loop > 0)
             {
-                UpdateParticles1(timeVar);
-                UpdateParticles2(timeVar);
-                m_ObjectMove = Vector3.zero;
+                for (int i = 0; i < loop; ++i)
+                {
+                    UpdateParticles1(timeVar);
+                    UpdateParticles2(timeVar);
+                    m_ObjectMove = Vector3.zero;
+                }
             }
-        }
-        else
-        {
-            SkipUpdateParticles();
+            else
+            {
+                SkipUpdateParticles();
+            }
+
         }
 
         ApplyParticlesToTransforms();

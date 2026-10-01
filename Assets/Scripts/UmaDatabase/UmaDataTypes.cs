@@ -43,15 +43,43 @@ public class FaceTypeData
 [System.Serializable]
 public class CharaEntry
 {
+    /// master.mdb 中读取到的原始日文名。
     public string Name;
+
+    /// <summary>
+    /// 从在线更新、持久缓存或 LocalizeEn.cs 内置表读取的英文名。
+    /// </summary>
     public string EnName;
+
     public Sprite Icon;
     public int Id;
     public string ThemeColor;
     public bool IsMob;
+
     public string GetName()
     {
-        return string.IsNullOrEmpty(EnName) ? Name : EnName;
+        switch (Config.Instance.Language)
+        {
+            case Language.En:
+                if (!string.IsNullOrEmpty(EnName))
+                    return EnName;
+
+                return IsMob
+                    ? LocalizeEn.GetMobName(Id, Name)
+                    : LocalizeEn.GetCharaName(Id, Name);
+
+            case Language.Cn:
+                Localize.CurrentRegion = Localize.Region.CN;
+
+                return IsMob
+                    ? Localize.GetMobName(Id, Name)
+                    : Localize.GetCharaName(Id, Name);
+
+            case Language.Jp:
+            default:
+                Localize.CurrentRegion = Localize.Region.JP;
+                return Name ?? string.Empty;
+        }
     }
 }
 
@@ -183,11 +211,4 @@ public enum UmaFileType
     ratingrace,
     jobs,
     manualdownloadatlas,
-}
-
-public enum TranslationTables
-{
-    Costumes = 5,
-    UmaNames = 6,
-    MobNames = 59,
 }

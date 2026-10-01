@@ -448,6 +448,9 @@ namespace Gallop.Live.Cyalume
                     try
                     {
                         textAsset = assetBundle.LoadAsset<TextAsset>(path);
+                        if (LiveRuntimeDiagnostics.Enabled)
+                            LiveRuntimeDiagnostics.RecordAssetLoad(assetBundle.name, "LoadAsset", typeof(TextAsset),
+                                new UnityEngine.Object[] { textAsset }, textAsset, path);
                     }
                     catch
                     {
@@ -499,6 +502,9 @@ namespace Gallop.Live.Cyalume
                     try
                     {
                         textAsset = assetBundle.LoadAsset<TextAsset>(path);
+                        if (LiveRuntimeDiagnostics.Enabled)
+                            LiveRuntimeDiagnostics.RecordAssetLoad(assetBundle.name, "LoadAsset", typeof(TextAsset),
+                                new UnityEngine.Object[] { textAsset }, textAsset, path);
                     }
                     catch
                     {

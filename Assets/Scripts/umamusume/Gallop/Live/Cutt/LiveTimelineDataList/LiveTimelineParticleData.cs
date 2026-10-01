@@ -6,37 +6,35 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyParticleData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType => LiveTimelineKeyDataType.Particle;
         public float emissionRate;
     }
 
     [Serializable]
-    public class LiveTimelineKeyParticleDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyParticleData>
-    {
-    }
+    public class LiveTimelineKeyParticleDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyParticleData> { }
 
     [Serializable]
     public class LiveTimelineParticleData : ILiveTimelineGroupDataWithName
     {
-        private const string default_name = "Particle";
-        public LiveTimelineKeyParticleDataList keys;
+        public LiveTimelineKeyParticleDataList keys = new LiveTimelineKeyParticleDataList();
+        public LiveTimelineParticleData() : base("Particle") { }
     }
 
     [Serializable]
     public class LiveTimelineKeyParticleGroupData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType => LiveTimelineKeyDataType.ParticleGroup;
         public float FlickerLightRate;
         public float FlickerDarkRate;
     }
 
     [Serializable]
-    public class LiveTimelineKeyParticleGroupDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyParticleGroupData>
-    {
-    }
+    public class LiveTimelineKeyParticleGroupDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyParticleGroupData> { }
 
     [Serializable]
     public class LiveTimelineParticleGroupData : ILiveTimelineGroupDataWithName
     {
-        private const string default_name = "ParticleGroup";
-        public LiveTimelineKeyParticleGroupDataList keys;
+        public LiveTimelineKeyParticleGroupDataList keys = new LiveTimelineKeyParticleGroupDataList();
+        public LiveTimelineParticleGroupData() : base("ParticleGroup") { }
     }
 }

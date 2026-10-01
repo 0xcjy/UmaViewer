@@ -14,6 +14,7 @@ namespace uGIF
 		public static CaptureToGIFCustom Instance;
 		public List<Image> Frames = new List<Image>();
 		public bool stop = false;
+		public bool transparentBackground = false;
 
 		[System.NonSerialized]
 		public byte[] bytes = null;
@@ -55,32 +56,56 @@ namespace uGIF
             UmaViewerUI.Instance.ScreenshotSettings.GifButton.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = "Record GIF";
         }
 
-		public IEnumerator _Encode (float fps, int quality)
+		public IEnumerator _Encode(float fps, int quality)
 		{
-			var ge = new GIFEncoder ();
-			ge.useGlobalColorTable = true;
-			ge.repeat = 0;
-			ge.FPS = fps;
-			ge.quality = quality;
-			ge.transparent = new Color32 (0, 0, 0, 0);
-			ge.dispose = 2;
+			var ge = new GIFEncoder();
 
-			var stream = new MemoryStream ();
-			ge.Start (stream);
-            while (!stop || Frames.Count > 0)
-            {
-				if(Frames.Count>0 && Frames[0] != null)
+			// 每帧使用自己的调色板，避免后续彩色帧变灰或偏色。
+			ge.useGlobalColorTable = false;
+			ge.repeat = 0;
+			ge.FPS = Mathf.Max(1f, fps);
+			ge.quality = Mathf.Clamp(quality, 1, 30);
+
+			if (transparentBackground)
+			{
+				// 这个颜色值只是通知编码器启用透明。
+				// 实际透明判断由像素 Alpha 完成。
+				ge.transparent = new Color32(0, 0, 0, 0);
+
+				// 恢复到透明背景，适合完整帧 GIF。
+				ge.dispose = 2;
+			}
+			else
+			{
+				ge.transparent = null;
+				ge.dispose = 0;
+			}
+
+			using (var stream = new MemoryStream())
+			{
+				ge.Start(stream);
+
+				while (!stop || Frames.Count > 0)
 				{
-					Frames[0].Flip();
-					ge.AddFrame(Frames[0]);
-					Frames.RemoveAt(0);
+					if (Frames.Count > 0)
+					{
+						Image frame = Frames[0];
+						Frames.RemoveAt(0);
+
+						if (frame != null)
+						{
+							// Flip is fused into the Burst quantization/mapping jobs, avoiding
+							// an additional full-frame copy before every encoded frame.
+							ge.AddFrame(frame, true);
+						}
+					}
+
+					yield return null;
 				}
-				yield return 0;
-            }
-			ge.Finish ();
-			bytes = stream.GetBuffer ();
-			stream.Close ();
-			yield break;
+
+				ge.Finish();
+				bytes = stream.ToArray();
+			}
 		}
 	}
 }

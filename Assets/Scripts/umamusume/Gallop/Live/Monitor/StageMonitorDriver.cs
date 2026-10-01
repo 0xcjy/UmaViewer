@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Gallop.Live.Cutt;
@@ -9,7 +9,7 @@ namespace Gallop.Live
     public class StageMonitorDriver : MonoBehaviour
     {
         [Header("绑定与调试")]
-        public bool verboseLog = true;
+        public bool verboseLog = false;
         public bool includeInactiveRenderers = true;
         public bool rebuildCacheOnEnable = true;
         public bool rebuildCacheWhenTargetMissing = true;
@@ -20,11 +20,6 @@ namespace Gallop.Live
         public bool clearFadeTextureWhenUnused = true;
         public bool applyRenderQueue = true;
         public bool applyBlendModeProperties = true;
-        public bool autoDiagnosticLog = true;
-        public bool showDiagnosticOverlay = true;
-        public bool suppressMonitorLightOverlay = false;
-        [Range(0f, 1f)] public float monitorLightIntensity = 0.25f;
-        [Range(0.25f, 10f)] public float diagnosticIntervalSeconds = 2f;
         public string monitorShaderName = "Gallop/3D/Live/Stage/Monitor";
 
         [Header("着色器属性名称")]
@@ -34,7 +29,6 @@ namespace Gallop.Live
         public string alphaProperty = "_Alpha";
         public string colorFadeProperty = "_ColorFade";
         public string baseColorProperty = "_BaseColor";
-        [Range(0f, 1f)] public float brightnessMultiplier = 1f;
         public string monitorWidthProperty = "_MonitorWidth";
         public string monitorHeightProperty = "_MonitorHeight";
         public string crossFadeRateProperty = "_CrossFadeRate";
@@ -47,7 +41,10 @@ namespace Gallop.Live
         {
             public Renderer renderer;
             public Material material;
-            public int materialIndex;
+            public Texture baseMainTexture;
+            public Vector2 baseMainScale;
+            public Vector2 baseMainOffset;
+            public bool cameraAppliedThisFrame;
             public string rendererKey;
             public string materialKey;
             public string rendererCompact;
@@ -58,7 +55,8 @@ namespace Gallop.Live
             public float baseAlpha = 1f;
             public Color baseColor = Color.white;
             public Color baseColorFade = Color.clear;
-            public float baseColorPower = 1f;
+            public bool hasUvAdjust;
+            public Vector4 baseUvAdjust;
             public bool hasSrcBlendMode;
             public float baseSrcBlendMode;
             public bool hasDstBlendMode;
@@ -84,8 +82,6 @@ namespace Gallop.Live
             public float alpha;
             public Color colorFade;
             public Color baseColor;
-            public float width;
-            public float height;
             public float crossFadeRate;
             public float filterTexScale;
             public int srcBlendMode;
@@ -108,11 +104,6 @@ namespace Gallop.Live
         private bool _providerContextReady;
         private int _lastPreparedMusicId = -1;
         private int _lastPreparedStageInstanceId = int.MinValue;
-        private float _lastBrightnessMultiplier = float.NaN;
-        private float _nextDiagnosticTime;
-        private bool _initialDiagnosticDumped;
-        private string _statusText = "Monitor: waiting";
-        private MaterialPropertyBlock _propertyBlock;
 
         private readonly List<MonitorMaterialBinding> _bindings = new List<MonitorMaterialBinding>(32);
         private readonly Dictionary<string, List<MonitorMaterialBinding>> _bindingCache =
@@ -124,11 +115,11 @@ namespace Gallop.Live
         private readonly HashSet<string> _rebuildAttemptedForMissingBinding =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly List<MonitorMaterialBinding> _resolveBuffer = new List<MonitorMaterialBinding>(8);
+        private readonly List<Renderer> _cameraScreenRenderers = new List<Renderer>(32);
         private static readonly List<MonitorMaterialBinding> EmptyBindingList = new List<MonitorMaterialBinding>(0);
 
         private void Awake()
         {
-            _propertyBlock = new MaterialPropertyBlock();
             _cameraDriver = GetComponent<StageMonitorCameraDriver>();
             if (_cameraDriver == null)
                 _cameraDriver = gameObject.AddComponent<StageMonitorCameraDriver>();
@@ -136,9 +127,6 @@ namespace Gallop.Live
 
         private void OnEnable()
         {
-            if (_propertyBlock == null)
-                _propertyBlock = new MaterialPropertyBlock();
-
             BindIfPossible();
             if (rebuildCacheOnEnable)
                 RebuildCache();
@@ -147,64 +135,97 @@ namespace Gallop.Live
         private void OnDisable()
         {
             Unbind();
+            if (_cameraDriver != null)
+                _cameraDriver.ReleaseCapture();
             ClearCaches();
-        }
-
-        private void OnGUI()
-        {
-            if (!showDiagnosticOverlay || !_hasMonitorTimelineData)
-                return;
-
-            int oldDepth = GUI.depth;
-            GUI.depth = -100;
-            GUI.Label(new Rect(12f, 12f, 760f, 24f), _statusText);
-            GUI.depth = oldDepth;
         }
 
         private void LateUpdate()
         {
-            if (Input.GetKeyDown(KeyCode.F9))
-                DumpDiagnostics();
-
-            float clampedBrightness = Mathf.Clamp01(brightnessMultiplier);
-            if (!Mathf.Approximately(_lastBrightnessMultiplier, clampedBrightness))
+            BindIfPossible();
+            if (_ctl == null || _stage == null || !_hasMonitorTimelineData)
             {
-                brightnessMultiplier = clampedBrightness;
-                _lastBrightnessMultiplier = clampedBrightness;
-                InvalidateAppliedStates();
-                if (verboseLog)
-                    Debug.Log($"[MonitorDiag] brightness={brightnessMultiplier:F3}, bindings={_bindings.Count}");
+                if (_cameraDriver != null)
+                    _cameraDriver.UpdateCapture(null, 0f, null);
+                RestoreCameraBindings(true);
+                return;
             }
 
-            if (_ctl == null || _stage == null || _provider == null)
-                BindIfPossible();
-
-            if (_ctl == null || _stage == null || _provider == null || !_hasMonitorTimelineData)
-                return;
-
-            if (!EnsureProviderReady())
-                return;
-
+            if (_provider != null)
+                EnsureProviderReady();
             if (!_hasBuiltCache)
                 RebuildCache();
 
-            if (_cameraDriver != null)
-                _cameraDriver.UpdateCapture(_ctl, _ctl.currentLiveTime * LiveTimelineControl.kTargetFpsF, _ctl.data);
-
+            _cameraDriver.UpdateCapture(_ctl, _ctl.currentLiveTime * LiveTimelineControl.kTargetFpsF, _ctl.data);
+            for (int i = 0; i < _bindings.Count; i++)
+                _bindings[i].cameraAppliedThisFrame = false;
             ApplyMonitorTimeline();
-            ApplyMonitorLightOverlay();
+            RestoreCameraBindings();
+        }
+
+        // LightProjection's movie mode consumes the Monitor's already-authored movie clock/slot,
+        // not elapsed time since the projection key. Reuse the monitor evaluator so seek, reverse,
+        // atlas UVs and liveSettings slot selection remain one contract.
+        public bool TryGetProjectionMovieFrame(int slotId, out LightProjectionRuntimeController.MovieFrame frame)
+        {
+            frame = default;
+            BindIfPossible();
+            if (_ctl == null || _provider == null || _ctl.data == null || _ctl.data.worksheetList == null)
+                return false;
+            EnsureProviderReady();
+            float currentFrame = _ctl.currentLiveTime * LiveTimelineControl.kTargetFpsF;
+            foreach (var sheet in _ctl.data.worksheetList)
+            {
+                if (sheet == null || sheet.monitorControlList == null) continue;
+                foreach (var monitor in sheet.monitorControlList)
+                {
+                    var keys = monitor?.keys;
+                    if (keys == null || keys.Count == 0 || currentFrame < keys.At(0).frame ||
+                        keys.HasAttribute(LiveTimelineKeyDataListAttr.Disable) ||
+                        !keys.EnablePlayModeTimeline(_ctl.PlayMode)) continue;
+                    LiveTimelineControl.FindTimelineKey(out var selected, out var next, keys, currentFrame);
+                    var key = selected as LiveTimelineKeyMonitorControlData;
+                    if (key == null || key.IsMonitorCameraFlag() || key.IsForcedUseMonitorCamera) continue;
+                    var primary = ResolvePrimarySlot(monitor, key);
+                    var fade = ResolveFadeSlot(monitor, key);
+                    var slot = primary != null && primary.slotId == slotId ? primary :
+                        fade != null && fade.slotId == slotId ? fade : null;
+                    if (slot == null || slot.clip == null) continue;
+                    float localTime = (currentFrame - key.frame) * LiveTimelineControl.kFrameToSec;
+                    bool reverse = key.IsReversePlayFlag();
+                    if (key.speed < 0f) reverse = !reverse;
+                    float speed = Mathf.Abs(key.speed);
+                    if (speed <= 0f) speed = 1f;
+                    int lightImage = slot == primary ? key.LightImageNo : key.LightImageNo2;
+                    if (!TryBuildTextureState(slot, slot.clip, localTime, speed, reverse,
+                        key.playStartOffsetFrame, lightImage, out var state)) continue;
+                    frame.texture = state.texture;
+                    frame.scale = state.scale;
+                    frame.offset = state.offset;
+                    return frame.texture != null;
+                }
+            }
+            return false;
         }
 
         private void BindIfPossible()
         {
             Director dir = Director.instance;
             if (!dir)
+            {
+                Unbind();
+                ClearCaches();
                 return;
+            }
 
             LiveTimelineControl newCtl = dir._liveTimelineControl;
             StageController newStage = dir._stageController;
             if (newCtl == null || newStage == null)
+            {
+                Unbind();
+                ClearCaches();
                 return;
+            }
 
             MonitorUvMovieProvider newProvider = GetComponent<MonitorUvMovieProvider>();
             if (newProvider == null)
@@ -242,6 +263,7 @@ namespace Gallop.Live
         private void Unbind()
         {
             _ctl = null;
+            RestoreCameraBindings(true);
             _stage = null;
             _provider = null;
             _hasMonitorTimelineData = false;
@@ -252,139 +274,17 @@ namespace Gallop.Live
 
         private void ClearCaches()
         {
+            RestoreCameraBindings(true);
             _bindings.Clear();
             _bindingCache.Clear();
             _missingBindingLogged.Clear();
             _missingClipLogged.Clear();
             _rebuildAttemptedForMissingBinding.Clear();
             _resolveBuffer.Clear();
+            _cameraScreenRenderers.Clear();
+            if (_cameraDriver != null)
+                _cameraDriver.SetScreenRenderers(null);
             _hasBuiltCache = false;
-            _initialDiagnosticDumped = false;
-            _nextDiagnosticTime = 0f;
-        }
-
-        public void SetBrightnessMultiplier(float value)
-        {
-            brightnessMultiplier = Mathf.Clamp01(value);
-            _lastBrightnessMultiplier = brightnessMultiplier;
-            InvalidateAppliedStates();
-            if (verboseLog)
-                Debug.Log($"[MonitorDiag] brightness set to {brightnessMultiplier:F3}, bindings={_bindings.Count}");
-        }
-
-        public void SetMonitorLightIntensity(float value)
-        {
-            monitorLightIntensity = Mathf.Clamp01(value);
-        }
-
-        private void InvalidateAppliedStates()
-        {
-            for (int i = 0; i < _bindings.Count; i++)
-            {
-                if (_bindings[i] != null)
-                    _bindings[i].hasAppliedState = false;
-            }
-        }
-
-        public void DumpDiagnostics()
-        {
-            Debug.Log(
-                $"[MonitorDiag] dump brightness={brightnessMultiplier:F3}, bindings={_bindings.Count}, " +
-                $"timeline={_hasMonitorTimelineData}, providerReady={_providerContextReady}, " +
-                $"clips={_provider?.clips?.Count ?? 0}, slots={_provider?.ContextSlotCount ?? 0}");
-
-            int count = Mathf.Min(_bindings.Count, 64);
-            for (int i = 0; i < count; i++)
-            {
-                MonitorMaterialBinding binding = _bindings[i];
-                if (binding == null || binding.renderer == null || binding.material == null)
-                    continue;
-
-                Material material = binding.material;
-                _propertyBlock.Clear();
-                binding.renderer.GetPropertyBlock(_propertyBlock, binding.materialIndex);
-
-                Texture mainTexture = GetEffectiveTexture(material, _propertyBlock, mainTexProperty);
-                Texture filterTexture = GetEffectiveTexture(material, _propertyBlock, filterTexProperty);
-                Texture fadeTexture = GetEffectiveTexture(material, _propertyBlock, fadeTexProperty);
-                Color materialFade = TryHasProperty(material, colorFadeProperty)
-                    ? material.GetColor(colorFadeProperty) : Color.clear;
-                Color blockFade = _propertyBlock.HasProperty(Shader.PropertyToID(colorFadeProperty))
-                    ? _propertyBlock.GetColor(colorFadeProperty) : Color.clear;
-                float materialAlpha = TryHasProperty(material, alphaProperty)
-                    ? material.GetFloat(alphaProperty) : float.NaN;
-                float blockAlpha = _propertyBlock.HasProperty(Shader.PropertyToID(alphaProperty))
-                    ? _propertyBlock.GetFloat(alphaProperty) : float.NaN;
-
-                Debug.Log(
-                    $"[MonitorDiag] #{i} renderer='{GetHierarchyPath(binding.renderer.transform)}' " +
-                    $"slot={binding.materialIndex} enabled={binding.renderer.enabled} active={binding.renderer.gameObject.activeInHierarchy} " +
-                    $"material='{material.name}' shader='{material.shader?.name}' queue={material.renderQueue} " +
-                    $"mpbEmpty={_propertyBlock.isEmpty} main='{DescribeTexture(mainTexture)}' " +
-                    $"mainST={DescribeTextureTransform(material, _propertyBlock, mainTexProperty)} " +
-                    $"filter='{DescribeTexture(filterTexture)}' filterST={DescribeTextureTransform(material, _propertyBlock, filterTexProperty)} " +
-                    $"fade='{DescribeTexture(fadeTexture)}' materialAlpha={materialAlpha:F3} blockAlpha={blockAlpha:F3} " +
-                     $"materialColorFade={materialFade} blockColorFade={blockFade}");
-
-                if (material.shader != null && !string.Equals(material.shader.name, monitorShaderName, StringComparison.OrdinalIgnoreCase))
-                {
-                    Debug.Log(
-                        $"[MonitorDiag] #{i} overlayProps " +
-                        $"srcBlend={GetMaterialFloat(material, srcBlendProperty)} dstBlend={GetMaterialFloat(material, dstBlendProperty)} " +
-                        $"srcBlendMode={GetMaterialFloat(material, srcBlendModeProperty)} dstBlendMode={GetMaterialFloat(material, dstBlendModeProperty)} " +
-                        $"mulColor0={GetMaterialColor(material, "_MulColor0")} colorPower={GetMaterialFloat(material, "_ColorPower")} " +
-                        $"baseColor={GetMaterialColor(material, baseColorProperty)}");
-                }
-            }
-
-            if (_bindings.Count > count)
-                Debug.Log($"[MonitorDiag] dump truncated: {_bindings.Count - count} additional bindings");
-        }
-
-        private static Texture GetEffectiveTexture(Material material, MaterialPropertyBlock block, string propertyName)
-        {
-            int propertyId = Shader.PropertyToID(propertyName);
-            if (block.HasProperty(propertyId))
-                return block.GetTexture(propertyId);
-            return HasTextureProperty(material, propertyName) ? material.GetTexture(propertyName) : null;
-        }
-
-        private static float GetMaterialFloat(Material material, string propertyName)
-        {
-            return TryHasProperty(material, propertyName) ? material.GetFloat(propertyName) : float.NaN;
-        }
-
-        private static Color GetMaterialColor(Material material, string propertyName)
-        {
-            return TryHasProperty(material, propertyName) ? material.GetColor(propertyName) : Color.clear;
-        }
-
-        private static string DescribeTexture(Texture texture)
-        {
-            return texture == null ? "<null>" : $"{texture.name} {texture.width}x{texture.height} {texture.graphicsFormat}";
-        }
-
-        private static string DescribeTextureTransform(Material material, MaterialPropertyBlock block, string textureProperty)
-        {
-            int propertyId = Shader.PropertyToID(textureProperty + "_ST");
-            Vector4 value;
-            if (block.HasProperty(propertyId))
-                value = block.GetVector(propertyId);
-            else
-            {
-                Vector2 scale = material.GetTextureScale(textureProperty);
-                Vector2 offset = material.GetTextureOffset(textureProperty);
-                value = new Vector4(scale.x, scale.y, offset.x, offset.y);
-            }
-            return value.ToString("F5");
-        }
-
-        private static string GetHierarchyPath(Transform target)
-        {
-            string path = target != null ? target.name : "<null>";
-            for (Transform parent = target != null ? target.parent : null; parent != null; parent = parent.parent)
-                path = parent.name + "/" + path;
-            return path;
         }
 
         private bool EnsureProviderReady()
@@ -451,6 +351,10 @@ namespace Gallop.Live
 
         public void RebuildCache()
         {
+            RestoreCameraBindings(true);
+            _cameraScreenRenderers.Clear();
+            if (_cameraDriver != null)
+                _cameraDriver.SetScreenRenderers(null);
             _bindings.Clear();
             _bindingCache.Clear();
             _missingBindingLogged.Clear();
@@ -491,7 +395,6 @@ namespace Gallop.Live
                     {
                         renderer = renderer,
                         material = material,
-                        materialIndex = j,
                         rendererKey = NormalizeName(renderer.name),
                         materialKey = NormalizeName(material.name),
                         rendererCompact = CompactName(renderer.name),
@@ -499,6 +402,12 @@ namespace Gallop.Live
                     };
 
                     binding.groupKey = BuildGroupKey(binding);
+                    if (HasTextureProperty(material, mainTexProperty))
+                    {
+                        binding.baseMainTexture = material.GetTexture(mainTexProperty);
+                        binding.baseMainScale = material.GetTextureScale(mainTexProperty);
+                        binding.baseMainOffset = material.GetTextureOffset(mainTexProperty);
+                    }
 
                     if (!string.IsNullOrEmpty(filterTexProperty) && material.HasProperty(filterTexProperty))
                     {
@@ -512,8 +421,11 @@ namespace Gallop.Live
                         binding.baseColorFade = material.GetColor(colorFadeProperty);
                     if (TryHasProperty(material, baseColorProperty))
                         binding.baseColor = material.GetColor(baseColorProperty);
-                    if (TryHasProperty(material, "_ColorPower"))
-                        binding.baseColorPower = material.GetFloat("_ColorPower");
+                    binding.hasUvAdjust = material.HasProperty("_UVAdjust") &&
+                        TryHasProperty(material, monitorWidthProperty) &&
+                        TryHasProperty(material, monitorHeightProperty);
+                    if (binding.hasUvAdjust)
+                        binding.baseUvAdjust = material.GetVector("_UVAdjust");
 
                     if (TryHasProperty(material, srcBlendModeProperty))
                     {
@@ -553,42 +465,19 @@ namespace Gallop.Live
 
                 return string.Compare(a.rendererKey, b.rendererKey, StringComparison.OrdinalIgnoreCase);
             });
+            for (int i = 0; i < _bindings.Count; i++)
+                if (!_cameraScreenRenderers.Contains(_bindings[i].renderer))
+                    _cameraScreenRenderers.Add(_bindings[i].renderer);
+            if (_cameraDriver != null)
+                _cameraDriver.SetScreenRenderers(_cameraScreenRenderers);
 
             if (verboseLog)
                 Debug.Log($"[StageMonitorDriver] cache rebuilt: bindings={_bindings.Count}");
         }
 
-        private void ApplyMonitorLightOverlay()
-        {
-            float intensity = Mathf.Clamp01(brightnessMultiplier) * Mathf.Clamp01(monitorLightIntensity);
-            for (int i = 0; i < _bindings.Count; i++)
-            {
-                MonitorMaterialBinding binding = _bindings[i];
-                if (binding == null || binding.renderer == null || binding.material == null ||
-                    !string.Equals(binding.rendererKey, "monitorlight000", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                binding.renderer.enabled = !suppressMonitorLightOverlay;
-                if (suppressMonitorLightOverlay)
-                    continue;
-
-                _propertyBlock.Clear();
-                binding.renderer.GetPropertyBlock(_propertyBlock, binding.materialIndex);
-                TrySetFloat(binding.material, _propertyBlock, "_ColorPower", binding.baseColorPower * intensity);
-                binding.renderer.SetPropertyBlock(_propertyBlock, binding.materialIndex);
-            }
-        }
-
         private void ApplyMonitorTimeline()
         {
-            if (_provider == null)
-                return;
-
-            bool hasPool = _provider.clips != null && _provider.clips.Count > 0;
-            bool hasSlots = _provider.ContextSlotCount > 0;
-            if (!hasPool && !hasSlots)
-                return;
-
+            // Camera-authored screens do not depend on movie/context-slot availability.
             LiveTimelineData data = _ctl.data;
             if (data == null || data.worksheetList == null)
                 return;
@@ -627,6 +516,8 @@ namespace Gallop.Live
                         currentFrame);
 
                     LiveTimelineKeyMonitorControlData curKey = curKeyBase as LiveTimelineKeyMonitorControlData;
+                    if (currentFrame < keys.At(0).frame)
+                        continue;
                     if (curKey == null)
                         continue;
 
@@ -687,32 +578,6 @@ namespace Gallop.Live
 
                     for (int j = 0; j < targets.Count; j++)
                         ApplyShaderState(targets[j], state);
-
-                    string mode = state.useMonitorCamera
-                        ? (_cameraDriver != null && _cameraDriver.Texture != null ? "CAMERA" : "CAMERA/UNRESOLVED")
-                        : (state.hasMainTexture ? "REC" : "CAMERA/UNRESOLVED");
-                    string textureName = state.hasMainTexture && state.main.texture != null
-                        ? state.main.texture.name : "<none>";
-                    _statusText =
-                        $"Monitor: {mode}  dispID={curKey.dispID}  tex={textureName}  " +
-                        $"targets={targets.Count}  brightness={brightnessMultiplier:F2}";
-
-                    if (autoDiagnosticLog && Time.unscaledTime >= _nextDiagnosticTime)
-                    {
-                        _nextDiagnosticTime = Time.unscaledTime + Mathf.Max(0.25f, diagnosticIntervalSeconds);
-                        Debug.Log(
-                            $"[MonitorDiag] auto mode={mode}, monitor='{bindingName}', dispID={curKey.dispID}, " +
-                            $"dispID2={curKey.DispID2}, main='{textureName}', mainST={state.main.scale}/{state.main.offset}, " +
-                            $"fade={(state.hasFadeTexture ? state.fade.texture?.name : "<none>")}, " +
-                            $"alpha={state.alpha:F3}, colorFade={state.colorFade}, brightness={brightnessMultiplier:F3}, " +
-                            $"targets={targets.Count}");
-
-                        if (!_initialDiagnosticDumped)
-                        {
-                            _initialDiagnosticDumped = true;
-                            DumpDiagnostics();
-                        }
-                    }
                 }
             }
         }
@@ -734,6 +599,9 @@ namespace Gallop.Live
             Vector2 size = canInterpolate
                 ? Vector2.Lerp(curKey.size, nextKey.size, ratio)
                 : curKey.size;
+            Vector2 position = canInterpolate
+                ? Vector2.Lerp(curKey.position, nextKey.position, ratio)
+                : curKey.position;
 
             float blendFactor = canInterpolate
                 ? Mathf.Lerp(curKey.blendFactor, nextKey.blendFactor, ratio)
@@ -765,46 +633,67 @@ namespace Gallop.Live
             if (playbackSpeed <= 0f)
                 playbackSpeed = 1f;
 
-            MonitorUvMovieContextSlot primarySlot = ResolvePrimarySlot(monitorData, curKey);
-            MonitorUvMovieContextSlot fadeSlot = ResolveFadeSlot(monitorData, curKey);
-            state.useMonitorCamera = curKey.IsMonitorCameraFlag() && _cameraDriver != null && _cameraDriver.IsActive;
-
-            if (primarySlot != null && primarySlot.clip != null &&
-                TryBuildTextureState(primarySlot, primarySlot.clip, localTime, playbackSpeed, isReversePlay, curKey.playStartOffsetFrame, curKey.LightImageNo, out MonitorTextureState mainTexture))
+            state.useMonitorCamera = curKey.IsMonitorCameraFlag() || curKey.IsForcedUseMonitorCamera;
+            if (state.useMonitorCamera)
             {
-                state.main = mainTexture;
-                state.hasMainTexture = true;
-            }
-
-            if (fadeSlot != null && fadeSlot.clip != null &&
-                TryBuildTextureState(fadeSlot, fadeSlot.clip, localTime, playbackSpeed, isReversePlay, curKey.playStartOffsetFrame, curKey.LightImageNo2, out MonitorTextureState fadeTexture))
-            {
-                state.fade = fadeTexture;
-                state.hasFadeTexture = true;
-            }
-
-            if (state.useMonitorCamera && _cameraDriver != null && _cameraDriver.Texture != null)
-            {
+                // Never replace an authored camera with an unrelated movie or placeholder.
+                if (_cameraDriver == null || !_cameraDriver.IsActive || _cameraDriver.Texture == null)
+                    return false;
                 state.main.texture = _cameraDriver.Texture;
-                state.main.scale = Vector2.one;
-                state.main.offset = Vector2.zero;
+                Vector2 captureSize = size;
+                Vector2 capturePosition = position;
+                // Native MonitorController.UpdateParam (0x1aa4660).
+                if (curKey.IsMultiFlag())
+                {
+                    captureSize = new Vector2(Mathf.Abs(captureSize.x), Mathf.Abs(captureSize.y));
+                    if (captureSize.x == 0f) captureSize.x = 1f;
+                    if (captureSize.y == 0f) captureSize.y = 1f;
+                    capturePosition.x = Mathf.Clamp(capturePosition.x, -1f, 1f);
+                    capturePosition.y = Mathf.Clamp(capturePosition.y, -1f, 1f);
+                }
+                else
+                {
+                    captureSize.x = Mathf.Clamp01(captureSize.x);
+                    captureSize.y = Mathf.Clamp01(captureSize.y);
+                    float extentX = captureSize.x == 0f ? 0f : 1f - captureSize.x;
+                    float extentY = captureSize.y == 0f ? 0f : 1f - captureSize.y;
+                    capturePosition.x = Mathf.Clamp(capturePosition.x, -extentX, extentX);
+                    capturePosition.y = Mathf.Clamp(capturePosition.y, -extentY, extentY);
+                }
+                state.main.scale = captureSize;
+                state.main.offset = (Vector2.one + capturePosition - captureSize) * 0.5f;
                 state.hasMainTexture = true;
-                state.hasFadeTexture = false;
+            }
+            else
+            {
+                MonitorUvMovieContextSlot primarySlot = ResolvePrimarySlot(monitorData, curKey);
+                MonitorUvMovieContextSlot fadeSlot = ResolveFadeSlot(monitorData, curKey);
+                if (primarySlot != null && primarySlot.clip != null &&
+                    TryBuildTextureState(primarySlot, primarySlot.clip, localTime, playbackSpeed, isReversePlay, curKey.playStartOffsetFrame, curKey.LightImageNo, out MonitorTextureState mainTexture))
+                {
+                    state.main = mainTexture;
+                    state.hasMainTexture = true;
+                }
+                if (fadeSlot != null && fadeSlot.clip != null &&
+                    TryBuildTextureState(fadeSlot, fadeSlot.clip, localTime, playbackSpeed, isReversePlay, curKey.playStartOffsetFrame, curKey.LightImageNo2, out MonitorTextureState fadeTexture))
+                {
+                    state.fade = fadeTexture;
+                    state.hasFadeTexture = true;
+                }
             }
 
             if (assignMaskTextureToFilterTex && state.hasMainTexture)
                 state.filterTexture = state.main.maskTexture;
 
-            // _Alpha only cross-fades _MainTex into _FadeTex. The shader's default
-            // fade texture is white, so keep it at zero when no second clip exists.
-            state.alpha = state.hasFadeTexture ? Mathf.Clamp01(crossFadeRate) : 0f;
+            // 保持 _Alpha 为材质原本的值
+            // 时间轴的监视器数据没有提供专用的透明度字段；
+            // colorFade 和 BaseColor 会分别传递给对应的着色器参数
+            state.alpha = 0f;
             state.colorFade = colorFade;
             state.useBaseColor = !IsColorEffectivelyClear(baseColor);
             state.baseColor = state.useBaseColor ? baseColor : Color.white;
-            state.width = size.x;
-            state.height = size.y;
             state.crossFadeRate = crossFadeRate;
-            state.filterTexScale = Mathf.Max(0.0001f, filterTexScale <= 0f ? 1f : filterTexScale);
+            state.filterTexScale = filterTexScale;
             state.srcBlendMode = curKey.SrcBlendMode;
             state.dstBlendMode = curKey.DstBlendMode;
             state.useBlendMode = curKey.IsEnabledBlendMode;
@@ -1149,28 +1038,63 @@ namespace Gallop.Live
             frameOffset = new Vector2(column * frameScale.x, row * frameScale.y);
         }
 
+        private void RestoreCameraBindings(bool force = false)
+        {
+            for (int i = 0; i < _bindings.Count; i++)
+            {
+                MonitorMaterialBinding binding = _bindings[i];
+                if (!binding.hasAppliedState || !binding.appliedState.useMonitorCamera ||
+                    (!force && binding.cameraAppliedThisFrame))
+                    continue;
+                Material material = binding.material;
+                if (material != null && HasTextureProperty(material, mainTexProperty))
+                {
+                    material.SetTexture(mainTexProperty, binding.baseMainTexture);
+                    material.SetTextureScale(mainTexProperty, binding.baseMainScale);
+                    material.SetTextureOffset(mainTexProperty, binding.baseMainOffset);
+                    TrySetFloat(material, alphaProperty, binding.baseAlpha);
+                    if (binding.hasUvAdjust)
+                        material.SetVector("_UVAdjust", binding.baseUvAdjust);
+                }
+                binding.hasAppliedState = false;
+            }
+        }
+
         private void ApplyShaderState(MonitorMaterialBinding binding, MonitorShaderState state)
         {
             Material material = binding.material;
-            Renderer renderer = binding.renderer;
-            if (material == null || renderer == null)
+            if (material == null)
                 return;
 
-            _propertyBlock.Clear();
-            renderer.GetPropertyBlock(_propertyBlock, binding.materialIndex);
+            binding.cameraAppliedThisFrame = state.useMonitorCamera;
 
             if (state.hasMainTexture && HasTextureProperty(material, mainTexProperty))
             {
-                _propertyBlock.SetTexture(mainTexProperty, state.main.texture);
-                SetTextureTransform(_propertyBlock, mainTexProperty, state.main.scale, state.main.offset);
+                if (!binding.hasAppliedState ||
+                    binding.appliedState.main.texture != state.main.texture ||
+                    !Approximately(binding.appliedState.main.scale, state.main.scale) ||
+                    !Approximately(binding.appliedState.main.offset, state.main.offset))
+                {
+                    material.SetTexture(mainTexProperty, state.main.texture);
+                    material.SetTextureScale(mainTexProperty, state.main.scale);
+                    material.SetTextureOffset(mainTexProperty, state.main.offset);
+                }
             }
 
             if (HasTextureProperty(material, fadeTexProperty))
             {
                 if (state.hasFadeTexture)
                 {
-                    _propertyBlock.SetTexture(fadeTexProperty, state.fade.texture);
-                    SetTextureTransform(_propertyBlock, fadeTexProperty, state.fade.scale, state.fade.offset);
+                    if (!binding.hasAppliedState ||
+                        !binding.appliedState.hasFadeTexture ||
+                        binding.appliedState.fade.texture != state.fade.texture ||
+                        !Approximately(binding.appliedState.fade.scale, state.fade.scale) ||
+                        !Approximately(binding.appliedState.fade.offset, state.fade.offset))
+                    {
+                        material.SetTexture(fadeTexProperty, state.fade.texture);
+                        material.SetTextureScale(fadeTexProperty, state.fade.scale);
+                        material.SetTextureOffset(fadeTexProperty, state.fade.offset);
+                    }
                 }
                 else if (clearFadeTextureWhenUnused &&
                          (!binding.hasAppliedState || binding.appliedState.hasFadeTexture))
@@ -1184,21 +1108,61 @@ namespace Gallop.Live
             if (HasTextureProperty(material, filterTexProperty))
             {
                 Vector2 filterScale = binding.baseFilterScale * state.filterTexScale;
-                if (assignMaskTextureToFilterTex && state.filterTexture != null)
-                    _propertyBlock.SetTexture(filterTexProperty, state.filterTexture);
-                SetTextureTransform(_propertyBlock, filterTexProperty, filterScale, binding.baseFilterOffset);
+                if (assignMaskTextureToFilterTex &&
+                    (!binding.hasAppliedState || binding.appliedState.filterTexture != state.filterTexture))
+                    material.SetTexture(filterTexProperty, state.filterTexture);
+
+                if (!binding.hasAppliedState ||
+                    !Approximately(binding.appliedState.filterTexScale, state.filterTexScale))
+                {
+                    material.SetTextureScale(filterTexProperty, filterScale);
+                }
+
+                if (!binding.hasAppliedState)
+                {
+                    material.SetTextureOffset(filterTexProperty, binding.baseFilterOffset);
+                }
             }
 
-            float appliedAlpha = state.alpha;
-            Color appliedColorFade = ApplyBrightnessToColorFade(state.colorFade);
+            float appliedAlpha = state.useMonitorCamera ? 0f : binding.baseAlpha;
+            Color appliedColorFade = state.colorFade;
             Color appliedBaseColor = state.useBaseColor ? state.baseColor : binding.baseColor;
 
-            TrySetFloat(material, _propertyBlock, alphaProperty, appliedAlpha);
-            TrySetColor(material, _propertyBlock, colorFadeProperty, appliedColorFade);
-            TrySetColor(material, _propertyBlock, baseColorProperty, appliedBaseColor);
-            TrySetFloat(material, _propertyBlock, monitorWidthProperty, state.width);
-            TrySetFloat(material, _propertyBlock, monitorHeightProperty, state.height);
-            TrySetFloat(material, _propertyBlock, crossFadeRateProperty, state.crossFadeRate);
+            if (!binding.hasAppliedState || !Approximately(binding.appliedState.alpha, appliedAlpha))
+                TrySetFloat(material, alphaProperty, appliedAlpha);
+            if (!binding.hasAppliedState || !Approximately(binding.appliedState.colorFade, appliedColorFade))
+                TrySetColor(material, colorFadeProperty, appliedColorFade);
+            if (!binding.hasAppliedState || !Approximately(binding.appliedState.baseColor, appliedBaseColor))
+                TrySetColor(material, baseColorProperty, appliedBaseColor);
+            if (binding.hasUvAdjust)
+            {
+                // Native SetUVAdjustInfoToShader (0x1a8b490) reads authored
+                // material dimensions; timeline size is not physical screen size.
+                Vector4 uvAdjust = new Vector4(1f, 1f, 0f, 0f);
+                if (state.useMonitorCamera && state.main.texture != null)
+                {
+                    float width = material.GetFloat(monitorWidthProperty);
+                    float height = material.GetFloat(monitorHeightProperty);
+                    if (width >= 1f && height >= 1f)
+                    {
+                        float targetAspect = width / height;
+                        float sourceAspect = (float)state.main.texture.width / state.main.texture.height;
+                        if (targetAspect > sourceAspect)
+                        {
+                            uvAdjust.y = sourceAspect / targetAspect;
+                            uvAdjust.w = (1f - uvAdjust.y) * 0.5f;
+                        }
+                        else
+                        {
+                            uvAdjust.x = targetAspect / sourceAspect;
+                            uvAdjust.z = (1f - uvAdjust.x) * 0.5f;
+                        }
+                    }
+                }
+                material.SetVector("_UVAdjust", uvAdjust);
+            }
+            if (!binding.hasAppliedState || !Approximately(binding.appliedState.crossFadeRate, state.crossFadeRate))
+                TrySetFloat(material, crossFadeRateProperty, state.crossFadeRate);
 
             if (applyBlendModeProperties)
             {
@@ -1251,11 +1215,8 @@ namespace Gallop.Live
                 material.renderQueue = state.renderQueue;
             }
 
-            renderer.SetPropertyBlock(_propertyBlock, binding.materialIndex);
-
             MonitorShaderState storedState = state;
             storedState.alpha = appliedAlpha;
-            storedState.colorFade = appliedColorFade;
             storedState.baseColor = appliedBaseColor;
             binding.appliedState = storedState;
             binding.hasAppliedState = true;
@@ -1449,45 +1410,6 @@ namespace Gallop.Live
 
             material.SetColor(propertyName, value);
             return true;
-        }
-
-        private static void TrySetFloat(Material material, MaterialPropertyBlock block, string propertyName, float value)
-        {
-            if (TryHasProperty(material, propertyName))
-                block.SetFloat(propertyName, value);
-        }
-
-        private static void TrySetColor(Material material, MaterialPropertyBlock block, string propertyName, Color value)
-        {
-            if (TryHasProperty(material, propertyName))
-                block.SetColor(propertyName, value);
-        }
-
-        private static void SetTextureTransform(MaterialPropertyBlock block, string textureProperty, Vector2 scale, Vector2 offset)
-        {
-            block.SetVector(textureProperty + "_ST", new Vector4(scale.x, scale.y, offset.x, offset.y));
-        }
-
-        private Color ApplyBrightnessToColorFade(Color colorFade)
-        {
-            float multiplier = Mathf.Clamp01(brightnessMultiplier);
-            if (Mathf.Approximately(multiplier, 1f))
-                return colorFade;
-
-            // Monitor.shader outputs lerp(ColorFade.rgb, screen.rgb, ColorFade.a) * 2.
-            // Re-encode both terms so this scales the full result even when alpha is one.
-            float sourceAlpha = Mathf.Clamp01(colorFade.a);
-            float scaledAlpha = sourceAlpha * multiplier;
-            float remainingWeight = 1f - scaledAlpha;
-            float colorScale = remainingWeight > 0.0001f
-                ? multiplier * (1f - sourceAlpha) / remainingWeight
-                : 0f;
-
-            colorFade.r *= colorScale;
-            colorFade.g *= colorScale;
-            colorFade.b *= colorScale;
-            colorFade.a = scaledAlpha;
-            return colorFade;
         }
 
         private static bool IsColorEffectivelyClear(Color value)

@@ -677,12 +677,10 @@ namespace NAudio.Lame.DLL
 
         internal static class NativeMethods
         {
-#if UNITY_EDITOR
-    #if UNITY_EDITOR_OSX
-            const string libname = @"__Internal";
-    #else
+#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+            const string libname = @"lame";
+#elif UNITY_EDITOR
             const string libname = @"libmp3lame.dll";
-    #endif
 #elif UNITY_IOS
             const string libname = @"__Internal";
 #elif UNITY_ANDROID

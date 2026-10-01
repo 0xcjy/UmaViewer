@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using RootMotion.FinalIK;
 
 namespace Gallop.Live.Cutt
 {
@@ -25,6 +26,8 @@ namespace Gallop.Live.Cutt
         //Testing
         private Transform _tempTarget;
         private Animation _tempAnim;
+        private BipedIK _sampleIk;
+        private bool _resetIkBeforeSample;
 
         private bool _needChange;
         private LiveTimelineKeyCharaMotionData _prevKey;
@@ -67,6 +70,13 @@ namespace Gallop.Live.Cutt
             if (targetIndex < Director.instance.charaAnims.Count)
             {
                 _tempAnim = Director.instance.charaAnims[targetIndex];
+                _sampleIk = _tempAnim.GetComponent<BipedIK>();
+                if (_sampleIk != null)
+                {
+                    // SolverManager.Update otherwise restores the bind pose after our manual sample.
+                    _resetIkBeforeSample = _sampleIk.fixTransforms;
+                    if (_resetIkBeforeSample) _sampleIk.fixTransforms = false;
+                }
             }
 
             if(_currentKey != null && _tempAnim != null)
@@ -124,9 +134,11 @@ namespace Gallop.Live.Cutt
                     start = (double)arg.motionHeadFrameSeparetes[charaIndex] / 60;
                 }
 
+                // CalculateAnimationInterval 0x1af9640: authored zero means normal speed.
+                float playSpeed = Mathf.Approximately(arg.playSpeed, 0f) ? 1f : arg.playSpeed;
                 double interval = 0;
                 double last_current_time = currentTime;
-                if (timescaleKeys.thisList.Count > 0)
+                if (!arg.IsTimescaleDisabled && timescaleKeys != null && timescaleKeys.Count > 0)
                 {
                     var has_key = false;
                     // apply timescale keys
@@ -139,29 +151,34 @@ namespace Gallop.Live.Cutt
                             has_key = true;
                             if (scaleKey.FrameSecond <= arg.FrameSecond)
                             {
-                                interval += (last_current_time - arg.FrameSecond) * scaleKey.Timescale * arg.playSpeed;
+                                interval += (last_current_time - arg.FrameSecond) * scaleKey.Timescale * playSpeed;
                                 break;
                             }
                             else
                             {
-                                interval += (last_current_time - scaleKey.FrameSecond) * scaleKey.Timescale * arg.playSpeed;
+                                interval += (last_current_time - scaleKey.FrameSecond) * scaleKey.Timescale * playSpeed;
                                 last_current_time = scaleKey.FrameSecond;
                             }
                         }
                     }
                     if (!has_key)
                     {
-                        interval = (currentTime - arg.FrameSecond) * arg.playSpeed; // no timescale keys, use default speed
+                        interval = (currentTime - arg.FrameSecond) * playSpeed;
                     }
                 }
                 else
                 {
-                    interval = (currentTime - arg.FrameSecond) * arg.playSpeed;
+                    interval = (currentTime - arg.FrameSecond) * playSpeed;
                 }
                 float currentAnimationTime = (float)(start + interval);
 
                 if (anim)
                 {
+                    if (_resetIkBeforeSample && _sampleIk != null && _sampleIk.isActiveAndEnabled)
+                    {
+                        _sampleIk.solvers.lookAt.FixTransforms();
+                        foreach (var limb in _sampleIk.solvers.limbs) limb.FixTransforms();
+                    }
                     var state = _tempAnim[anim.name];
                     state.enabled = true;
                     state.weight = 1;

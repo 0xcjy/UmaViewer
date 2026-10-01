@@ -19,6 +19,8 @@ public class UmaContainerCharacter : UmaContainer
     public GameObject Head;
     public GameObject Hair;
 
+    public Material FaceMaterial;
+
     public TextureList TailTextures = new TextureList();
 
     [Header("Animator")]
@@ -32,7 +34,7 @@ public class UmaContainerCharacter : UmaContainer
     public GameObject UpBodyBone;
     public Vector3 UpBodyPosition;
     public Quaternion UpBodyRotation;
-    public Dictionary<Transform, (Vector3 pos, Quaternion rot)> InitBoneTransform;
+    public Dictionary<Transform, (Vector3 localPosition, Quaternion localRotation, Vector3 localScale)> InitBoneTransform;
 
     [Header("Face")]
     public FaceDrivenKeyTarget FaceDrivenKeyTarget;
@@ -42,7 +44,6 @@ public class UmaContainerCharacter : UmaContainer
     public Transform TrackTarget;
     public float EyeHeight;
     public bool EnableEyeTracking = true;
-    public Material FaceMaterial;
 
     [Header("Cheek")]
     public Texture CheekTex_0;
@@ -75,6 +76,23 @@ public class UmaContainerCharacter : UmaContainer
     public DataRow MobHeadColor;
     public TextureList MobHeadTextures = new TextureList();
 
+    [Header("ModelController FaceLight鼻部阴影")]
+    public Transform HeadToonBaseTransform;
+    public Renderer FaceRenderer;
+    // 这两个先保留你测试时效果好的值。
+    // 后面如果继续逆 asset holder，再换成官方 asset 里的值。
+    public float FaceCenterUpOffset = 0.03f;
+    public float FaceCenterForwardOffset = 0.03f;
+    public bool FlipFaceForward = false;
+
+    private Material[] _faceMaterials;
+    private bool _faceLightInitialized;
+
+    private static readonly int ID_FaceCenterPos = Shader.PropertyToID("_FaceCenterPos");
+    private static readonly int ID_FaceUp = Shader.PropertyToID("_FaceUp");
+    private static readonly int ID_FaceForward = Shader.PropertyToID("_FaceForward");
+    private static readonly int ID_FaceShadowHeadMat = Shader.PropertyToID("_faceShadowHeadMat");
+
     [Header("Physics")]
     public bool EnablePhysics = true;
     public List<CySpringDataContainer> cySpringDataContainers;
@@ -84,6 +102,8 @@ public class UmaContainerCharacter : UmaContainer
     private BipedIK IK;
     private List<Transform> _humanoidBones;
     private UIHandleCharacterRoot handleRoot;
+
+    // Physics backend: master5 DynamicBone with skirt surface collision correction.
 
     private List<UmaDatabaseEntry> LoadedAssets = new List<UmaDatabaseEntry>();
 
@@ -137,7 +157,7 @@ public class UmaContainerCharacter : UmaContainer
 
         public IEnumerable<UmaDatabaseEntry> GetLoadedAssets()
         {
-            return _list.Select(t=>t.Entry).Distinct();
+            return _list.Select(t => t.Entry).Distinct();
         }
     }
 
@@ -150,11 +170,15 @@ public class UmaContainerCharacter : UmaContainer
         UpBodyPosition = UpBodyBone.transform.localPosition;
         UpBodyRotation = UpBodyBone.transform.localRotation;
 
+        // 此时已完成模型合并和身高缩放，且预览动画尚未加载，适合作为稳定的导出参考姿势。
+        CaptureInitialBodyPose();
+
         //Models must be merged before handling extra morphs
         if (FaceDrivenKeyTarget && smile)
             FaceDrivenKeyTarget.ChangeMorphWeight(FaceDrivenKeyTarget.MouthMorphs[3], 1);
 
         CreateIK();
+        SetShaderParameterRuntime();
     }
 
     public void MergeModel()
@@ -225,6 +249,27 @@ public class UmaContainerCharacter : UmaContainer
 
         //Materials
         Renderers = gameObject.GetComponentsInChildren<Renderer>().ToList();
+        FaceRenderer = Renderers.FirstOrDefault(r => r != null && r.name == "M_Face");
+
+        if (FaceRenderer != null)
+        {
+            _faceMaterials = FaceRenderer.materials;
+
+            foreach (var mat in _faceMaterials)
+            {
+                if (mat == null || mat.shader == null)
+                    continue;
+
+                string matName = mat.name.ToLower();
+                string shaderName = mat.shader.name;
+
+                if (shaderName.Contains("ToonFace") || matName.Contains("face"))
+                {
+                    FaceMaterial = mat;
+                    break;
+                }
+            }
+        }
         foreach (var rend in Renderers)
         {
             for (int i = 0; i < rend.sharedMaterials.Length; i++)
@@ -256,11 +301,6 @@ public class UmaContainerCharacter : UmaContainer
             }
         }
 
-        InitBoneTransform = new Dictionary<Transform, (Vector3 pos, Quaternion rot)>();
-        foreach (var bone in bodySkinnedMeshRenderer.bones)
-        {
-            InitBoneTransform[bone] = (bone.position, bone.rotation);
-        }
     }
 
     public void MergeHairModel()
@@ -303,11 +343,13 @@ public class UmaContainerCharacter : UmaContainer
             BodyScale = (scale / 160.7529f);
         }
         transform.Find("Position").localScale = new Vector3(BodyScale, BodyScale, BodyScale);
+
+
     }
 
     public void MergeBone(SkinnedMeshRenderer from, Dictionary<string, Transform> targetBones, ref List<Transform> emptyBones)
     {
-        if(targetBones.TryGetValue(from.rootBone.name, out Transform rootbone))
+        if (targetBones.TryGetValue(from.rootBone.name, out Transform rootbone))
         {
             from.rootBone = rootbone;
             Transform[] tmpBone = new Transform[from.bones.Length];
@@ -329,11 +371,13 @@ public class UmaContainerCharacter : UmaContainer
                 }
             }
             from.bones = tmpBone;
-        };
+        }
+        ;
     }
 
     public void LoadPhysics()
     {
+        if (IsMini || PhysicsContainer == null) return;
         cySpringDataContainers = new List<CySpringDataContainer>(PhysicsContainer.GetComponentsInChildren<CySpringDataContainer>());
         var bones = new Dictionary<string, Transform>();
         foreach (var bone in GetComponentsInChildren<Transform>())
@@ -462,15 +506,27 @@ public class UmaContainerCharacter : UmaContainer
     {
         if (IsMini) return;
         EnablePhysics = isOn;
+        var surfaceSolver = GetComponent<SkirtSurfaceCollisionSolver>();
+        if (surfaceSolver != null) surfaceSolver.enabled = isOn;
+        if (cySpringDataContainers == null) return;
         foreach (CySpringDataContainer cySpring in cySpringDataContainers)
         {
             cySpring.EnablePhysics(isOn);
         }
     }
 
+    public void ConfigureLivePhysics()
+    {
+        if (!IsLive || IsMini || cySpringDataContainers == null) return;
+        var profile = GetComponent<Gallop.Live.Master5LivePhysicsProfile>();
+        if (profile == null) profile = gameObject.AddComponent<Gallop.Live.Master5LivePhysicsProfile>();
+        profile.ApplyToNewPhysics();
+    }
+
     public void ResetDynamicBone()
     {
         if (IsMini) return;
+        if (cySpringDataContainers == null) return;
         foreach (CySpringDataContainer cySpring in cySpringDataContainers)
         {
             cySpring.ResetPhysics();
@@ -487,6 +543,178 @@ public class UmaContainerCharacter : UmaContainer
         FaceOverrideData?.SetEnable(isOn);
     }
 
+    private void LateUpdate()
+    {
+        if (IsMini)
+            return;
+
+        AlterLateUpdateRuntime();
+        AlterLateUpdatePostRuntime();
+    }
+
+    public void SetShaderParameterRuntime()
+    {
+        InitFaceLightRuntime();
+        UpdateFaceLightRuntime();
+
+        // 官方这里后面还会做：
+        // EyeHighlightController.DefaultEyeMaterial()
+        // RendererHolder.SetShaderKeyword()
+        // CharaPartsHolder.SetHairCutOff()
+        // 现在先不补，先修 FaceLight。
+    }
+
+    private void AlterLateUpdateRuntime()
+    {
+    }
+
+    private void AlterLateUpdatePostRuntime()
+    {
+
+        // 官方 AlterLateUpdatePost 是 EndSimulation 后 UpdateBodyLightDir / UpdateFaceLight。
+        // 现在先补脸部，身体光照后面再看 UpdateBodyLightDir。
+        UpdateFaceLightRuntime();
+    }
+
+    private void InitFaceLightRuntime()
+    {
+        if (_faceLightInitialized && FaceRenderer != null && HeadToonBaseTransform != null)
+            return;
+
+        if (FaceRenderer == null)
+        {
+            FaceRenderer = FindRendererByName(transform, "M_Face");
+        }
+
+        if (FaceRenderer != null)
+        {
+            _faceMaterials = FaceRenderer.materials;
+
+            FaceMaterial = null;
+            foreach (var mat in _faceMaterials)
+            {
+                if (mat == null || mat.shader == null)
+                    continue;
+
+                string matName = mat.name.ToLower();
+                string shaderName = mat.shader.name;
+
+                if (shaderName.Contains("ToonFace") || matName.Contains("face"))
+                {
+                    FaceMaterial = mat;
+                    break;
+                }
+            }
+        }
+
+        if (HeadToonBaseTransform == null)
+        {
+            // 官方 InitFaceLight 默认就是 GetHeadTransform，不是 Position_light。
+            if (HeadBone != null)
+            {
+                HeadToonBaseTransform = HeadBone.transform;
+            }
+            else
+            {
+                var head = FindTransformByName(transform, "Head");
+                if (head != null)
+                {
+                    HeadToonBaseTransform = head;
+                }
+                else if (FaceRenderer is SkinnedMeshRenderer smr && smr.rootBone != null)
+                {
+                    HeadToonBaseTransform = smr.rootBone;
+                }
+            }
+        }
+
+        _faceLightInitialized = FaceRenderer != null && HeadToonBaseTransform != null;
+
+        Debug.Log(
+            $"[FaceLight] init={_faceLightInitialized}, " +
+            $"FaceRenderer={(FaceRenderer ? FaceRenderer.name : "null")}, " +
+            $"FaceMaterial={(FaceMaterial ? FaceMaterial.name : "null")}, " +
+            $"HeadToonBase={(HeadToonBaseTransform ? HeadToonBaseTransform.name : "null")}"
+        );
+    }
+
+    private void UpdateFaceLightRuntime()
+    {
+        if (IsMini)
+            return;
+
+        if (!_faceLightInitialized || FaceRenderer == null || HeadToonBaseTransform == null)
+        {
+            InitFaceLightRuntime();
+        }
+
+        if (FaceRenderer == null || HeadToonBaseTransform == null)
+            return;
+
+        if (_faceMaterials == null || _faceMaterials.Length == 0)
+            _faceMaterials = FaceRenderer.materials;
+
+        Vector3 pos = HeadToonBaseTransform.position;
+        Vector3 up = HeadToonBaseTransform.up.normalized;
+        Vector3 forward = HeadToonBaseTransform.forward.normalized;
+
+        if (FlipFaceForward)
+            forward = -forward;
+
+        Vector3 faceCenter =
+            pos +
+            up * FaceCenterUpOffset +
+            forward * FaceCenterForwardOffset;
+
+        Matrix4x4 headMat = HeadToonBaseTransform.worldToLocalMatrix;
+
+        foreach (var mat in _faceMaterials)
+        {
+            if (mat == null || mat.shader == null)
+                continue;
+
+            string matName = mat.name.ToLower();
+            string shaderName = mat.shader.name;
+
+            if (!shaderName.Contains("ToonFace") && !matName.Contains("face"))
+                continue;
+
+            mat.SetVector(ID_FaceCenterPos, faceCenter);
+            mat.SetVector(ID_FaceUp, up);
+            mat.SetVector(ID_FaceForward, forward);
+            mat.SetMatrix(ID_FaceShadowHeadMat, headMat);
+        }
+    }
+
+    private static Transform FindTransformByName(Transform root, string name)
+    {
+        if (root == null)
+            return null;
+
+        var list = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < list.Length; i++)
+        {
+            if (list[i] != null && list[i].name == name)
+                return list[i];
+        }
+
+        return null;
+    }
+
+    private static Renderer FindRendererByName(Transform root, string name)
+    {
+        if (root == null)
+            return null;
+
+        var list = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < list.Length; i++)
+        {
+            if (list[i] != null && list[i].name == name)
+                return list[i];
+        }
+
+        return null;
+    }
     private void FixedUpdate()
     {
         if (IsMini) return;
@@ -518,35 +746,18 @@ public class UmaContainerCharacter : UmaContainer
             FaceDrivenKeyTarget.ProcessLocator();
         }
 
-        if (FaceMaterial)
-        {
-            if (isAnimatorControl)
-            {
-                FaceMaterial.SetVector("_FaceForward", Vector3.zero);
-                FaceMaterial.SetVector("_FaceUp", Vector3.zero);
-                FaceMaterial.SetVector("_FaceCenterPos", Vector3.zero);
-
-            }
-            else
-            {
-                //Used to calculate facial shadows
-                FaceMaterial.SetVector("_FaceForward", HeadBone.transform.forward);
-                FaceMaterial.SetVector("_FaceUp", HeadBone.transform.up);
-                FaceMaterial.SetVector("_FaceCenterPos", HeadBone.transform.position);
-            }
-            FaceMaterial.SetMatrix("_faceShadowHeadMat", HeadBone.transform.worldToLocalMatrix);
-        }
+        
 
         TearControllers.ForEach(a => a.UpdateOffset());
 
         //Apply UV Animation
 
-        if(HeadShaderEffectData != null)
+        if (HeadShaderEffectData != null)
         {
             HeadShaderEffectData.updateUV(Time.fixedDeltaTime);
         }
 
-        if(BodyShaderEffectData != null)
+        if (BodyShaderEffectData != null)
         {
             BodyShaderEffectData.updateUV(Time.fixedDeltaTime);
         }
@@ -641,7 +852,7 @@ public class UmaContainerCharacter : UmaContainer
 
     public void LoadTextures(UmaDatabaseEntry entry)
     {
-        foreach(Texture2D tex2D in entry.GetAll<Texture2D>())
+        foreach (Texture2D tex2D in entry.GetAll<Texture2D>())
         {
             if (entry.Name.Contains("/mini/head"))
             {
@@ -676,6 +887,9 @@ public class UmaContainerCharacter : UmaContainer
         {
             UpBodyBone = Body.GetComponent<AssetHolder>()._assetTable["upbody_ctrl"] as GameObject;
         }
+
+        // Physics uses the master5 DynamicBone + surface-collision backend.
+        // Do not create a second SkirtController that writes the same skeleton.
 
         if (IsGeneric)
         {
@@ -783,7 +997,9 @@ public class UmaContainerCharacter : UmaContainer
                                 tripleMap = $"tex_bdy{costumeIdShort}_00_0_{bust}_base";
                                 optionMap = $"tex_bdy{costumeIdShort}_00_0_{bust}_ctrl";
                                 break;
-                            case "0006": case "0009": case "0015":
+                            case "0006":
+                            case "0009":
+                            case "0015":
                                 mainTex = $"tex_bdy{costumeIdLong}_{skin}_{bust}_{"00"}_diff";
                                 toonMap = $"tex_bdy{costumeIdLong}_{skin}_{bust}_{"00"}_shad_c";
                                 tripleMap = $"tex_bdy{costumeIdLong}_0_{bust}_00_base";
@@ -851,6 +1067,10 @@ public class UmaContainerCharacter : UmaContainer
 
         foreach (Renderer r in head.GetComponentsInChildren<Renderer>())
         {
+            if (!IsMini && r.name == "M_Face")
+            {
+                FaceRenderer = r;
+            }
             foreach (Material m in r.materials)
             {
                 m.name = m.name.Replace(" (Instance)", "");
@@ -920,7 +1140,7 @@ public class UmaContainerCharacter : UmaContainer
                     }
 
                     //Blush Setting
-                    if(r.name.Contains("Cheek"))
+                    if (r.name.Contains("Cheek"))
                     {
                         r.gameObject.SetActive(false);
                         if (IsMob)
@@ -935,10 +1155,10 @@ public class UmaContainerCharacter : UmaContainer
                         }
                     }
 
-                    if(Main.AbList.TryGetValue("3d/chara/common/textures/tex_chr_tear00", out var tearEntry))
+                    if (Main.AbList.TryGetValue("3d/chara/common/textures/tex_chr_tear00", out var tearEntry))
                     {
                         LoadedAssets.Add(tearEntry);
-                        var ab =  UmaAssetManager.LoadAssetBundle(tearEntry, true, false);
+                        var ab = UmaAssetManager.LoadAssetBundle(tearEntry, true, false);
                         var tex = ab.LoadAsset<Texture>("tex_chr_tear00");
                         StaticTear_L = table["tearmesh_l"] as GameObject;
                         StaticTear_R = table["tearmesh_r"] as GameObject;
@@ -976,6 +1196,17 @@ public class UmaContainerCharacter : UmaContainer
                             // m.shader = Shader.Find("Nars/UmaMusume/Body");
                             break;
                     }
+                    if (!IsMini && r.name == "M_Face")
+                    {
+                        string matName = m.name.ToLower();
+                        string shaderName = m.shader != null ? m.shader.name : "";
+
+                        if (shaderName.Contains("ToonFace") || matName.Contains("face"))
+                        {
+                            FaceMaterial = m;
+                        }
+                    }
+
                 }
 
                 m.SetFloat("_StencilMask", CharaEntry.Id);
@@ -1019,7 +1250,7 @@ public class UmaContainerCharacter : UmaContainer
                     SetMaskColor(m, MobHeadColor, "hair", true);
                     if (IsMob)
                     {
-                        var cutoff = CharaData["hair_cutoff"].ToString(); 
+                        var cutoff = CharaData["hair_cutoff"].ToString();
                         m.SetFloat("_Cutoff", int.Parse(cutoff) / 10000f); //Not entirely correct, but effective
                         m.SetTexture("_TripleMaskMap", textures.Load(t => t.name.Contains("_hair") && t.name.EndsWith(CharaData["sex"].ToString() + "_base")));
                     }
@@ -1098,7 +1329,7 @@ public class UmaContainerCharacter : UmaContainer
         {
             var mat = materialHelper.Mat;
             if (mat == null) continue;
-    
+
             if (mat.name.Contains("bdy") && !mat.name.Contains("Alpha"))
             {
                 if (mat.HasProperty("_MaskColorTex"))
@@ -1601,7 +1832,7 @@ public class UmaContainerCharacter : UmaContainer
             obj.SetActive(false);
 
             var leftObj = Instantiate(obj, eyeLocator_L.transform);
-            new List<Renderer>(leftObj.GetComponentsInChildren<Renderer>(true)).ForEach(a => { 
+            new List<Renderer>(leftObj.GetComponentsInChildren<Renderer>(true)).ForEach(a => {
                 a.material.SetFloat("_StencilMask", id);
                 a.material.SetFloat("_StencilComp", (float)UnityEngine.Rendering.CompareFunction.Equal);
                 a.material.SetFloat("_StencilOp", (float)UnityEngine.Rendering.StencilOp.Keep);
@@ -1615,7 +1846,7 @@ public class UmaContainerCharacter : UmaContainer
                 if (holder._assetTableValue["invert"] > 0)
                     RightObj.transform.localScale = new Vector3(-1, 1, 1);
             }
-            new List<Renderer>(RightObj.GetComponentsInChildren<Renderer>(true)).ForEach(a => { 
+            new List<Renderer>(RightObj.GetComponentsInChildren<Renderer>(true)).ForEach(a => {
                 a.material.SetFloat("_StencilMask", id);
                 a.material.SetFloat("_StencilComp", (float)UnityEngine.Rendering.CompareFunction.Equal);
                 a.material.SetFloat("_StencilOp", (float)UnityEngine.Rendering.StencilOp.Keep);
@@ -1705,9 +1936,9 @@ public class UmaContainerCharacter : UmaContainer
         }
 
         var wrist_L = humanBones.Find(b => b.name == "Wrist_L");
-        foreach(var fingerBone in wrist_L.transform.GetComponentsInChildren<Transform>())
+        foreach (var fingerBone in wrist_L.transform.GetComponentsInChildren<Transform>())
         {
-            if(fingerBone.name.StartsWith("Index") || fingerBone.name.StartsWith("Middle") || fingerBone.name.StartsWith("Ring") || fingerBone.name.StartsWith("Pinky") || fingerBone.name.StartsWith("Thumb"))
+            if (fingerBone.name.StartsWith("Index") || fingerBone.name.StartsWith("Middle") || fingerBone.name.StartsWith("Ring") || fingerBone.name.StartsWith("Pinky") || fingerBone.name.StartsWith("Thumb"))
             {
                 List<BoneTags> tags = new List<BoneTags>() { BoneTags.Left, BoneTags.Finger };
 
@@ -1729,7 +1960,7 @@ public class UmaContainerCharacter : UmaContainer
         }
 
         var allBones = SaveBones();
-        foreach(var bone in allBones.Where(b => b.Tags.Contains(BoneTags.Dynamic)))
+        foreach (var bone in allBones.Where(b => b.Tags.Contains(BoneTags.Dynamic)))
         {
             var handle = UIHandleBone.CreateAsChild(bone.Bone, bone.Tags).SetColor(Color.gray).SetScale(0.15f).WithLineRenderer();
             rootHandle.ChildHandles.Add(handle);
@@ -1749,7 +1980,7 @@ public class UmaContainerCharacter : UmaContainer
 
     private void GatherSerializableBonesRecursive(Transform current, List<SerializableBone> bones, int depth)
     {
-        for(int i = 0; i < current.childCount; i++)
+        for (int i = 0; i < current.childCount; i++)
         {
             GatherSerializableBonesRecursive(current.GetChild(i), bones, depth + 1);
         }
@@ -1758,8 +1989,8 @@ public class UmaContainerCharacter : UmaContainer
         //and generating a list of tags beforehand
         //otherwise getComponentInParent() is called for every bone
         var bone = new SerializableBone(current, true);
-        
-        if(depth == 0)
+
+        if (depth == 0)
         {
             //make it independent from character name
             bone.ParentName = "root";
@@ -1795,7 +2026,7 @@ public class UmaContainerCharacter : UmaContainer
 
     public List<Transform> GetHumanBones()
     {
-        if(_humanoidBones == null)
+        if (_humanoidBones == null)
         {
             var animator = UmaAnimator;
 
@@ -1874,15 +2105,44 @@ public class UmaContainerCharacter : UmaContainer
         return true;
     }
 
+    private void CaptureInitialBodyPose()
+    {
+        InitBoneTransform =
+            new Dictionary<Transform, (Vector3 localPosition, Quaternion localRotation, Vector3 localScale)>();
+
+        // 覆盖所有可能被 Animator 驱动的模型节点，避免特殊动作残留在控制节点或辅助骨骼中。
+        foreach (Transform modelTransform in GetComponentsInChildren<Transform>(true))
+        {
+            if (modelTransform == transform)
+            {
+                continue;
+            }
+
+            InitBoneTransform[modelTransform] = (
+                modelTransform.localPosition,
+                modelTransform.localRotation,
+                modelTransform.localScale);
+        }
+    }
+
     public void ResetBodyPose()
     {
-        if(InitBoneTransform == null)
+        if (InitBoneTransform == null)
         {
             return;
         }
+
+        // 使用本地变换恢复，避免父节点缩放或旋转使子骨骼的世界坐标发生二次偏移。
         foreach (var pair in InitBoneTransform)
         {
-            pair.Key.SetPositionAndRotation(pair.Value.pos, pair.Value.rot);
+            if (pair.Key == null)
+            {
+                continue;
+            }
+
+            pair.Key.localPosition = pair.Value.localPosition;
+            pair.Key.localRotation = pair.Value.localRotation;
+            pair.Key.localScale = pair.Value.localScale;
         }
     }
 

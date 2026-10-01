@@ -20,6 +20,9 @@ public sealed class SkirtSurfaceCollisionSolver : MonoBehaviour
     private readonly List<DynamicBoneColliderBase> _colliders = new List<DynamicBoneColliderBase>();
     private readonly List<HorizontalLink> _horizontalLinks = new List<HorizontalLink>();
     private Transform _hip;
+    private readonly List<DynamicBoneColliderBase> _activeColliders = new List<DynamicBoneColliderBase>();
+    private static readonly Unity.Profiling.ProfilerMarker SurfaceMarker =
+        new Unity.Profiling.ProfilerMarker("Live.SkirtSurfaceCollision");
 
     public int RingCount => _rings.Count;
     public int ColliderCount => _colliders.Count;
@@ -67,18 +70,22 @@ public sealed class SkirtSurfaceCollisionSolver : MonoBehaviour
 
     private void LateUpdate()
     {
-        LastContactCount = 0;
-        SolveHorizontalLinks();
-        for (int iteration = 0; iteration < 1; ++iteration)
+        using (SurfaceMarker.Auto())
         {
+            LastContactCount = 0;
+            // Radius/name/enable state can change at runtime, but not during this solve.
+            _activeColliders.Clear();
+            foreach (var collider in _colliders)
+                if (IsSurfaceCollider(collider)) _activeColliders.Add(collider);
+            using (DynamicBoneCollider.BeginCollisionBatch())
+            {
+                SolveHorizontalLinks();
+                foreach (List<DynamicBone> ring in _rings)
+                    LastContactCount += ResolveRing(ring, _activeColliders);
+            }
             foreach (List<DynamicBone> ring in _rings)
-                LastContactCount += ResolveRing(ring, _colliders);
-        }
-
-        foreach (List<DynamicBone> ring in _rings)
-        {
-            foreach (DynamicBone dynamicBone in ring)
-                dynamicBone.ApplyParticlesToTransformsNow();
+                foreach (DynamicBone dynamicBone in ring)
+                    dynamicBone.ApplyParticlesToTransformsNow();
         }
     }
 
@@ -133,11 +140,11 @@ public sealed class SkirtSurfaceCollisionSolver : MonoBehaviour
             DynamicBone rightChain = ring[(chainIndex + 1) % ring.Count];
             int depthCount = Mathf.Min(leftChain.Particles.Count, rightChain.Particles.Count);
 
+            float objectScale = Mathf.Abs(leftChain.transform.lossyScale.x);
             for (int depth = 1; depth < depthCount; ++depth)
             {
                 DynamicBone.Particle left = leftChain.Particles[depth];
                 DynamicBone.Particle right = rightChain.Particles[depth];
-                float objectScale = Mathf.Abs(leftChain.transform.lossyScale.x);
                 float particleRadius = Mathf.Max(left.m_Radius, right.m_Radius) * objectScale;
                 float maxCorrection = Mathf.Max(
                     Vector3.Distance(leftChain.Particles[depth - 1].m_Position, left.m_Position),
@@ -179,9 +186,6 @@ public sealed class SkirtSurfaceCollisionSolver : MonoBehaviour
 
                 foreach (DynamicBoneColliderBase collider in colliders)
                 {
-                    if (!IsSurfaceCollider(collider))
-                        continue;
-
                     Vector3 projected = sample;
                     if (!collider.Collide(ref projected, particleRadius))
                         continue;
@@ -230,9 +234,6 @@ public sealed class SkirtSurfaceCollisionSolver : MonoBehaviour
 
             foreach (DynamicBoneColliderBase collider in colliders)
             {
-                if (!IsSurfaceCollider(collider))
-                    continue;
-
                 Vector3 projected = sample;
                 if (!collider.Collide(ref projected, particleRadius))
                     continue;

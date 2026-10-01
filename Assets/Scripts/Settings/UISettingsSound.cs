@@ -1,4 +1,4 @@
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
 using SFB;
 #endif
 using System.Collections.Generic;
@@ -16,6 +16,8 @@ public class UISettingsSound : MonoBehaviour
     public TextMeshProUGUI ProgressText;
     public Slider ProgressSlider;
     public Button PlayButton;
+    public Sprite PlayIcon;
+    public Sprite PauseIcon;
     public Text LyricsText;
 
     internal void UpdateTrack(AudioSource mianSource)
@@ -25,6 +27,7 @@ public class UISettingsSound : MonoBehaviour
         ProgressSlider.SetValueWithoutNotify(mianSource.time / mianSource.clip.length);
         LyricsText.text = UmaUtility.GetCurrentLyrics(mianSource.time, UmaViewerBuilder.Instance.CurrentLyrics);
         LyricsText.text = LyricsText.text;
+        UpdatePlayButtonIcon(mianSource.isPlaying);
     }
 
     public void PauseAudio()
@@ -49,6 +52,8 @@ public class UISettingsSound : MonoBehaviour
                     source.Stop();
                 }
             }
+
+            UpdatePlayButtonIcon(!state);
         }
     }
 
@@ -59,6 +64,8 @@ public class UISettingsSound : MonoBehaviour
         {
             source.Stop();
         }
+
+        UpdatePlayButtonIcon(false);
     }
 
     public void ResetPlayer()
@@ -67,11 +74,20 @@ public class UISettingsSound : MonoBehaviour
         ProgressText.text = "00:00:00 / 00:00:00";
         ProgressSlider.SetValueWithoutNotify(0);
         LyricsText.text = "";
+        UpdatePlayButtonIcon(false);
+    }
+
+    private void UpdatePlayButtonIcon(bool isPlaying)
+    {
+        if (PlayButton)
+        {
+            PlayButton.image.sprite = isPlaying ? PauseIcon : PlayIcon;
+        }
     }
 
     public void ExportAudio()
     {
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
         var LiveSources = Builder.CurrentLiveSoundAWB;
         if (LiveSources.Count > 0)
         {

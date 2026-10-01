@@ -1,4 +1,4 @@
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
 using SFB;
 #endif
 using System.Collections.Generic;
@@ -19,14 +19,18 @@ public class UISettingsAssets : MonoBehaviour
         if (!LoadedAssetPageCtrl) return;
         if (LoadedAssetEntries.ContainsKey(entry.Name)) return;
         var file_name = Path.GetFileName(entry.Name);
-        string filePath = entry.FilePath.Replace("/", "\\");
         var assetentry = new Entry()
         {
             Name = file_name,
             FontSize = 18,
             OnClick = (container) =>
             {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                string filePath = entry.FilePath.Replace("/", "\\");
                 System.Diagnostics.Process.Start("explorer.exe", "/select," + filePath);
+#else
+                UmaViewerUI.Instance.ShowMessage("Not supported on this platform", UIMessageType.Warning);
+#endif
             }
         };
         LoadedAssetEntries.Add(entry.Name, assetentry);
@@ -54,7 +58,7 @@ public class UISettingsAssets : MonoBehaviour
 
     public void CopyAllLoadedAssets()
     {
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
         var path = StandaloneFileBrowser.OpenFolderPanel("Select Folder", Config.Instance.MainPath, false);
         if (path != null && path.Length > 0 && !string.IsNullOrEmpty(path[0]))
         {
@@ -88,7 +92,7 @@ public class UISettingsAssets : MonoBehaviour
 
     public void CopyCurrentUmaAssets()
     {
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
         if(UmaViewerBuilder.Instance.CurrentUMAContainer == null)
         {
             UmaViewerUI.Instance.ShowMessage("No Umamusume loaded", UIMessageType.Warning);

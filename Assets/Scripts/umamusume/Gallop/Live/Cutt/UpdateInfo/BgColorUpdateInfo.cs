@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using static Gallop.Live.Cutt.LiveTimelineDefine;
 
@@ -8,59 +6,62 @@ namespace Gallop.Live.Cutt
 {
     public struct BgColor1UpdateInfo
     {
-        // Fields
-        // TimelineName 不在原版结构里，是为了按名字路由到舞台物件而加的（原版只传 hash）。
         public string TimelineName;
-        public int TimelineNameHash; // 0x10
-        public int[] TargetCharaIdArray; // 0x18
-        public int[] TargetDressIdArray; // 0x20
-        public Color color; // 0x28
-        public float colorPower; // 0x38
-        public float scale; // 0x3c
-        public float Saturation; // 0x40
-        public int flags; // 0x44
-        public Color toonDarkColor; // 0x48
-        public Color toonBrightColor; // 0x58
-        public float vertexColorToonPower; // 0x68
-        public float outlineWidthPower; // 0x6c
-        public Color outlineColor; // 0x70
-        public OutlineColorBlend outlineColorBlend; // 0x80
-        public LightBlendMode LightBlendMode; // 0x84
-        public bool IsSilhouette; // 0x88
-        public bool IsProjector; // 0x89
-        public ColorType CurrentColorType; // 0x8c
-        public Color CurrentColor; // 0x90
-        public int CurrentFlags; // 0xa0
-        public ColorType NextColorType; // 0xa4
-        public Color NextColor; // 0xa8
-        public int NextFlags; // 0xb8
-        public float InterpolateRatio; // 0xbc
-        public bool IsSyncBlinkLight; // 0xc0
-        public bool IsSyncBlinkLightNext; // 0xc1
-        public bool IsAdjustedBlinkLightColor; // 0xc2
-        public int BlinkLightNameHash; // 0xc4
-        public int BlinkLightContainerIndex; // 0xc8
-        public float BlinkLightBrightnessPower; // 0xcc
+        public int TimelineNameHash;
+        public int[] TargetCharaIdArray;
+        public int[] TargetDressIdArray;
+        public Color color;
+        public float colorPower;
+        public float scale;
+        public float Saturation;
+        public int flags;
+        public Color toonDarkColor;
+        public Color toonBrightColor;
+        public float vertexColorToonPower;
+        public float outlineWidthPower;
+        public Color outlineColor;
+        public OutlineColorBlend outlineColorBlend;
+        public LightBlendMode LightBlendMode;
+        public bool IsSilhouette;
+        public bool IsProjector;
+        public ColorType CurrentColorType;
+        public Color CurrentColor;
+        public int CurrentFlags;
+        public ColorType NextColorType;
+        public Color NextColor;
+        public int NextFlags;
+        public float InterpolateRatio;
+        public bool IsSyncBlinkLight;
+        public bool IsSyncBlinkLightNext;
+        public bool IsAdjustedBlinkLightColor;
+        public int BlinkLightNameHash;
+        public int BlinkLightContainerIndex;
+        public float BlinkLightBrightnessPower;
     }
 
     public delegate void BgColor1UpdateInfoDelegate(ref BgColor1UpdateInfo updateInfo);
 
     public struct BgColor2UpdateInfo
     {
-        // Fields
-        public int TimelineNameHash; // 0x10
-        public Color color1; // 0x14
-        public Color color2; // 0x24
-        public float value; // 0x34
-        public int rndValueIdx; // 0x38
-
-        /// <summary>
-        /// 轨道组名（BgColor1UpdateInfo 同名字段的对应物）。
-        /// 原先 dispatcher 从不填这个信息，handler 也不读，于是一首歌里最多 15 个组
-        /// （son1010 实测 BgWashA..BgWashO）每帧各把整个舞台刷一遍，只有列表里最后一个
-        /// 留得下来 —— 前面所有组的关键帧等于不存在。
-        /// </summary>
         public string TimelineName;
+        public int TimelineNameHash;
+        public Color color1;
+        public Color color2;
+        public float power;
+        public int randomTableIndex;
+
+        // 兼容旧字段名
+        public float value
+        {
+            get => power;
+            set => power = value;
+        }
+
+        public int rndValueIdx
+        {
+            get => randomTableIndex;
+            set => randomTableIndex = value;
+        }
     }
 
     public delegate void BgColor2UpdateInfoDelegate(ref BgColor2UpdateInfo updateInfo);

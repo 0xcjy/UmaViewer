@@ -12,6 +12,10 @@ namespace Gallop.Live.Cutt
     [System.Serializable]
     public class LiveTimelineKeyCameraFovData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.CameraFov;}
+        }
         public LiveCameraFovType fovType;
         public float fov;
     }

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-278070046469036082
+--- !u!114 &-8042975721792538359
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -9,14 +9,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 61d001d58c2e5434590aaca747d7b830, type: 3}
-  m_Name: PostFilmRendererFeature
+  m_Script: {fileID: 11500000, guid: 826554af496dc473e888fd32d17ba3f9, type: 3}
+  m_Name: Gallop Live Post Effects
   m_EditorClassIdentifier: 
   m_Active: 1
-  _passEvent: 600
-  _enableRendering: 0
-  _vignetteWidth: 0.25
-  _vignetteStrength: 1
+  _enableRendering: 1
 --- !u!114 &-53754397225917022
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -78,8 +75,9 @@ MonoBehaviour:
     hdrDebugViewPS: {fileID: 4800000, guid: 573620ae32aec764abd4d728906d2587, type: 3}
   m_RendererFeatures:
   - {fileID: -53754397225917022}
-  - {fileID: -278070046469036082}
-  m_RendererFeatureMap: a2e53b18a90641ffce678919c41824fc
+  - {fileID: 2075802744604386734}
+  - {fileID: -8042975721792538359}
+  m_RendererFeatureMap: a2e53b18a90641ffaee5ec1f99bbce1c
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -129,3 +127,19 @@ MonoBehaviour:
   m_CopyDepthMode: 0
   m_AccurateGbufferNormals: 0
   m_IntermediateTextureMode: 1
+--- !u!114 &2075802744604386734
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e6578d3419414d9d86c37d481263769, type: 3}
+  m_Name: CopyCameraToRTFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    target: {fileID: 8400000, guid: c70d1b3875c224e5784ec6d613e6cd44, type: 2}
+    passEvent: 1004

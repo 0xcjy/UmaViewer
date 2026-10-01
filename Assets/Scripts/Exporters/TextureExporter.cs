@@ -9,13 +9,7 @@ public class TextureExporter
 {
     static public Texture2D duplicateTexture(Texture2D source)
     {
-        RenderTexture renderTex = RenderTexture.GetTemporary(
-                    source.width,
-                    source.height,
-                    0,
-                    RenderTextureFormat.Default,
-                    RenderTextureReadWrite.Linear);
-
+        RenderTexture renderTex = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
         Graphics.Blit(source, renderTex);
         RenderTexture previous = RenderTexture.active;
         RenderTexture.active = renderTex;
@@ -40,7 +34,7 @@ public class TextureExporter
         {
             foreach (Material mat in renderer.sharedMaterials)
             {
-                //»ñµÃ²ÄÖÊµÄËùÓÐÊôÐÔÃû£¬Èç¹û¸ÄÊôÐÔÃû¶ÔÓ¦µÄÊÇÌùÍ¼£¬ÌáÈ¡¸ÃÌùÍ¼
+                // 获取材质的所有属性；如果某个属性对应纹理，则提取该纹理
                 Shader mat_shader = mat.shader;
                 int p_num = mat_shader.GetPropertyCount();
                 for (int i = 0; i < p_num; i++)
@@ -85,7 +79,7 @@ public class TextureExporter
                 }
             }
         }
-        Debug.Log("ÌáÈ¡³É¹¦");
+        Debug.Log("纹理提取成功。");
         return textureNames.ToArray();
     }
 }

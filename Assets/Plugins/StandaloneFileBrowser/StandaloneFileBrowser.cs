@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace SFB {
+namespace SFB.LegacyWindows {
     public struct ExtensionFilter {
         public string Name;
         public string[] Extensions;
@@ -15,14 +15,13 @@ namespace SFB {
         private static IStandaloneFileBrowser _platformWrapper = null;
 
         static StandaloneFileBrowser() {
-#if UNITY_STANDALONE_OSX
-            _platformWrapper = new StandaloneFileBrowserMac();
-#elif UNITY_STANDALONE_WIN
+#if UNITY_STANDALONE_WIN
             _platformWrapper = new StandaloneFileBrowserWindows();
-#elif UNITY_STANDALONE_LINUX
-            _platformWrapper = new StandaloneFileBrowserLinux();
 #elif UNITY_EDITOR
             _platformWrapper = new StandaloneFileBrowserEditor();
+#else
+            // This historical implementation is retained only for Windows compatibility.
+            throw new PlatformNotSupportedException("SFB.LegacyWindows supports only Windows players. Use SFB for cross-platform dialogs.");
 #endif
         }
 
@@ -151,3 +150,4 @@ namespace SFB {
         }
     }
 }
+

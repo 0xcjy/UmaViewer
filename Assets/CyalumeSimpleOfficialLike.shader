@@ -56,10 +56,10 @@ Shader "Custom/CyalumeSimpleOfficialLike"
             {
                 fixed4 tex = tex2D(_MainTex, i.uv);
 
-                // 锟斤拷锟斤拷 discard锟斤拷锟斤拷锟斤拷 alpha clip
+                // ���� discard������ alpha clip
                 fixed3 rgb = tex.rgb * _Tint.rgb * _Intensity;
 
-                // additive 锟斤拷 alpha 锟斤拷锟斤拷锟斤拷锟斤拷要锟斤拷锟斤拷 1 锟斤拷锟斤拷
+                // additive �� alpha ��������Ҫ���� 1 ����
                 return fixed4(rgb, 1.0);
             }
             ENDCG

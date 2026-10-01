@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 21d3415b36ea8c64faa559c67ee1ec9e
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - _baseCamera: {instanceID: 0}
+  - _baseCameraTransform: {instanceID: 0}
+  - _transform: {instanceID: 0}
+  - _mirrorCamera: {instanceID: 0}
+  - _mirrorCameraTransform: {instanceID: 0}
+  - _mirrorTexture: {instanceID: 0}
+  - _receivedMirrorMeshRenderer: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

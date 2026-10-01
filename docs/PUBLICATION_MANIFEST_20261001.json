@@ -1,0 +1,3924 @@
+{
+  "snapshot_date": "2026-10-01",
+  "base_commit": "0dd0d3bdaa79160ea0dfcdb129232811fae44d7c",
+  "branch": "live-restoration-20261001",
+  "source_snapshot": "UmaViewer-master7 frozen before 1093 audience repair",
+  "runtime_validation": "No validation rerun by publication agent; see IMPROVEMENTS_20261001.md for recorded evidence and limits.",
+  "config_policy": "Publication copy has four empty key arrays; original source Config.cs untouched. Local Config.json excluded.",
+  "excluded_categories": [
+    "game extraction images and UI textures",
+    "shader.a / extracted bundles",
+    "cri_auth / sound_proj.acf / CySpringPlugin.dll",
+    "Library / Temp / Logs / obj / UserSettings / build",
+    "tmp validation projects / captures / exports / backups",
+    "memory dumps / encrypted metadata / disassembly artifacts",
+    "local credentials and keys"
+  ],
+  "file_changes": [
+    {
+      "change": "A",
+      "path": ".github/UNITY_LICENSE_SETUP.md"
+    },
+    {
+      "change": "M",
+      "path": ".github/workflows/build.yml"
+    },
+    {
+      "change": "M",
+      "path": ".gitignore"
+    },
+    {
+      "change": "M",
+      "path": "Assets/CyalumeSimpleOfficialLike.shader"
+    },
+    {
+      "change": "M",
+      "path": "Assets/CyalumeSimpleOfficialLike.shader.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/DumpFaceShaderProperties.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/DumpFaceShaderProperties.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/DumpLoadedBundleAssets.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/DumpLoadedBundleAssets.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveBloomDiffusionRegression.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveBloomDiffusionRegression.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveCaptureContract.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveCaptureContract.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveCaptureContractRegression.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveCaptureContractRegression.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveCapturedFilmAttribution.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveCapturedFilmAttribution.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveColorCorrectionRegression.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveColorCorrectionRegression.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveDofFocusRegression.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveDofFocusRegression.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveDofForegroundRegression.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveDofForegroundRegression.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LivePostFilmRegression.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LivePostFilmRegression.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveRadialBlurRegression.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveRadialBlurRegression.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveRenderCapture.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveRenderCapture.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveRenderSetup.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/LiveRenderSetup.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/Master5PhysicsProfileTests.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/Master5PhysicsProfileTests.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/NewBehaviourScript.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/NewBehaviourScript.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/PhysicsCollisionCacheTests.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/PhysicsCollisionCacheTests.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/PhysicsMigrationValidation.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Editor/PhysicsMigrationValidation.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/LiveBloomProbe.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/LiveBloomProbe.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/MobShadowOfficialLike.shader"
+    },
+    {
+      "change": "A",
+      "path": "Assets/MobShadowOfficialLike.shader.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Android/libs/arm64-v8a.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3.so"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3.so.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3mcandroid.so"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3mcandroid.so.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/DOTween.XML"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/DOTween.XML.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/DOTween.dll"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/DOTween.dll.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.XML"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.XML.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.dll"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.dll.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenIcon.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenIcon.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenMiniIcon.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenMiniIcon.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer_dark.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer_dark.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Header.jpg"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Header.jpg.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleAudio.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleAudio.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleEPOOutline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleEPOOutline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModulePhysics.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModulePhysics.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModulePhysics2D.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModulePhysics2D.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleSprite.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleSprite.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUI.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUI.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUIToolkit.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUIToolkit.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUnityVersion.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUnityVersion.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUtils.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleUtils.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/readme.txt"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Plugins/Demigiant/DOTween/readme.txt.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/Lame-For-Unity/Lame/LibMp3Lame.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/Lame-For-Unity/Plugins/lame.bundle/Contents/MacOS/lame"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/IStandaloneFileBrowser.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/IStandaloneFileBrowser.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/Plugins.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.jslib.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/StandaloneFileBrowser.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/StandaloneFileBrowser.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/StandaloneFileBrowserEditor.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/StandaloneFileBrowserEditor.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/StandaloneFileBrowserWindows.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/StandaloneFileBrowserWindows.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/StandaloneFileBrowser/StandalongFileBrowser.runtime.asmdef"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Plugins/sqlite3mc_x64.dll.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/RT.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/RT/CopyCameraToRTFeature.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/RT/CopyCameraToRTFeature.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/RT/RT_Screen.renderTexture"
+    },
+    {
+      "change": "A",
+      "path": "Assets/RT/RT_Screen.renderTexture.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/ReleaseLogGate.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/ReleaseLogGate.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Asset.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Asset/TestData.asset"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Asset/TestData.asset.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/DOTweenSettings.asset"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/DOTweenSettings.asset.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Fonts.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Fonts/NotoSansCJKsc-Bold.otf"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Fonts/NotoSansCJKsc-Bold.otf.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Materials/NewUnlitShader.shader"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Materials/NewUnlitShader.shader.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Prefabs/JukeboxMusicItem.prefab"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/Prefabs/JukeboxMusicItem.prefab.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Resources/Prefabs/LoadingCanvas.prefab"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Resources/Prefabs/UmaUIContainer.prefab"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/LiveDofCoC.shader"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/LiveDofCoC.shader.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/New Universal Render Pipeline Asset 1_Renderer.asset"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/New Universal Render Pipeline Asset 1_Renderer.asset.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/New Universal Render Pipeline Asset.asset"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/New Universal Render Pipeline Asset.asset.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/New Universal Render Pipeline Asset_Renderer.asset"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/RenderPipeline/New Universal Render Pipeline Asset_Renderer.asset.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Resources/RenderPipeline/UMAUniversalRenderPipelineAsset_Renderer.asset"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/Shaders.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/Shaders/PostFilm.shader"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/Shaders/PostFilm.shader.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_01.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_01.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_100.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_100.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_99.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_99.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/appUI.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/appUI.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/game cursor.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/game cursor.png.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scenes/LiveScene.unity"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scenes/Version2.unity"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/AssetBundleDecryptor.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Config.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/DynamicBone/Scripts/DynamicBone.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/DynamicBone/Scripts/DynamicBoneCollider.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/AudioExporter.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/BillboardBuilder.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/ModelExporter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXBoneExporter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXBoneExporter.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXExportStateSnapshot.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXExportStateSnapshot.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXPhysicsExporter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXPhysicsExporter.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXSkirtPhysicsExporter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/Exporters/PMXSkirtPhysicsExporter.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/TextureExporter.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/UnityPMXRuntimeLoader/LibMMD/Reader/PMXReader.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/UnityPMXRuntimeLoader/LibMMD/Util/MMDReaderWriteUtil.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/UnityPMXRuntimeLoader/LibMMD/Writer/PMXWriter.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Exporters/VMDRecorder/UnityHumanoidVMDRecorder.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/LiveToolBox/LiveViewerUI.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Manifest/ManifestDB.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Pose/Handles/HandleManager.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Pose/SerializableBone.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Screenshot.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Settings/UISettingsAnimation.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Settings/UISettingsAssets.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Settings/UISettingsModel.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Settings/UISettingsOther.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/Settings/UISettingsSound.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/JukeboxMusicSelect.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/JukeboxMusicSelect.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/JukeboxSelectionPulse.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/JukeboxSelectionPulse.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/JukeboxSelectionView.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/JukeboxSelectionView.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UI/PageManager.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/UIPressScaleFeedback.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/UI/UIPressScaleFeedback.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UI/UmaUIContainer.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaAssetBundleStream.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaAssetManager.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaContainerCharacter.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaContainerProp.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaDatabase/Sqlite3MC.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaDatabase/UmaDataTypes.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaDatabase/UmaDatabaseController.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaDatabase/UmaDatabaseEntry.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaViewerBuilder.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaViewerDownload.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaViewerGlobalShader.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaViewerMain.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/UmaViewerUI.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/localfy.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/localfy/Localize.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/localfy/Localize.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/localfy/LocalizeEn.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/localfy/LocalizeEn.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/shader export.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/shader export.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/shader test.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/shader test.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/uGIF/CaptureToGIFCustom.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/uGIF/GIFEncoder.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/uGIF/Image.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/uGIF/NeuQuant.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume.asmdef"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/AssetHolder.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/CharaShaderEffectData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ClothAsset.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ClothAsset.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/CySpringDataContainer.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/CySpringDataContainer.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyalume/CyalumeControllerBase.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyalume/CyalumeControllerBase.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringBonebase.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringBonebase.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollision.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollision.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollisionData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollisionData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollisionDataAsset.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollisionDataAsset.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollisionRuntimeData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringCollisionRuntimeData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringDataContainer.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringDataContainer.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringDynamicsRatioTailSetter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringDynamicsRatioTailSetter.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringNative.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringNative.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringOwner.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringOwner.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringParamDataAsset.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringParamDataAsset.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringParamDataChildElement.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringParamDataChildElement.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringParamDataElement.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringParamDataElement.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringSnapshotBoneData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringSnapshotBoneData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringUpdater.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringUpdater.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringWindParam.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CySpringWindParam.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/Cyspring.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/Cyspring.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CyspringRootbone.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/CyspringRootbone.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/ICySpringWindParamData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/ICySpringWindParamData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeClothCollision.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeClothCollision.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeClothworking.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeClothworking.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeSkirtArg.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeSkirtArg.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeSkirtWorking.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativeSkirtWorking.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativerootParentwork.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/NativerootParentwork.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtParamDataAsset.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtParamDataAsset.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtParamDataElement.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtParamDataElement.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtParamDataOverrideCollision.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Cyspring/SkirtParamDataOverrideCollision.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CacheCamera.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CacheCamera.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/Character3DBase.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/Character3DBase.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/ClothParameter.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/ClothParameter.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpring.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpring.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringBoneBase.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringBoneBase.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringCollisionComponent.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringCollisionComponent.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringNative.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringNative.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringParamDataAsset.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringParamDataAsset.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringPartsParamDataElement.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringPartsParamDataElement.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringRootBone.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringRootBone.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/GallopCySpringCollisionComponent.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/GallopCySpringCollisionComponent.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothCollision.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothCollision.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothParameter.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothParameter.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothWorking.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothWorking.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/LiveTimelineCamera.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/LiveTimelineCamera.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/StageUtil.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/StageUtil.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FaceDrivenKeyTarget.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FaceDrivenKeyTarget.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FaceEmotionKeyTarget.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FaceEmotionKeyTarget.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FaceOverrideData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FaceOverrideData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FacePartsSet.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FacePartsSet.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FacialMorph.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Face/FacialMorph.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FaceDrivenKeyTarget.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FaceDrivenKeyTarget.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FaceEmotionKeyTarget.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FaceEmotionKeyTarget.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FaceOverrideData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FaceOverrideData.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FacePartsSet.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FacePartsSet.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FacialMorph.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/FacialMorph.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/DofDiffusionBloomOverlayParam.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/DofDiffusionBloomOverlayParam.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/ExposureToneCurveParam.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/ExposureToneCurveParam.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/GallopImageEffect.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/GallopImageEffect.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/GallopImageEffectParameter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/GallopImageEffectParameter.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/CySpringDataContainer.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/CySpringDataContainer.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Cyalume.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Cyalume/CyalumeControllerBase.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Cyalume/CyalumeControllerBase.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CacheCamera.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CacheCamera.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/Character3DBase.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/Character3DBase.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/ClothParameter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/ClothParameter.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpring.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpring.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringBoneBase.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringBoneBase.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringCollisionComponent.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringCollisionComponent.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringNative.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringNative.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringParamDataAsset.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringParamDataAsset.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringPartsParamDataElement.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringPartsParamDataElement.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringRootBone.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringRootBone.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothCollision.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothCollision.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothParameter.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothParameter.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothWorking.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothWorking.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/LiveTimelineCamera.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/LiveTimelineCamera.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/StageUtil.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/StageUtil.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceDrivenKeyTarget.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceDrivenKeyTarget.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceEmotionKeyTarget.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceEmotionKeyTarget.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceOverrideData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceOverrideData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FacePartsSet.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FacePartsSet.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FacialMorph.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FacialMorph.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Gallop.Legacy.asmdef"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Gallop.Legacy.asmdef.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/ILiveTimelineCharactorLocator.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/ILiveTimelineCharactorLocator.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/ILiveTimelineKeyDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/ILiveTimelineKeyDataList.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/ILiveTimelineMSQTarget.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/ILiveTimelineMSQTarget.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineCharaLocator.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineCharaLocator.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineControl.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineControl.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineDefine.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/Live/Cutt/LiveTimelineDefine.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringCollisionData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringCollisionData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringParamDataChildElement.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringParamDataChildElement.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringParamDataElement.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringParamDataElement.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/GameObjectUtility.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/GameObjectUtility.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/TearController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/TearController.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/BillboardController.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/BillboardController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/BlinkLightColorType.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/BlinkLightColorType.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/BlinkLightPattern.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/BlinkLightPattern.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/BezierCalcWork.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/BezierCalcWork.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/BezierUtil.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/Enumeration/LiveTimelineEasing.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/FNVHash.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/FNVHash.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineCharactorLocator.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineCharactorLocator.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineGroupData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineGroupData.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineKeyDataList.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineKeyDataList.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineMSQTarget.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineMSQTarget.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LaserFormation.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LaserFormation.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveColorCorrectionTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveColorCorrectionTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveEffectTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveEffectTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveExposureToneCurveTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveExposureToneCurveTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveLensFlareTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveLensFlareTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveLightProjectionTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveLightProjectionTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveMultiCameraTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveMultiCameraTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LivePostFilmTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LivePostFilmTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveRadialBlurTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveRadialBlurTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveSpotlight3dTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveSpotlight3dTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/ILiveTimelineCharactorLocator.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/ILiveTimelineCharactorLocator.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/ILiveTimelineMSQTarget.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/ILiveTimelineMSQTarget.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveCameraLookAtTypes.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveCameraLookAtTypes.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineCharaLocator.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineCharaLocator.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineControl.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineControl.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineDefine.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineDefine.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineKeyDataType.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineKeyDataType.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineCharaLocator.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineCharaLocator.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineControl.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineControl.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/ILiveTimelineGroupDataWithName.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/ILiveTimelineGroupDataWithName.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/ITransformCPBundleData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/ITransformCPBundleData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineAnimationData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineAnimationData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineBgColor1Data.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineBgColor2Data.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineBlinkLightData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineBlinkLightData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineCharaMotSeqData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineChromaticAberrationData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineChromaticAberrationData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineColorCorrectionData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineColorCorrectionData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineEffectData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineEffectData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineExposureToneCurveData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineExposureToneCurveData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineFacialData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineFormationOffsetData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineGlobalFogData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineGlobalFogData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineGlobalLightData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineHdrBloomData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineHdrBloomData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKey.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKey.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyAnimationData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyAnimationData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyAnimationDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyAnimationDataList.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyBlinkLightData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyBlinkLightData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyCameraFovDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyCameraLookAtData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyCameraLookAtData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyCameraLookAtDataList.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyCameraRollDataList.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyCameraSwitcherDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyDataList.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyDataListTemplate.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyDataListTemplate.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyHdrBloomData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyHdrBloomData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyHdrBloomDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyHdrBloomDataList.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyLaserData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyLaserData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyLipSyncDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyPostEffectBloomDiffusionData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyPostEffectBloomDiffusionData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyPostEffectBloomDiffusionDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyPostEffectBloomDiffusionDataList.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyPostFilmDataList.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyUVScrollLightData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyUVScrollLightData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyWashLightData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyWashLightData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyWithInterpolate.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyWithInterpolate.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLaserData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLaserData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLensFlareData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLensFlareData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLightProjectionData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLightProjectionData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLightShaftsData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineLightShaftsData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMobCyalumeControlData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMobCyalumeControlData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMonitorCameraData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMonitorCameraData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMonitorControlData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMonitorControlData.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMonitorData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMonitorData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMultiCameraData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMultiCameraData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMultiCameraLookAtData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMultiCameraPositionData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineObjectData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineParticleData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineParticleData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelinePostEffectDOFData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelinePostEffectDOFData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelinePropsData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelinePropsData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineRadialBlurData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineRadialBlurData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineSpotlight3dData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineSpotlight3dData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineStageEnvironmentData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineStageEnvironmentData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineTiltShiftData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineTiltShiftData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineTransformData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineUVScrollLightData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineUVScrollLightData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineVolumeLightData.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineVolumeLightData.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineWashLightData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineWashLightData.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDefine.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDefine.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineMotionSequence.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineWorkSheet.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineWorksheetDiag.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineWorksheetDiag.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveVolumeLightTimeline.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveVolumeLightTimeline.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/AnimationUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/AnimationUpdateInfo.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/BgColorUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/BlinkLightUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/BlinkLightUpdateInfo.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/EnvironmentMirrorUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/EnvironmentMirrorUpdateInfo.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/HdrBloomUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/HdrBloomUpdateInfo.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/LaserUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/LaserUpdateInfo.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/PostEffectUpdateInfo_BloomDiffusion.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/PostEffectUpdateInfo_BloomDiffusion.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/PostFilmUpdateInfo.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/PostFilmUpdateInfo.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/Spotlight3dUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/Spotlight3dUpdateInfo.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/UVScrollLightUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/UVScrollLightUpdateInfo.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/WashLightUpdateInfo.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/UpdateInfo/WashLightUpdateInfo.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeAutoBinder.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeAutoBinder.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeController3D.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeControllerBase.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeControllerBase.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumePlaybackProvider.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumePlaybackProvider.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/MobShadowController.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/MobShadowController.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Director.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/FakeShadowController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/FakeShadowController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/FollowSpotLightController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/FollowSpotLightController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/FootLightRuntime.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/FootLightRuntime.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LaserBlink.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LaserBlink.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LaserController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LaserController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LightProjection.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LightProjection.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LightProjectionRuntimeController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LightProjectionRuntimeController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveDefine.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveDefine.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveEffectController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveEffectController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveFlashController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveFlashController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveFlashLegendController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveFlashLegendController.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LivePlaybackToolbar.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LivePlaybackToolbar.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LivePropsController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LivePropsController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveResourceRegister.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveResourceRegister.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveRuntimeDiagnostics.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveRuntimeDiagnostics.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveStageParticleController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveStageParticleController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveVolumeLightController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/LiveVolumeLightController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Master5LivePhysicsProfile.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Master5LivePhysicsProfile.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MirrorBallProjectionRuntime.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MirrorBallProjectionRuntime.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MirrorReflection.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MirrorReflection.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/MonitorUvMovieProvider.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/MonitorUvMovieProvider.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorCameraDriver.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorCameraDriver.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorDriver.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorDriver.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MultiCamera.cs"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MultiCameraComposite.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MultiCameraFinalComposite.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/MultiCameraFinalComposite.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/PostEffect.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/PostEffect/PostFilmRendererFeature.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/PostEffect/PostFilmRendererFeature.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/SkirtCollisionRuntimeTuner.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/SkirtCollisionRuntimeTuner.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Spotlight3dController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Spotlight3dController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Spotlight3dRuntime.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/Spotlight3dRuntime.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageBlinkLightDriver.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageBlinkLightDriver.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageLensFlareDriver.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageLensFlareDriver.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageMissingScriptCensus.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageMissingScriptCensus.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/CacheCamera.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/CacheCamera.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/Character3DBase.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/Character3DBase.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/GameObjectUtility.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/GameObjectUtility.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/LiveTimelineCamera.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/LiveTimelineCamera.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/StageUtil.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageScript/StageUtil.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageTransformDriver.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageTransformDriver.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageWashBeamDriver.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageWashBeamDriver.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageWashLightDriver.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/StageWashLightDriver.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/TearController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/TearController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/UnityLensFlareController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/UnityLensFlareController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/WashLightController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/WashLightController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/uv scroll light.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/uv scroll light/StageUVScrollLightDriver.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/uv scroll light/StageUVScrollLightDriver.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/uv scroll light/UVScrollLightController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/Live/uv scroll light/UVScrollLightController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LiveCharacterLoadData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/LiveCharacterLoadData.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/MirrorReflection.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/MirrorReflection.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CameraData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CameraData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ColorCorrectionCurveLut.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ColorCorrectionCurveLut.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CustomLensFlare.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CustomLensFlare.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CustomProjector.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CustomProjector.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/DepthBlurAndBloom.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/DepthBlurAndBloom.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/DofDiffusionBloomOverlayPass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/DofDiffusionBloomOverlayPass.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ExposureToneCurvePass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ExposureToneCurvePass.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/GraphicSettings.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/GraphicSettings.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/IndirectLightShaftsPass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/IndirectLightShaftsPass.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/LensFlareData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/LensFlareData.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/MirrorBallProjector.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/MirrorBallProjector.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/MultiCameraCompositePass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/MultiCameraCompositePass.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/PostImageEffectFeature.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/PostImageEffectFeature.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ProjectorRenderPass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ProjectorRenderPass.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RadialBlurPass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RadialBlurPass.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RecoveredLensFlare.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RecoveredLensFlare.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RecoveredLensFlareController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RecoveredLensFlareController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RenderTextureHandle.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RenderTextureHandle.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RenderUtils.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RenderUtils.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ScreenOverlay.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ScreenOverlay.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ScreenOverlayRender.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ScreenOverlayRender.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ShaderManager.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/ShaderManager.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/SimpleColorCorrectionPass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/SimpleColorCorrectionPass.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/SunShaftsPass.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/SunShaftsPass.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/Gallop/SkirtSurfaceCollisionSolver.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringCollisionData.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringCollisionData.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringParamDataChildElement.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringParamDataChildElement.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringParamDataElement.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringParamDataElement.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/GameObjectUtility.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/StageScript/GameObjectUtility.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/TearController.cs"
+    },
+    {
+      "change": "D",
+      "path": "Assets/Scripts/umamusume/Gallop/TearController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/gacha.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/HomeJukeboxController.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/HomeJukeboxController.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/JukeboxAudioPlayer.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/JukeboxAudioPlayer.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/JukeboxUtil.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/JukeboxUtil.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/MasterJukeboxMusicData.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/Gallop/jukebox/MasterJukeboxMusicData.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/Scripts/umamusume/GallopExtras.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/GallopMath.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Scripts/umamusume/GallopMath.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/IStandaloneFileBrowser.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/IStandaloneFileBrowser.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Linux.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Linux/x86_64.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Linux/x86_64/libStandaloneFileBrowser.so"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Linux/x86_64/libStandaloneFileBrowser.so.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Mono.Posix.dll"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Mono.Posix.dll.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Ookii.Dialogs.WinForms.dll"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/Ookii.Dialogs.WinForms.dll.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents/Info.plist"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents/Info.plist.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents/MacOS.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents/MacOS/StandaloneFileBrowser"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents/MacOS/StandaloneFileBrowser.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.jslib"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.jslib.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/System.Windows.Forms.dll"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Plugins/System.Windows.Forms.dll.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/SFB.asmdef"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/SFB.asmdef.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/BasicSample.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/BasicSample.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/BasicSampleScene.unity"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/BasicSampleScene.unity.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleOpenFileImage.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleOpenFileImage.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleOpenFileText.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleOpenFileText.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleOpenFileTextMultiple.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleOpenFileTextMultiple.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleSaveFileImage.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleSaveFileImage.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleSaveFileText.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleSaveFileText.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleScene.unity"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/Sample/CanvasSampleScene.unity.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowser.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowser.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserEditor.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserEditor.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserLinux.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserLinux.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserMac.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserMac.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserWindows.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/StandaloneFileBrowser/StandaloneFileBrowserWindows.cs.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/StreamingAssets/cri_auth"
+    },
+    {
+      "change": "D",
+      "path": "Assets/StreamingAssets/cri_auth.meta"
+    },
+    {
+      "change": "D",
+      "path": "Assets/StreamingAssets/sound_proj.acf"
+    },
+    {
+      "change": "D",
+      "path": "Assets/StreamingAssets/sound_proj.acf.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TestLegacyAnim.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TestLegacyAnim.cs.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Fonts/NotoSansCJK-OFL.txt"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Fonts/NotoSansCJK-OFL.txt.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Fonts/dynamic01 - Copy.otf"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Fonts/dynamic01 - Copy.otf.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Fonts/鍗庢枃浠垮畫.ttf"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Fonts/鍗庢枃浠垮畫.ttf.meta"
+    },
+    {
+      "change": "M",
+      "path": "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset"
+    },
+    {
+      "change": "M",
+      "path": "Assets/TextMesh Pro/Resources/Fonts & Materials/dynamic01 SDF 1.asset"
+    },
+    {
+      "change": "M",
+      "path": "Assets/TextMesh Pro/Resources/Fonts & Materials/dynamic01 SDF.asset"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Resources/Fonts & Materials/鍗庢枃浠垮畫 SDF.asset"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TextMesh Pro/Resources/Fonts & Materials/鍗庢枃浠垮畫 SDF.asset.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TransformMotionWatch.cs"
+    },
+    {
+      "change": "A",
+      "path": "Assets/TransformMotionWatch.cs.meta"
+    },
+    {
+      "change": "M",
+      "path": "Packages/manifest.json"
+    },
+    {
+      "change": "M",
+      "path": "Packages/packages-lock.json"
+    },
+    {
+      "change": "A",
+      "path": "ProjectSettings/BurstAotSettings_StandaloneWindows.json"
+    },
+    {
+      "change": "A",
+      "path": "ProjectSettings/CommonBurstAotSettings.json"
+    },
+    {
+      "change": "M",
+      "path": "ProjectSettings/GraphicsSettings.asset"
+    },
+    {
+      "change": "A",
+      "path": "ProjectSettings/Obfuz.asset"
+    },
+    {
+      "change": "M",
+      "path": "ProjectSettings/ProjectSettings.asset"
+    },
+    {
+      "change": "M",
+      "path": "ProjectSettings/TagManager.asset"
+    },
+    {
+      "change": "M",
+      "path": "README.md"
+    },
+    {
+      "change": "D",
+      "path": "Snipaste_2026-08-09_15-28-49.png"
+    },
+    {
+      "change": "D",
+      "path": "UserSettings/Search.index"
+    },
+    {
+      "change": "D",
+      "path": "UserSettings/Search.settings"
+    },
+    {
+      "change": "A",
+      "path": "docs/CLAUDE_LIVE_HANDOFF.md"
+    },
+    {
+      "change": "A",
+      "path": "docs/IMPROVEMENTS_20261001.md"
+    },
+    {
+      "change": "A",
+      "path": "docs/LIVE_RENDER_PLAN.md"
+    },
+    {
+      "change": "A",
+      "path": "docs/LIVE_RENDER_RESTORATION.md"
+    },
+    {
+      "change": "A",
+      "path": "docs/PHYSICS_MASTER5_MIGRATION.md"
+    },
+    {
+      "change": "A",
+      "path": "docs/PHYSICS_PERFORMANCE.md"
+    },
+    {
+      "change": "A",
+      "path": "docs/asmdef-compatibility-plan.md"
+    },
+    {
+      "change": "A",
+      "path": "docs/pmx-export-standard-and-postmortem.md"
+    },
+    {
+      "change": "A",
+      "path": "implementation_plan.md"
+    },
+    {
+      "change": "D",
+      "path": "tools/.gitignore"
+    },
+    {
+      "change": "A",
+      "path": "tools/ExclusiveModelBatch.cs"
+    },
+    {
+      "change": "A",
+      "path": "tools/TargetMethodLookup/Program.cs"
+    },
+    {
+      "change": "A",
+      "path": "tools/TargetMethodLookup/TargetMethodLookup.csproj"
+    },
+    {
+      "change": "A",
+      "path": "tools/analyze_flare_collision.py"
+    },
+    {
+      "change": "A",
+      "path": "tools/audit_live_bloom_source.py"
+    },
+    {
+      "change": "A",
+      "path": "tools/check_live_compile.ps1"
+    },
+    {
+      "change": "D",
+      "path": "tools/dump_bundle.py"
+    },
+    {
+      "change": "D",
+      "path": "tools/dump_cutt_typetree.py"
+    },
+    {
+      "change": "D",
+      "path": "tools/dump_meta.py"
+    },
+    {
+      "change": "A",
+      "path": "tools/export_exclusive_models.py"
+    },
+    {
+      "change": "A",
+      "path": "tools/inspect_live_native_calls.py"
+    },
+    {
+      "change": "A",
+      "path": "tools/prepare_live_film_attribution.py"
+    },
+    {
+      "change": "D",
+      "path": "tools/requirements.txt"
+    },
+    {
+      "change": "D",
+      "path": "tools/scan_live_tracks.py"
+    },
+    {
+      "change": "A",
+      "path": "tools/summarize_live_diagnostics.py"
+    },
+    {
+      "change": "D",
+      "path": "tools/uma_common.py"
+    },
+    {
+      "change": "A",
+      "path": "web/pmx-viewer/index.html"
+    },
+    {
+      "change": "A",
+      "path": "web/pmx-viewer/motion-player.js"
+    },
+    {
+      "change": "A",
+      "path": "web/pmx-viewer/package-lock.json"
+    },
+    {
+      "change": "A",
+      "path": "web/pmx-viewer/package.json"
+    },
+    {
+      "change": "A",
+      "path": "web/pmx-viewer/server.mjs"
+    },
+    {
+      "change": "A",
+      "path": "web/pmx-viewer/style.css"
+    },
+    {
+      "change": "A",
+      "path": "web/pmx-viewer/viewer.js"
+    }
+  ],
+  "self_manifest": "This file is additionally added to the commit."
+}

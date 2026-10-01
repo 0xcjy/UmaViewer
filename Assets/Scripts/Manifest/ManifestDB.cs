@@ -5,7 +5,6 @@ using System.Collections;
 using System.IO;
 using System.Text;
 using UnityEngine;
-using UnityEngine.Networking;
 using static BSVReader;
 using static ManifestCategory;
 
@@ -203,16 +202,22 @@ public class ManifestDB
             {
                 callback?.Invoke($"Downloading master.mdb", UIMessageType.Default);
                 yield return null;
-                UnityWebRequest www = UnityWebRequest.Get(UmaViewerDownload.GetGenericRequestUrl(hash));
-                yield return www.SendWebRequest();
-                if (www.result == UnityWebRequest.Result.Success)
+                byte[] data = null;
+                string error = null;
+                yield return UmaViewerDownload.DownloadBytes(UmaViewerDownload.GetGenericRequestUrl(hash), (responseData, responseError) =>
                 {
-                    File.WriteAllBytes(path, www.downloadHandler.data);
+                    data = responseData;
+                    error = responseError;
+                });
+
+                if (data != null)
+                {
+                    File.WriteAllBytes(path, data);
                 }
                 else
                 {
-                    Debug.LogError("Download Master.mdb Failed :" + www.error);
-                    callback?.Invoke("Download Master.mdb Failed :" + www.error, UIMessageType.Error);
+                    Debug.LogError("Download Master.mdb Failed :" + error);
+                    callback?.Invoke("Download Master.mdb Failed :" + error, UIMessageType.Error);
                     isError = true;
                     yield break;
                 }
@@ -305,17 +310,22 @@ public class ManifestDB
     public IEnumerator DownloadManifest(string hash)
     {
         var url = UmaViewerDownload.GetManifestRequestUrl(hash);
-        UnityWebRequest www = UnityWebRequest.Get(url);
-        www.timeout = 15;
-        yield return www.SendWebRequest();
-        if (www.result == UnityWebRequest.Result.Success)
+        byte[] data = null;
+        string error = null;
+        yield return UmaViewerDownload.DownloadBytes(url, (responseData, responseError) =>
         {
-            File.WriteAllBytes(GetManifestPath(hash), www.downloadHandler.data);
+            data = responseData;
+            error = responseError;
+        }, 15);
+
+        if (data != null)
+        {
+            File.WriteAllBytes(GetManifestPath(hash), data);
         }
         else
         {
-            Debug.LogError($"Download Manifest Failed :{url} {www.error}");
-            callback?.Invoke($"Download Manifest Failed :{www.error}", UIMessageType.Error);
+            Debug.LogError($"Download Manifest Failed :{url} {error}");
+            callback?.Invoke($"Download Manifest Failed :{error}", UIMessageType.Error);
             isError = true;
             yield break;
         }
@@ -352,4 +362,3 @@ public class ManifestDB
     }
 
 }
-

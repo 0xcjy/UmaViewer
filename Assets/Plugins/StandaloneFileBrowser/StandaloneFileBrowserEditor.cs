@@ -1,9 +1,9 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 
 using System;
 using UnityEditor;
 
-namespace SFB {
+namespace SFB.LegacyWindows {
     public class StandaloneFileBrowserEditor : IStandaloneFileBrowser  {
         public string[] OpenFilePanel(string title, string directory, ExtensionFilter[] extensions, bool multiselect) {
             string path = "";
@@ -54,3 +54,4 @@ namespace SFB {
 }
 
 #endif
+

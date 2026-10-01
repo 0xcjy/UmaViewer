@@ -10,6 +10,8 @@ public class UISettingsAnimation : MonoBehaviour
     public TextMeshProUGUI ProgressText;
     public Slider ProgressSlider;
     public Button PlayButton;
+    public Sprite PlayIcon;
+    public Sprite PauseIcon;
     public TextMeshProUGUI SpeedText;
     public Slider SpeedSlider;
     public Button VMDButton;
@@ -21,12 +23,13 @@ public class UISettingsAnimation : MonoBehaviour
             bool isLoop = umaContainer.OverrideController["clip_2"].name.Contains("_loop");
             var AnimeState = umaContainer.UmaAnimator.GetCurrentAnimatorStateInfo(0);
             var AnimeClip = umaContainer.OverrideController["clip_2"];
-            if (AnimeClip && umaContainer.UmaAnimator.speed != 0)
+            if (AnimeClip)
             {
                 var normalizedTime = (isLoop) ? Mathf.Repeat(AnimeState.normalizedTime, 1) : Mathf.Min(AnimeState.normalizedTime, 1);
                 TitleText.text = AnimeClip.name;
                 ProgressText.text = string.Format("{0} / {1}", ToFrameFormat(normalizedTime * AnimeClip.length, AnimeClip.frameRate), ToFrameFormat(AnimeClip.length, AnimeClip.frameRate));
                 ProgressSlider.SetValueWithoutNotify(normalizedTime);
+                UpdatePlayButtonIcon(umaContainer.UmaAnimator.speed > 0f && (isLoop || AnimeState.normalizedTime < 1f));
             }
         }
     }
@@ -48,6 +51,7 @@ public class UISettingsAnimation : MonoBehaviour
             if (animator_face)
                 animator_face.speed = 0;
             animator_cam.speed = 0;
+            UpdatePlayButtonIcon(false);
         }
         else if (AnimeState.normalizedTime < 1f)
         {
@@ -55,6 +59,7 @@ public class UISettingsAnimation : MonoBehaviour
             animator_cam.speed = SpeedSlider.value;
             if (animator_face)
                 animator_face.speed = SpeedSlider.value;
+            UpdatePlayButtonIcon(true);
         }
         else
         {
@@ -69,6 +74,7 @@ public class UISettingsAnimation : MonoBehaviour
                 animator_face.Play(0, 0, 0);
                 animator_face.Play(0, 1, 0);
             }
+            UpdatePlayButtonIcon(true);
         }
     }
 
@@ -99,6 +105,8 @@ public class UISettingsAnimation : MonoBehaviour
                 animator_face.Play(0, 1, val);
             }
 
+            UpdatePlayButtonIcon(false);
+
             ProgressText.text = string.Format("{0} / {1}", ToFrameFormat(val * AnimeClip.length, AnimeClip.frameRate), ToFrameFormat(AnimeClip.length, AnimeClip.frameRate));
         }
     }
@@ -115,6 +123,16 @@ public class UISettingsAnimation : MonoBehaviour
         if (container.UmaFaceAnimator)
         {
             container.UmaFaceAnimator.speed = val;
+        }
+
+        UpdatePlayButtonIcon(val > 0f);
+    }
+
+    private void UpdatePlayButtonIcon(bool isPlaying)
+    {
+        if (PlayButton)
+        {
+            PlayButton.image.sprite = isPlaying ? PauseIcon : PlayIcon;
         }
     }
 

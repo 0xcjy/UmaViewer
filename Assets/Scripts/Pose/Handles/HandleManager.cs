@@ -33,9 +33,6 @@ public class HandleManager : MonoBehaviour
 
     private void Update()
     {
-        if (UmaViewerUI.Instance == null || UmaViewerUI.Instance.PoseManager == null)
-            return;
-
         var camera = Camera.main;
         var poseModeOn = UmaViewerUI.Instance.PoseManager.PoseModeOn;
 

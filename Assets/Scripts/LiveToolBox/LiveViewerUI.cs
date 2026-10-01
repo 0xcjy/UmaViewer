@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -22,15 +22,114 @@ public class LiveViewerUI : MonoBehaviour
 
     public List<UmaLyricsData> CurrentLyrics = new List<UmaLyricsData>();
 
+    private UnityEngine.UI.Text progressSeconds;
+    private UnityEngine.UI.Text dofButtonLabel;
+    private int displayedCurrentTenth = -1;
+    private int displayedTotalTenth = -1;
+
     float targetHeight = 0;
     float height;
     private void Awake()
     {
+        if (Config.Instance == null)
+        {
+            new Config();
+        }
+        ApplyFrameRateOptions();
+        UmaViewerMain.ApplyFrameRateLimit();
+
         height = BottonUITransform.rect.height;
         targetHeight = 0;
         Invoke(nameof(HideSlider), 1.5f);
         Instance = this;
+        CreatePlaybackDiagnostics();
         //TrueProgressBar = (UnityEngine.UIElements.Slider)ProgressBar;
+    }
+
+    // The scene reserves 200 canvas units on each side of the progress slider.
+    private void CreatePlaybackDiagnostics()
+    {
+        if (ProgressBar == null || BottonUITransform == null) return;
+        progressSeconds = CreateDiagnosticText("ProgressSeconds", BottonUITransform);
+        var rect = progressSeconds.rectTransform;
+        rect.anchorMin = rect.anchorMax = new Vector2(1, 0.5f);
+        rect.pivot = new Vector2(1, 0.5f);
+        rect.anchoredPosition = new Vector2(-8, 0);
+        rect.sizeDelta = new Vector2(184, 24);
+        progressSeconds.alignment = TextAnchor.MiddleRight;
+        progressSeconds.text = "0.0s / 0.0s";
+
+        var buttonObject = new GameObject("DofDiagnosticToggle", typeof(RectTransform),
+            typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+        buttonObject.layer = BottonUITransform.gameObject.layer;
+        var buttonRect = (RectTransform)buttonObject.transform;
+        buttonRect.SetParent(BottonUITransform, false);
+        buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0, 0.5f);
+        buttonRect.pivot = new Vector2(0, 0.5f);
+        buttonRect.anchoredPosition = new Vector2(8, 0);
+        buttonRect.sizeDelta = new Vector2(176, 24);
+        var image = buttonObject.GetComponent<UnityEngine.UI.Image>();
+        image.color = new Color(0.08f, 0.08f, 0.08f, 0.9f);
+        var button = buttonObject.GetComponent<UnityEngine.UI.Button>();
+        button.targetGraphic = image;
+        button.navigation = new UnityEngine.UI.Navigation { mode = UnityEngine.UI.Navigation.Mode.None };
+        button.onClick.AddListener(() =>
+        {
+            Gallop.GallopImageEffect.SetUserDofEnabled(!Gallop.GallopImageEffect.UserDofEnabled);
+            RefreshDofLabel();
+            OnMouse(true);
+            OnMouse(false);
+        });
+        dofButtonLabel = CreateDiagnosticText("Label", buttonRect);
+        dofButtonLabel.rectTransform.anchorMin = Vector2.zero;
+        dofButtonLabel.rectTransform.anchorMax = Vector2.one;
+        dofButtonLabel.rectTransform.sizeDelta = Vector2.zero;
+        RefreshDofLabel();
+    }
+
+    private UnityEngine.UI.Text CreateDiagnosticText(string name, RectTransform parent)
+    {
+        var textObject = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Text));
+        textObject.layer = parent.gameObject.layer;
+        textObject.transform.SetParent(parent, false);
+        var text = textObject.GetComponent<UnityEngine.UI.Text>();
+        text.font = FrameRateDropDown != null && FrameRateDropDown.captionText != null
+            ? FrameRateDropDown.captionText.font : null;
+        if (text.font == null && LyricsText != null) text.font = LyricsText.font;
+        if (text.font == null) text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.fontSize = 16;
+        text.color = Color.white;
+        text.alignment = TextAnchor.MiddleCenter;
+        text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.raycastTarget = false;
+        return text;
+    }
+
+    private void RefreshDofLabel()
+    {
+        if (dofButtonLabel != null)
+            dofButtonLabel.text = Gallop.GallopImageEffect.UserDofEnabled ? "DOF: ON (test)" : "DOF: OFF";
+    }
+
+    private void LateUpdate()
+    {
+        if (progressSeconds == null) return;
+        var director = Gallop.Live.Director.instance;
+        float total = director != null ? director.totalTime : 0f;
+        if (float.IsNaN(total) || float.IsInfinity(total) || total < 0) total = 0;
+        bool seeking = director != null && director.sliderControl != null &&
+            (director.sliderControl.is_Touched || director.sliderControl.is_Outed);
+        float current = director == null ? 0f : seeking
+            ? ProgressBar.normalizedValue * total : director._liveCurrentTime;
+        if (float.IsNaN(current) || float.IsInfinity(current)) current = 0;
+        int currentTenth = Mathf.FloorToInt(Mathf.Clamp(current, 0, total) * 10f);
+        int totalTenth = Mathf.FloorToInt(total * 10f);
+        if (currentTenth == displayedCurrentTenth && totalTenth == displayedTotalTenth) return;
+        displayedCurrentTenth = currentTenth;
+        displayedTotalTenth = totalTenth;
+        progressSeconds.text = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+            "{0:F1}s / {1:F1}s", currentTenth / 10f, totalTenth / 10f);
     }
 
     public void OnMouse(bool isEnter)
@@ -58,8 +157,19 @@ public class LiveViewerUI : MonoBehaviour
 
     public void SetFrameRate(int fps)
     {
-        QualitySettings.vSyncCount = 0;
-        Application.targetFrameRate = int.Parse(FrameRateDropDown.options[fps].text);
+        Config.Instance.TargetFrameRate = fps == 1 ? 30 : 60;
+        Config.Instance.UpdateConfig(false);
+        UmaViewerMain.ApplyFrameRateLimit();
+    }
+
+    private void ApplyFrameRateOptions()
+    {
+        if (FrameRateDropDown == null) return;
+
+        FrameRateDropDown.ClearOptions();
+        FrameRateDropDown.AddOptions(new List<string> { "60", "30" });
+        FrameRateDropDown.SetValueWithoutNotify(Config.Instance.GetTargetFrameRate() == 30 ? 1 : 0);
+        FrameRateDropDown.RefreshShownValue();
     }
 
     public void UpdateLyrics(float time)

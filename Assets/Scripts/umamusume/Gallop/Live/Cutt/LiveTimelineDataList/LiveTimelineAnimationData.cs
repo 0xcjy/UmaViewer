@@ -1,0 +1,23 @@
+using System;
+
+namespace Gallop.Live.Cutt
+{
+    [Serializable]
+    public class LiveTimelineAnimationData : ILiveTimelineGroupDataWithName
+    {
+        private const string default_name = "Animation";
+
+        public LiveTimelineKeyAnimationDataList keys;
+
+        public override ILiveTimelineKeyDataList GetKeyList()
+        {
+            return keys;
+        }
+
+        public LiveTimelineAnimationData()
+            : base(default_name)
+        {
+            keys = new LiveTimelineKeyAnimationDataList();
+        }
+    }
+}

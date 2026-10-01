@@ -6,32 +6,31 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyVolumeLightData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType => LiveTimelineKeyDataType.VolumeLight;
         public Vector3 sunPosition;
-        public Color color1;
-        public float power;
-        public float komorebi;
-        public float blurRadius;
-        public float ColorRate;
-        public float ScreenColorPower;
-        public float EffectColorPower;
-        public bool enable;
-        public bool isEnabledBorderClear;
-        public string BlinkLightName;
-        public int BlinkLightNameHash;
-        public int BlinkLightContainerIndex;
-        public float BlinkLightBrightnessPower;
-        public bool IsAdjustedBlinkLightColor;
+        public Color color1 = Color.white;
+        public float power, komorebi, blurRadius, ColorRate;
+        public float ScreenColorPower = 1f, EffectColorPower = 1f;
+        public bool enable, isEnabledBorderClear;
+        public string BlinkLightName = string.Empty;
+        public int BlinkLightNameHash, BlinkLightContainerIndex;
+        public float BlinkLightBrightnessPower = 1f;
+        public bool IsAdjustedBlinkLightColor = true;
+        public bool IsEnabledBlurAlpha => ((int)attribute & 0x10000) != 0;
+        public bool IsSyncBlinkLight => ((int)attribute & 0x20000) != 0;
     }
 
     [Serializable]
-    public class LiveTimelineKeyVolumeLightDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyVolumeLightData>
-    {
-    }
+    public class LiveTimelineKeyVolumeLightDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyVolumeLightData> { }
 
     [Serializable]
     public class LiveTimelineVolumeLightData : ILiveTimelineGroupDataWithName
     {
-        private const string default_name = "VolumeLight";
+        public override ILiveTimelineKeyDataList GetKeyList() => keys;
+        public LiveTimelineVolumeLightData() : base("VolumeLight")
+        {
+            keys = new LiveTimelineKeyVolumeLightDataList();
+        }
         public LiveTimelineKeyVolumeLightDataList keys;
     }
 }

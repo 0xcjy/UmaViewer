@@ -69,8 +69,6 @@ namespace Gallop
                         float _yScroll = calcUV(p[2], p[3], p[7], a);
                         float _powerScroll = calcUV(p[4], p[5], p[8], a);
 
-                        Debug.Log(_powerScroll);
-
                         mat.SetVector("_UVEmissiveScroll", new Vector4(_xScroll, _yScroll, 0, 0));
                         mat.SetFloat("_UVEmissivePower", _powerScroll);
                     }

@@ -1,0 +1,16 @@
+﻿{
+  "name": "Gallop.Legacy",
+  "rootNamespace": "Gallop",
+  "references": ["umamusume", "RootMotionsScript"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": ["GALLOP_LEGACY_COMPAT_UNSUPPORTED"],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
+
+

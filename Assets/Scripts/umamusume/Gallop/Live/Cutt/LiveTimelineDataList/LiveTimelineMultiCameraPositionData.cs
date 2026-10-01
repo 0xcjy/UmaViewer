@@ -18,21 +18,25 @@ namespace Gallop.Live.Cutt
             LeftUp = 6,
             RightUp = 7,
             LeftDown = 8,
-            RightDown = 9
+            RightDown = 9,
+            Fan = 10
         }
 
         public bool enableMultiCamera;
         public float fadeTime;
-        public float lineThickness;
+        public float lineThickness = 0.015f;
         public MultiCameraComposite.DivideLineType LineType;
-        public Color LineColor;
-        public float LineAntialiasing;
+        public Color LineColor = Color.white;
+        public float LineAntialiasing = 0.1f;
         public LiveTimelineKeyMultiCameraPositionData.MaskType maskType;
         public bool updateMainCamera;
         public float roll;
-        public float fov;
+        public float fov = 20f;
         public float maskRoll;
         public Vector2 maskOffset;
+        public float MaskCentralAngle;
+
+        public override LiveTimelineKeyDataType dataType => LiveTimelineKeyDataType.MultiCameraPos;
 
 
     }
@@ -47,6 +51,8 @@ namespace Gallop.Live.Cutt
     public class LiveTimelineMultiCameraPositionData : ILiveTimelineGroupDataWithName
     {
         private const string default_name = "MultiCameraPos";
+        public int MultiCameraNo;
         public LiveTimelineKeyMultiCameraPositionDataList keys;
+        public override ILiveTimelineKeyDataList GetKeyList() => keys;
     }
 }

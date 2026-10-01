@@ -75,13 +75,15 @@ namespace LibMMD.Writer
                 MMDReaderWriteUtil.WriteIndex(writer, joint.AssociatedRigidBodyIndex[0], pmxConfig.RigidBodyIndexSize);
                 MMDReaderWriteUtil.WriteIndex(writer, joint.AssociatedRigidBodyIndex[1], pmxConfig.RigidBodyIndexSize);
                 MMDReaderWriteUtil.WriteVector3(writer, joint.Position);
-                MMDReaderWriteUtil.WriteAmpVector3(writer, joint.Rotation, Mathf.Rad2Deg);
-                MMDReaderWriteUtil.WriteVector3(writer, joint.PositionLowLimit);
-                MMDReaderWriteUtil.WriteVector3(writer, joint.PositionHiLimit);
-                MMDReaderWriteUtil.WriteVector3(writer, joint.RotationLowLimit, false);
-                MMDReaderWriteUtil.WriteVector3(writer, joint.RotationHiLimit, false);
-                MMDReaderWriteUtil.WriteVector3(writer, joint.SpringTranslate);
-                MMDReaderWriteUtil.WriteVector3(writer, joint.SpringRotate, false);
+                MMDReaderWriteUtil.WriteEulerRotation(writer, joint.Rotation);
+                MMDReaderWriteUtil.WritePositionLimitPair(
+                    writer, joint.PositionLowLimit, joint.PositionHiLimit);
+                // PMX Joint 角限制和旋转弹簧是原始轴分量，单位为弧度，不属于空间坐标。
+                MMDReaderWriteUtil.WriteRawVector3(writer, joint.RotationLowLimit);
+                MMDReaderWriteUtil.WriteRawVector3(writer, joint.RotationHiLimit);
+                // 平移弹簧是各轴刚度，不是带模型尺寸的空间位置。
+                MMDReaderWriteUtil.WriteRawVector3(writer, joint.SpringTranslate);
+                MMDReaderWriteUtil.WriteRawVector3(writer, joint.SpringRotate);
             }
         }
 
@@ -93,12 +95,13 @@ namespace LibMMD.Writer
                 MMDReaderWriteUtil.WriteSizedString(writer, rigidBody.Name, pmxConfig.Encoding); // Name
                 MMDReaderWriteUtil.WriteSizedString(writer, rigidBody.NameEn, pmxConfig.Encoding); // NameEn
                 MMDReaderWriteUtil.WriteIndex(writer, rigidBody.AssociatedBoneIndex, pmxConfig.BoneIndexSize); // AssociatedBoneIndex
-                writer.Write(rigidBody.CollisionGroup); // CollisionGroup
+                // PMX 的碰撞组字段固定为 1 字节；直接写 int 会令后续刚体数据错位。
+                writer.Write((byte)rigidBody.CollisionGroup); // CollisionGroup
                 writer.Write(rigidBody.CollisionMask); // CollisionMask
                 writer.Write((byte)rigidBody.Shape); // Shape
                 MMDReaderWriteUtil.WriteRawCoordinateVector3(writer, rigidBody.Dimemsions); // Dimemsions
                 MMDReaderWriteUtil.WriteVector3(writer, rigidBody.Position); // Position
-                MMDReaderWriteUtil.WriteAmpVector3(writer, rigidBody.Rotation, Mathf.Deg2Rad); // Rotation
+                MMDReaderWriteUtil.WriteEulerRotation(writer, rigidBody.Rotation); // Rotation
                 writer.Write(rigidBody.Mass); // Mass
                 writer.Write(rigidBody.TranslateDamp); // TranslateDamp
                 writer.Write(rigidBody.RotateDamp); // RotateDamp
@@ -328,9 +331,30 @@ namespace LibMMD.Writer
                 writer.Write(link.HasLimit ? (byte)1 : (byte)0);
                 if (link.HasLimit)
                 {
-                    MMDReaderWriteUtil.WriteVector3(writer, link.LoLimit, false);
-                    MMDReaderWriteUtil.WriteVector3(writer, link.HiLimit, false);
+                    WriteIkAngleLimits(writer, link.LoLimit, link.HiLimit);
                 }
+            }
+        }
+
+        private static void WriteIkAngleLimits(BinaryWriter writer, Vector3 lower, Vector3 upper)
+        {
+            ValidateFinite(lower, "IK lower limit");
+            ValidateFinite(upper, "IK upper limit");
+
+            // PMX IK 区间是原始欧拉角弧度；不能复用空间向量的尺寸倍率或 X/Z 翻轴。
+            Vector3 pmxLower = Vector3.Min(lower, upper);
+            Vector3 pmxUpper = Vector3.Max(lower, upper);
+            MMDReaderWriteUtil.WriteRawVector3(writer, pmxLower);
+            MMDReaderWriteUtil.WriteRawVector3(writer, pmxUpper);
+        }
+
+        private static void ValidateFinite(Vector3 value, string fieldName)
+        {
+            if (float.IsNaN(value.x) || float.IsInfinity(value.x) ||
+                float.IsNaN(value.y) || float.IsInfinity(value.y) ||
+                float.IsNaN(value.z) || float.IsInfinity(value.z))
+            {
+                throw new MMDFileParseException(fieldName + " contains NaN or Infinity");
             }
         }
 

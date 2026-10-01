@@ -45,6 +45,9 @@ public class UmaDatabaseController
     public List<DataRow> LiveData;
     public List<DataRow> DressData;
 
+    //从master里面取点歌机歌曲目录
+    public Gallop.MasterJukeboxMusicData JukeboxMusicData;
+
 
     //修改(载入通用服装ColorSet相关)
     public List<DataRow> CharaDressColor;
@@ -64,6 +67,20 @@ public class UmaDatabaseController
             {
                 dbKey = Config.Instance.GlobalDBKey;
             }
+
+#if UNITY_ANDROID || UNITY_IOS || UNITY_IPHONE
+            EnsureMobileDatabaseFiles();
+
+            var mobileMetaPath = Path.Combine(Config.Instance.MainPath, "meta");
+            var mobileMasterPath = Path.Combine(Config.Instance.MainPath, "master", "master.mdb");
+
+            if (!File.Exists(mobileMetaPath)) throw new FileNotFoundException("Mobile meta database not found", mobileMetaPath);
+            if (!File.Exists(mobileMasterPath)) throw new FileNotFoundException("Mobile master database not found", mobileMasterPath);
+
+            var encryptedDbKey = GenFinalKey((byte[])dbKey.Clone());
+            MetaEntries = ReadMetaFromEncryptedDb(mobileMetaPath, encryptedDbKey, 3);
+            masterDb = new SqliteConnection($@"Data Source={mobileMasterPath};");
+#else
             if (Config.Instance.WorkMode == WorkMode.Standalone)
             {
                 if (!File.Exists($@"{Config.Instance.MainPath}/meta_umaviewer")) throw new Exception();
@@ -82,12 +99,12 @@ public class UmaDatabaseController
                 metaDb.Open();
                 MetaEntries = ReadMeta(metaDb);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 try
                 {
                     var dbPath = $@"{Config.Instance.MainPath}/meta";
-                    var key = GenFinalKey(dbKey);
+                    var key = GenFinalKey((byte[])dbKey.Clone());
                     MetaEntries = ReadMetaFromEncryptedDb(dbPath, key, 3);
                 }
                 catch (Exception)
@@ -95,6 +112,7 @@ public class UmaDatabaseController
                     throw;
                 }
             }
+#endif
 
 
             masterDb.Open();
@@ -103,6 +121,7 @@ public class UmaDatabaseController
             FaceTypeData = ReadFaceTypeData(masterDb);
             LiveData = ReadAllLiveData(masterDb);
             DressData = ReadAllDressData(masterDb);
+            JukeboxMusicData = new Gallop.MasterJukeboxMusicData(masterDb);
 
 
             //修改(载入通用服装ColorSet相关)
@@ -116,9 +135,14 @@ public class UmaDatabaseController
             }
 #endif
         }
-        catch
+        catch (Exception ex)
         {
+            Debug.LogError("Database initialization failed: " + ex);
             CloseAllConnection();
+#if UNITY_ANDROID || UNITY_IOS || UNITY_IPHONE
+            var msg = $"Mobile database initialization failed at: {Config.Instance.MainPath}\n{ex.GetType().Name}: {ex.Message}";
+            WriteMobileDatabaseErrorLog(ex);
+#else
             var msg = $"Database not found at: {Config.Instance.MainPath}";
             if (Config.Instance.WorkMode == WorkMode.Standalone)
             {
@@ -135,8 +159,82 @@ public class UmaDatabaseController
             {
                 msg += "\nPlease make sure the game client is installed and follow the instructions on GitHub.";
             }
+#endif
             UmaViewerUI.Instance.ShowMessage(msg, UIMessageType.Error);
         }
+    }
+
+    private static void WriteMobileDatabaseErrorLog(Exception ex)
+    {
+#if UNITY_ANDROID || UNITY_IOS || UNITY_IPHONE
+        try
+        {
+            var logPath = Path.Combine(Config.Instance.MainPath, "MobileDatabaseInitError.txt");
+            File.WriteAllText(logPath, ex.ToString());
+        }
+        catch
+        {
+        }
+#endif
+    }
+
+    private static void EnsureMobileDatabaseFiles()
+    {
+        Directory.CreateDirectory(Config.Instance.MainPath);
+        CopyBuiltinDatabaseToFile("Database/meta", Path.Combine(Config.Instance.MainPath, "meta"));
+        CopyBuiltinDatabaseToFile("Database/master.mdb", Path.Combine(Config.Instance.MainPath, "master", "master.mdb"));
+    }
+
+    private static void CopyBuiltinDatabaseToFile(string resourcePath, string targetPath)
+    {
+        var asset = UnityEngine.Resources.Load<UnityEngine.TextAsset>(resourcePath);
+        if (asset == null)
+        {
+            throw new FileNotFoundException($"Built-in database resource not found: Resources/{resourcePath}.bytes");
+        }
+
+        try
+        {
+            var bytes = asset.bytes;
+            var target = new FileInfo(targetPath);
+            if (target.Exists && target.Length == bytes.LongLength)
+            {
+                MarkNoBackup(targetPath);
+                return;
+            }
+
+            var directory = Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+                MarkNoBackup(directory);
+            }
+
+            var tempPath = targetPath + ".tmp";
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+
+            File.WriteAllBytes(tempPath, bytes);
+            if (File.Exists(targetPath))
+            {
+                File.Delete(targetPath);
+            }
+            File.Move(tempPath, targetPath);
+            MarkNoBackup(targetPath);
+        }
+        finally
+        {
+            UnityEngine.Resources.UnloadAsset(asset);
+        }
+    }
+
+    private static void MarkNoBackup(string path)
+    {
+#if UNITY_IOS || UNITY_IPHONE
+        UnityEngine.iOS.Device.SetNoBackupFlag(path);
+#endif
     }
 
 
@@ -474,6 +572,8 @@ public class UmaDatabaseController
 
     public void CloseAllConnection()
     {
+        JukeboxMusicData?.Unload();
+        JukeboxMusicData = null;
         masterDb?.Close();
         metaDb?.Close();
         masterDb?.Dispose();

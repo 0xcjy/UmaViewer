@@ -43,7 +43,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
         左薬指１, 左薬指２, 左薬指３, 左小指１, 左小指２, 左小指３, 右親指１, 右親指２,
         右人指１, 右人指２, 右人指３, 右中指１, 右中指２, 右中指３, 右薬指１, 右薬指２,
         右薬指３, 右小指１, 右小指２, 右小指３, 左足, 右足, 左ひざ, 右ひざ,
-        左足首, 右足首, 左足先EX, 右足先EX, None
+        左足首, 右足首, 左足先EX, 右足先EX, 左目, 右目, 左耳, 右耳, 左耳1, 右耳1, 左耳2, 右耳2, 顎, 左親指０, 右親指０, None
     }
     //コンストラクタにて初期化
     //全てのボーンを名前で引く辞書
@@ -54,8 +54,45 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
     Dictionary<BoneNames, List<Vector3>> positionDictionary = new Dictionary<BoneNames, List<Vector3>>();
     Dictionary<BoneNames, List<Vector3>> positionDictionarySaved = new Dictionary<BoneNames, List<Vector3>>();
     Dictionary<BoneNames, List<Quaternion>> rotationDictionary = new Dictionary<BoneNames, List<Quaternion>>();
-    Dictionary<BoneNames, List<Quaternion>> rotationDictionarySaved = new Dictionary<BoneNames, List<Quaternion>>();
+    public Dictionary<BoneNames, List<Quaternion>> rotationDictionarySaved { get; private set; } = new Dictionary<BoneNames, List<Quaternion>>();
     Dictionary<int, bool> visitableDictionary = new Dictionary<int, bool>();
+
+    [Serializable]
+    public struct MorphValue
+    {
+        public float value;
+        public bool enabled;
+        public MorphValue(float value, bool enabled)
+        {
+            this.value = value;
+            this.enabled = enabled;
+        }
+    }
+
+    public struct BlendShapeLink
+    {
+        public SkinnedMeshRenderer renderer;
+        public int index;
+        public FacialMorph morph;
+        public BlendShapeLink(SkinnedMeshRenderer renderer, int index, FacialMorph morph)
+        {
+            this.renderer = renderer;
+            this.index = index;
+            this.morph = morph;
+        }
+    }
+
+    public struct GhostEntry
+    {
+        public Transform ghost;
+        public bool enabled;
+        public GhostEntry(Transform ghost, bool enabled)
+        {
+            this.ghost = ghost;
+            this.enabled = enabled;
+        }
+    }
+
     //ボーン移動量の補正係数
     //この値は大体の値、正確ではない
     const float DefaultBoneAmplifier = 12.5f;
@@ -81,58 +118,71 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
             {
                 //下半身などというものはUnityにはない
                 { BoneNames.全ての親, transform},
-                { BoneNames.センター, objs.Find(a=>a.name.Equals("Hip"))},
-                { BoneNames.上半身,   objs.Find(a=>a.name.Equals("Spine"))},
-                { BoneNames.上半身2,  objs.Find(a=>a.name.Equals("Chest"))},
-                { BoneNames.頭,       objs.Find(a=>a.name.Equals("Head"))},
-                { BoneNames.首,       objs.Find(a=>a.name.Equals("Neck"))},
-                { BoneNames.左肩,     objs.Find(a=>a.name.Equals("Shoulder_L"))},
-                { BoneNames.右肩,     objs.Find(a=>a.name.Equals("Shoulder_R"))},
-                { BoneNames.左腕,     objs.Find(a=>a.name.Equals("Arm_L"))},
-                { BoneNames.右腕,     objs.Find(a=>a.name.Equals("Arm_R"))},
-                { BoneNames.左ひじ,   objs.Find(a=>a.name.Equals("Elbow_L"))},
-                { BoneNames.右ひじ,   objs.Find(a=>a.name.Equals("Elbow_R"))},
-                { BoneNames.左手首,   objs.Find(a=>a.name.Equals("Wrist_L"))},
-                { BoneNames.右手首,   objs.Find(a=>a.name.Equals("Wrist_R"))},
-                { BoneNames.左親指１, objs.Find(a=>a.name.Equals("Thumb_02_L"))},
-                { BoneNames.右親指１, objs.Find(a=>a.name.Equals("Thumb_02_R"))},
-                { BoneNames.左親指２, objs.Find(a=>a.name.Equals("Thumb_03_L"))},
-                { BoneNames.右親指２, objs.Find(a=>a.name.Equals("Thumb_03_R"))},
-                { BoneNames.左人指１, objs.Find(a=>a.name.Equals("Index_01_L"))},
-                { BoneNames.右人指１, objs.Find(a=>a.name.Equals("Index_01_R"))},
-                { BoneNames.左人指２, objs.Find(a=>a.name.Equals("Index_02_L"))},
-                { BoneNames.右人指２, objs.Find(a=>a.name.Equals("Index_02_R"))},
-                { BoneNames.左人指３, objs.Find(a=>a.name.Equals("Index_03_L"))},
-                { BoneNames.右人指３, objs.Find(a=>a.name.Equals("Index_03_R"))},
-                { BoneNames.左中指１, objs.Find(a=>a.name.Equals("Middle_01_L"))},
-                { BoneNames.右中指１, objs.Find(a=>a.name.Equals("Middle_01_R"))},
-                { BoneNames.左中指２, objs.Find(a=>a.name.Equals("Middle_02_L"))},
-                { BoneNames.右中指２, objs.Find(a=>a.name.Equals("Middle_02_R"))},
-                { BoneNames.左中指３, objs.Find(a=>a.name.Equals("Middle_03_L"))},
-                { BoneNames.右中指３, objs.Find(a=>a.name.Equals("Middle_03_R"))},
-                { BoneNames.左薬指１, objs.Find(a=>a.name.Equals("Ring_01_L"))},
-                { BoneNames.右薬指１, objs.Find(a=>a.name.Equals("Ring_01_R"))},
-                { BoneNames.左薬指２, objs.Find(a=>a.name.Equals("Ring_02_L"))},
-                { BoneNames.右薬指２, objs.Find(a=>a.name.Equals("Ring_02_R"))},
-                { BoneNames.左薬指３, objs.Find(a=>a.name.Equals("Ring_03_L"))},
-                { BoneNames.右薬指３, objs.Find(a=>a.name.Equals("Ring_03_R"))},
-                { BoneNames.左小指１, objs.Find(a=>a.name.Equals("Pinky_01_L"))},
-                { BoneNames.右小指１, objs.Find(a=>a.name.Equals("Pinky_01_R"))},
-                { BoneNames.左小指２, objs.Find(a=>a.name.Equals("Pinky_02_L"))},
-                { BoneNames.右小指２, objs.Find(a=>a.name.Equals("Pinky_02_R"))},
-                { BoneNames.左小指３, objs.Find(a=>a.name.Equals("Pinky_03_L"))},
-                { BoneNames.右小指３, objs.Find(a=>a.name.Equals("Pinky_03_R"))},
-                { BoneNames.左足ＩＫ, objs.Find(a=>a.name.Equals("Ankle_L"))},
-                { BoneNames.右足ＩＫ, objs.Find(a=>a.name.Equals("Ankle_R"))},
-                { BoneNames.左足,     objs.Find(a=>a.name.Equals("Thigh_L"))},
-                { BoneNames.右足,     objs.Find(a=>a.name.Equals("Thigh_R"))},
-                { BoneNames.左ひざ,   objs.Find(a=>a.name.Equals("Knee_L"))},
-                { BoneNames.右ひざ,   objs.Find(a=>a.name.Equals("Knee_R"))},
-                { BoneNames.左足首,   objs.Find(a=>a.name.Equals("Ankle_L"))},
-                { BoneNames.右足首,   objs.Find(a=>a.name.Equals("Ankle_R"))},
-                { BoneNames.左足先EX, objs.Find(a=>a.name.Equals("Toe_L"))},
-                { BoneNames.右足先EX, objs.Find(a=>a.name.Equals("Toe_R"))}
+                { BoneNames.センター, objs.Find(a=>a.name.Equals("Hip", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.上半身,   objs.Find(a=>a.name.Equals("Spine", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.上半身2,  objs.Find(a=>a.name.Equals("Chest", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.頭,       objs.Find(a=>a.name.Equals("Head", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.首,       objs.Find(a=>a.name.Equals("Neck", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左肩,     objs.Find(a=>a.name.Equals("Shoulder_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右肩,     objs.Find(a=>a.name.Equals("Shoulder_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左腕,     objs.Find(a=>a.name.Equals("Arm_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右腕,     objs.Find(a=>a.name.Equals("Arm_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左ひじ,   objs.Find(a=>a.name.Equals("Elbow_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右ひじ,   objs.Find(a=>a.name.Equals("Elbow_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左手首,   objs.Find(a=>a.name.Equals("Wrist_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右手首,   objs.Find(a=>a.name.Equals("Wrist_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左親指１, objs.Find(a=>a.name.Equals("Thumb_02_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右親指１, objs.Find(a=>a.name.Equals("Thumb_02_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左親指２, objs.Find(a=>a.name.Equals("Thumb_03_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右親指２, objs.Find(a=>a.name.Equals("Thumb_03_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左人指１, objs.Find(a=>a.name.Equals("Index_01_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右人指１, objs.Find(a=>a.name.Equals("Index_01_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左人指２, objs.Find(a=>a.name.Equals("Index_02_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右人指２, objs.Find(a=>a.name.Equals("Index_02_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左人指３, objs.Find(a=>a.name.Equals("Index_03_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右人指３, objs.Find(a=>a.name.Equals("Index_03_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左中指１, objs.Find(a=>a.name.Equals("Middle_01_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右中指１, objs.Find(a=>a.name.Equals("Middle_01_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左中指２, objs.Find(a=>a.name.Equals("Middle_02_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右中指２, objs.Find(a=>a.name.Equals("Middle_02_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左中指３, objs.Find(a=>a.name.Equals("Middle_03_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右中指３, objs.Find(a=>a.name.Equals("Middle_03_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左薬指１, objs.Find(a=>a.name.Equals("Ring_01_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右薬指１, objs.Find(a=>a.name.Equals("Ring_01_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左薬指２, objs.Find(a=>a.name.Equals("Ring_02_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右薬指２, objs.Find(a=>a.name.Equals("Ring_02_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左薬指３, objs.Find(a=>a.name.Equals("Ring_03_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右薬指３, objs.Find(a=>a.name.Equals("Ring_03_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左小指１, objs.Find(a=>a.name.Equals("Pinky_01_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右小指１, objs.Find(a=>a.name.Equals("Pinky_01_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左小指２, objs.Find(a=>a.name.Equals("Pinky_02_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右小指２, objs.Find(a=>a.name.Equals("Pinky_02_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左小指３, objs.Find(a=>a.name.Equals("Pinky_03_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右小指３, objs.Find(a=>a.name.Equals("Pinky_03_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左足ＩＫ, objs.Find(a=>a.name.Equals("Ankle_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右足ＩＫ, objs.Find(a=>a.name.Equals("Ankle_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左足,     objs.Find(a=>a.name.Equals("Thigh_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右足,     objs.Find(a=>a.name.Equals("Thigh_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左ひざ,   objs.Find(a=>a.name.Equals("Knee_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右ひざ,   objs.Find(a=>a.name.Equals("Knee_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左足首,   objs.Find(a=>a.name.Equals("Ankle_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右足首,   objs.Find(a=>a.name.Equals("Ankle_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左足先EX, objs.Find(a=>a.name.Equals("Toe_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右足先EX, objs.Find(a=>a.name.Equals("Toe_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左目,     objs.Find(a=>a.name.Equals("Eye_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右目,     objs.Find(a=>a.name.Equals("Eye_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左耳,     objs.Find(a=>a.name.Equals("Ear_01_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左耳1,    objs.Find(a=>a.name.Equals("Ear_02_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左耳2,    objs.Find(a=>a.name.Equals("Ear_03_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右耳,     objs.Find(a=>a.name.Equals("Ear_01_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右耳1,    objs.Find(a=>a.name.Equals("Ear_02_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右耳2,    objs.Find(a=>a.name.Equals("Ear_03_R", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.顎,       objs.Find(a=>a.name.Equals("Jaw", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.左親指０, objs.Find(a=>a.name.Equals("Thumb_01_L", StringComparison.OrdinalIgnoreCase))},
+                { BoneNames.右親指０, objs.Find(a=>a.name.Equals("Thumb_01_R", StringComparison.OrdinalIgnoreCase))}
         };
+
+        Debug.Log($"VMDRecorder initialized. Bones matched: {BoneDictionary.Count(b => b.Value != null)}/{BoneDictionary.Count}");
 
         foreach (KeyValuePair<BoneNames, Transform> pair in BoneDictionary)
         {
@@ -144,12 +194,11 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
         var state = animator.GetCurrentAnimatorStateInfo(0);
         animator.enabled = false;
 
-        // Set to T-Pose
+        // 先回到初始化姿势，再切换为 PMX 导出共用的 MMD 默认 A-pose。
         characterContainer.ResetBodyPose();
         characterContainer.UpBodyReset();
-
-        BoneDictionary[BoneNames.左腕].Rotate(0, 0, -aposeDegress);
-        BoneDictionary[BoneNames.右腕].Rotate(0, 0, aposeDegress);
+        BoneDictionary[BoneNames.左腕]?.Rotate(0, 0, -aposeDegress);
+        BoneDictionary[BoneNames.右腕]?.Rotate(0, 0, aposeDegress);
 
         SetInitialPositionAndRotation();
 
@@ -174,8 +223,9 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
         boneGhost = new BoneGhost(BoneDictionary, UseBottomCenter);
         morphRecorder = new MorphRecorder(transform);
 
-        BoneDictionary[BoneNames.左腕].Rotate(0, 0, aposeDegress);
-        BoneDictionary[BoneNames.右腕].Rotate(0, 0, -aposeDegress);
+        // Ghost 建立后撤销临时参考旋转，让 Animator 从原动画状态继续驱动角色。
+        BoneDictionary[BoneNames.左腕]?.Rotate(0, 0, aposeDegress);
+        BoneDictionary[BoneNames.右腕]?.Rotate(0, 0, -aposeDegress);
         animator.enabled = true;
         animator.Play(state.shortNameHash, 0, state.normalizedTime);
     }
@@ -193,7 +243,24 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
     void SaveFrame()
     {
         if (boneGhost != null) { boneGhost.GhostAll(); }
-        if (morphRecorder != null) { morphRecorder.RecrodAllMorph(); }
+
+        // 确保表情/耳朵morph weight从Locator动画数据更新
+        // ProcessLocator 通常只在isAnimatorControl=true时由UmaContainerCharacter.FixedUpdate调用
+        // 录制时需要强制更新，否则morph weight全为0
+        // FaceDrivenKeyTarget在isAnimatorControl为true时（如播放动画片段）会由Animator驱动，不需要手动ProcessLocator
+        // 如果在isAnimatorControl为true时手动调用ProcessLocator，可能会因为Locator位置未更新而重置表情
+        if (container is UmaContainerCharacter characterContainer && characterContainer.FaceDrivenKeyTarget != null && characterContainer.FaceDrivenKeyTarget.DrivenKeyLocator != null)
+        {
+            // [Fix] Force update locator to ensure morph weights are updated during recording
+            // Even if animator is control, we call this to guarantee we have weights.
+            characterContainer.FaceDrivenKeyTarget.ProcessLocator();
+        }
+
+        if (morphRecorder != null) 
+        { 
+            morphRecorder.UpdateWeights(); // [NEW] Sync SMR weights
+            morphRecorder.RecrodAllMorph(); 
+        }
 
         bool visable = container.LiveVisible;
         if (visitableDictionary.Count == 0)
@@ -255,6 +322,8 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 continue;
             }
 
+
+
             if (boneGhost != null && boneGhost.GhostDictionary.Keys.Contains(boneName))
             {
                 if (boneGhost.GhostDictionary[boneName].ghost == null || !boneGhost.GhostDictionary[boneName].enabled)
@@ -264,15 +333,28 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                     continue;
                 }
 
-                Vector3 boneVector = boneGhost.GhostDictionary[boneName].ghost.localPosition;
+                // Calculate rotation normally
                 Quaternion boneQuatenion = boneGhost.GhostDictionary[boneName].ghost.localRotation;
-                rotationDictionary[boneName].Add(new Quaternion(-boneQuatenion.x, boneQuatenion.y, -boneQuatenion.z, boneQuatenion.w));
+                Quaternion deltaRotation = Quaternion.Inverse(boneGhost.GhostOriginalLocalRotationDictionary[boneName]) * boneQuatenion;
+                
+                // Add rotation (converted to MMD coordinate system)
+                rotationDictionary[boneName].Add(new Quaternion(-deltaRotation.x, deltaRotation.y, -deltaRotation.z, deltaRotation.w));
 
-                boneVector -= boneGhost.GhostOriginalLocalPositionDictionary[boneName];
-
-                positionDictionary[boneName].Add(new Vector3(-boneVector.x, boneVector.y, -boneVector.z) * DefaultBoneAmplifier);
+                // For Eyes, force position to zero to prevent "flying out"
+                if (boneName == BoneNames.左目 || boneName == BoneNames.右目)
+                {
+                    positionDictionary[boneName].Add(Vector3.zero);
+                }
+                else
+                {
+                    // Calculate and add position normally for other bones
+                    Vector3 boneVector = boneGhost.GhostDictionary[boneName].ghost.localPosition;
+                    boneVector -= boneGhost.GhostOriginalLocalPositionDictionary[boneName];
+                    positionDictionary[boneName].Add(new Vector3(-boneVector.x, boneVector.y, -boneVector.z));
+                }
                 continue;
             }
+
 
             Quaternion fixedQuatenion = Quaternion.identity;
             Quaternion vmdRotation = Quaternion.identity;
@@ -327,11 +409,8 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
 
     void LiveSaveFrame()
     {
-        if (IsRecording && IsLive)
-        {
-            SaveFrame();
-            FrameNumber++;
-        }
+        SaveFrame();
+        FrameNumber++;
     }
 
     void SetInitialPositionAndRotation()
@@ -358,6 +437,24 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
     /// </summary>
     public void StartRecording(bool islive = false)
     {
+        // [Fix] Disable Culling to ensure bone/blendshape updates when off-screen
+        var smrs = GetComponentsInChildren<SkinnedMeshRenderer>();
+        foreach (var smr in smrs)
+        {
+            smr.updateWhenOffscreen = true;
+        }
+        var animator = GetComponentInParent<Animator>();
+        if (animator) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+        // [Fix] Ensure Face Animator is also always animating (for expressions when offscreen)
+        if (container is UmaContainerCharacter character && character.FaceDrivenKeyTarget != null)
+        {
+            if (character.UmaFaceAnimator != null)
+            {
+                character.UmaFaceAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            }
+        }
+
         SetInitialPositionAndRotation();
         IsRecording = true;
         IsLive = islive;
@@ -426,7 +523,11 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
         {
             try
             {
-                const string ShiftJIS = "shift_jis";
+                string ShiftJIS = "shift_jis";
+                // [Fix] Fallback for environments without shift_jis support
+                try { System.Text.Encoding.GetEncoding(ShiftJIS); } 
+                catch { ShiftJIS = "utf-8"; Debug.LogWarning("Shift_JIS not supported, fallback to UTF-8. Animation names might be broken in MMD."); }
+                
                 const int intByteLength = 4;
 
                 //ファイルタイプの書き込み
@@ -465,9 +566,11 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 byte[] allKeyFrameNumberByte = BitConverter.GetBytes(allKeyFrameNumber);
                 binaryWriter.Write(allKeyFrameNumberByte, 0, intByteLength);
 
+                uint boneWritten = 0;
                 //人ボーンの書き込み
                 LoopWithBoneCondition((boneName, i) =>
                 {
+                    boneWritten++;
                     const int boneNameLength = 15;
                     string boneNameString = boneName.ToString();
                     if (boneName == BoneNames.全ての親 && UseCenterAsParentOfAll)
@@ -480,10 +583,19 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                     }
 
                     byte[] boneNameBytes = System.Text.Encoding.GetEncoding(ShiftJIS).GetBytes(boneNameString);
+                    if (boneNameBytes.Length > boneNameLength)
+                    {
+                        string truncated = boneNameString;
+                        while(System.Text.Encoding.GetEncoding(ShiftJIS).GetByteCount(truncated) > boneNameLength)
+                        {
+                            truncated = truncated.Substring(0, truncated.Length - 1);
+                        }
+                        boneNameBytes = System.Text.Encoding.GetEncoding(ShiftJIS).GetBytes(truncated);
+                    }
                     binaryWriter.Write(boneNameBytes, 0, boneNameBytes.Length);
                     binaryWriter.Write(new byte[boneNameLength - boneNameBytes.Length], 0, boneNameLength - boneNameBytes.Length);
 
-                    byte[] frameNumberByte = BitConverter.GetBytes((ulong)i);
+                    byte[] frameNumberByte = BitConverter.GetBytes((uint)i);
                     binaryWriter.Write(frameNumberByte, 0, intByteLength);
 
                     Vector3 position = positionDictionarySaved[boneName][i];
@@ -493,6 +605,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                     binaryWriter.Write(positionY, 0, intByteLength);
                     byte[] positionZ = BitConverter.GetBytes(position.z);
                     binaryWriter.Write(positionZ, 0, intByteLength);
+
                     Quaternion rotation = rotationDictionarySaved[boneName][i];
                     byte[] rotationX = BitConverter.GetBytes(rotation.x);
                     binaryWriter.Write(rotationX, 0, intByteLength);
@@ -506,6 +619,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                     byte[] interpolateBytes = new byte[64];
                     binaryWriter.Write(interpolateBytes, 0, 64);
                 });
+                Debug.Log($"VMD Bones frames written: {boneWritten}");
 
                 //全モーフフレーム数の書き込み
                 morphRecorderSaved.DisableIntron();
@@ -517,15 +631,9 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                         foreach (string morphName in morphRecorderSaved.MorphDrivers.Keys)
                         {
                             if (morphRecorderSaved.MorphDrivers[morphName].ValueList.Count == 0) { continue; }
-                            if (i > morphRecorderSaved.MorphDrivers[morphName].ValueList.Count) { continue; }
+                            if (i >= morphRecorderSaved.MorphDrivers[morphName].ValueList.Count) { continue; }
                             //変化のない部分は省く
                             if (!morphRecorderSaved.MorphDrivers[morphName].ValueList[i].enabled) { continue; }
-                            const int boneNameLength = 15;
-                            string morphNameString = morphName.ToString();
-                            byte[] morphNameBytes = System.Text.Encoding.GetEncoding(ShiftJIS).GetBytes(morphNameString);
-                            //名前が長過ぎた場合書き込まない
-                            if (boneNameLength - morphNameBytes.Length < 0) { continue; }
-
                             action(morphName, i);
                         }
                     }
@@ -535,22 +643,35 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 byte[] faceFrameCount = BitConverter.GetBytes(allMorphNumber);
                 binaryWriter.Write(faceFrameCount, 0, intByteLength);
 
+                uint morphWritten = 0;
                 //モーフの書き込み
                 LoopWithMorphCondition((morphName, i) =>
                 {
+                    morphWritten++;
                     const int boneNameLength = 15;
                     string morphNameString = morphName.ToString();
+                    
                     byte[] morphNameBytes = System.Text.Encoding.GetEncoding(ShiftJIS).GetBytes(morphNameString);
+                    if (morphNameBytes.Length > boneNameLength)
+                    {
+                        string truncated = morphNameString;
+                        while(System.Text.Encoding.GetEncoding(ShiftJIS).GetByteCount(truncated) > boneNameLength)
+                        {
+                            truncated = truncated.Substring(0, truncated.Length - 1);
+                        }
+                        morphNameBytes = System.Text.Encoding.GetEncoding(ShiftJIS).GetBytes(truncated);
+                    }
 
                     binaryWriter.Write(morphNameBytes, 0, morphNameBytes.Length);
                     binaryWriter.Write(new byte[boneNameLength - morphNameBytes.Length], 0, boneNameLength - morphNameBytes.Length);
 
-                    byte[] frameNumberByte = BitConverter.GetBytes((ulong)i);
+                    byte[] frameNumberByte = BitConverter.GetBytes((uint)i);
                     binaryWriter.Write(frameNumberByte, 0, intByteLength);
 
                     byte[] valueByte = BitConverter.GetBytes(morphRecorderSaved.MorphDrivers[morphName].ValueList[i].value);
                     binaryWriter.Write(valueByte, 0, intByteLength);
                 });
+                Debug.Log($"VMD Morph frames written: {morphWritten}");
 
                 //カメラの書き込み
                 byte[] cameraFrameCount = BitConverter.GetBytes(0);
@@ -614,7 +735,10 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
         {
             foreach(var pair in boneGhost.GhostDictionary)
             {
-                Destroy(pair.Value.ghost.gameObject);
+                if (pair.Value.ghost != null)
+                {
+                    Destroy(pair.Value.ghost.gameObject);
+                }
             }
         }
         Destroy(this);
@@ -647,9 +771,11 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
     //(初期ポーズで各ボーンのlocalRotationがQuaternion.identityのモデル)を疑似的にアニメーションさせる
     class BoneGhost
     {
-        public Dictionary<BoneNames, (Transform ghost, bool enabled)> GhostDictionary { get; private set; } = new Dictionary<BoneNames, (Transform ghost, bool enabled)>();
+        public Dictionary<BoneNames, GhostEntry> GhostDictionary { get; private set; } = new Dictionary<BoneNames, GhostEntry>();
         public Dictionary<BoneNames, Vector3> GhostOriginalLocalPositionDictionary { get; private set; } = new Dictionary<BoneNames, Vector3>();
         public Dictionary<BoneNames, Quaternion> GhostOriginalRotationDictionary { get; private set; } = new Dictionary<BoneNames, Quaternion>();
+        // Ghost骨骼的初始局部旋转（用于计算旋转增量，与位置差值对应）
+        public Dictionary<BoneNames, Quaternion> GhostOriginalLocalRotationDictionary { get; private set; } = new Dictionary<BoneNames, Quaternion>();
         public Dictionary<BoneNames, Quaternion> OriginalRotationDictionary { get; private set; } = new Dictionary<BoneNames, Quaternion>();
 
         public bool UseBottomCenter { get; private set; } = false;
@@ -708,6 +834,17 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 { BoneNames.右人指３, (BoneNames.右人指２, BoneNames.None, BoneNames.None) },
                 { BoneNames.右中指１, (BoneNames.右手首, BoneNames.None, BoneNames.None) },
                 { BoneNames.右中指２, (BoneNames.右中指１, BoneNames.None, BoneNames.None) },
+                { BoneNames.左目,     (BoneNames.頭, BoneNames.None, BoneNames.None) },
+                { BoneNames.右目,     (BoneNames.頭, BoneNames.None, BoneNames.None) },
+                { BoneNames.左耳,     (BoneNames.頭, BoneNames.None, BoneNames.None) },
+                { BoneNames.左耳1,    (BoneNames.左耳, BoneNames.None, BoneNames.None) },
+                { BoneNames.左耳2,    (BoneNames.左耳1, BoneNames.None, BoneNames.None) },
+                { BoneNames.右耳,     (BoneNames.頭, BoneNames.None, BoneNames.None) },
+                { BoneNames.右耳1,    (BoneNames.右耳, BoneNames.None, BoneNames.None) },
+                { BoneNames.右耳2,    (BoneNames.右耳1, BoneNames.None, BoneNames.None) },
+                { BoneNames.顎,       (BoneNames.頭, BoneNames.None, BoneNames.None) },
+                { BoneNames.左親指０, (BoneNames.左手首, BoneNames.None, BoneNames.None) },
+                { BoneNames.右親指０, (BoneNames.右手首, BoneNames.None, BoneNames.None) },
                 { BoneNames.右中指３, (BoneNames.右中指２, BoneNames.None, BoneNames.None) },
                 { BoneNames.右薬指１, (BoneNames.右手首, BoneNames.None, BoneNames.None) },
                 { BoneNames.右薬指２, (BoneNames.右薬指１, BoneNames.None, BoneNames.None) },
@@ -727,7 +864,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
 
                 if (boneDictionary[boneName] == null)
                 {
-                    GhostDictionary.Add(boneName, (null, false));
+                    GhostDictionary.Add(boneName, new GhostEntry(null, false));
                     continue;
                 }
 
@@ -740,7 +877,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 {
                     ghost.position = boneDictionary[boneName].position;
                 }
-                GhostDictionary.Add(boneName, (ghost, true));
+                GhostDictionary.Add(boneName, new GhostEntry(ghost, true));
             }
 
             //Ghostの親子構造を設定
@@ -776,7 +913,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 }
                 else
                 {
-                    GhostDictionary[boneName] = (GhostDictionary[boneName].ghost, false);
+                    GhostDictionary[boneName] = new GhostEntry(GhostDictionary[boneName].ghost, false);
                 }
             }
 
@@ -787,11 +924,13 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 {
                     GhostOriginalLocalPositionDictionary.Add(boneName, Vector3.zero);
                     GhostOriginalRotationDictionary.Add(boneName, Quaternion.identity);
+                    GhostOriginalLocalRotationDictionary.Add(boneName, Quaternion.identity);
                     OriginalRotationDictionary.Add(boneName, Quaternion.identity);
                 }
                 else
                 {
                     GhostOriginalRotationDictionary.Add(boneName, GhostDictionary[boneName].ghost.rotation);
+                    GhostOriginalLocalRotationDictionary.Add(boneName, GhostDictionary[boneName].ghost.localRotation);
                     OriginalRotationDictionary.Add(boneName, boneDictionary[boneName].rotation);
                     if (boneName == BoneNames.センター && UseBottomCenter)
                     {
@@ -833,9 +972,59 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
         {
             var facialTarget = model.GetComponentInParent<UmaContainerCharacter>().FaceDrivenKeyTarget;
             FacialMorphList = new List<FacialMorph>();
+            FacialMorphList.AddRange(facialTarget.EarMorphs);     // 耳朵morph（之前缺失）
             FacialMorphList.AddRange(facialTarget.EyeBrowMorphs);
             FacialMorphList.AddRange(facialTarget.EyeMorphs);
             FacialMorphList.AddRange(facialTarget.MouthMorphs);
+            // [NEW] Scan all SkinnedMeshRenderers to capture Standard Animation blendshapes
+            // User Request: Remove this "baking" scanning. 
+            // It captures too many raw blendshapes and makes the effect hard to control in VMD.
+            // We will only stick to the explicit FaceDrivenKeyTarget morphs added above.
+            /*
+            var smrs = model.GetComponentsInChildren<SkinnedMeshRenderer>();
+            foreach (var smr in smrs)
+            {
+                if (!smr.sharedMesh) continue;
+                for (int i = 0; i < smr.sharedMesh.blendShapeCount; i++)
+                {
+                    string shapeName = smr.sharedMesh.GetBlendShapeName(i);
+                    FacialMorph targetMorph = null;
+
+                    // Check if this morph is already managed by FaceDrivenKeyTarget
+                    // We need to find if there is an existing FacialMorph with this name
+                    foreach (var m in FacialMorphList)
+                    {
+                        // [Fix] Compare RAW names case-insensitively first!
+                        // ConvertMorphName might fail for 'mouth_a' if config only has 'Mouth_A', diverging the names.
+                        if (string.Equals(m.name, shapeName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetMorph = m;
+                            break;
+                        }
+                        
+                        // Fallback: check converted names (in case of aliases)
+                        string n1 = ConvertMorphName(m.name);
+                        string n2 = ConvertMorphName(shapeName);
+                        if (string.Equals(n1, n2, StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetMorph = m;
+                            break;
+                        }
+                    }
+
+                    // If not found, create a new one
+                    if (targetMorph == null)
+                    {
+                        targetMorph = new FacialMorph { name = shapeName };
+                        FacialMorphList.Add(targetMorph);
+                    }
+
+                    // Register for update
+                    BlendShapeLinks.Add((smr, i, targetMorph));
+                }
+            }
+            */
+
             for (int i = 0; i < FacialMorphList.Count; i++)
             {
                 string morphName = ConvertMorphName(FacialMorphList[i].name);
@@ -853,6 +1042,20 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                     morphList.Add(FacialMorphList[i]);
                     var driver = new MorphDriver(morphList, i);
                     MorphDrivers.Add(morphName, driver);
+                }
+            }
+        }
+
+        private List<BlendShapeLink> BlendShapeLinks = new List<BlendShapeLink>();
+
+        public void UpdateWeights()
+        {
+            foreach (BlendShapeLink link in BlendShapeLinks)
+            {
+                if (link.renderer != null)
+                {
+                    float weight = link.renderer.GetBlendShapeWeight(link.index);
+                    link.morph.weight = weight;
                 }
             }
         }
@@ -916,7 +1119,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                         && floatCompare(MorphDrivers[morphName].ValueList[i].value, MorphDrivers[morphName].ValueList[i - 1].value)
                         && floatCompare(MorphDrivers[morphName].ValueList[i].value, MorphDrivers[morphName].ValueList[i + 1].value))
                     {
-                        MorphDrivers[morphName].ValueList[i] = (MorphDrivers[morphName].ValueList[i].value, false);
+                        MorphDrivers[morphName].ValueList[i] = new MorphValue(MorphDrivers[morphName].ValueList[i].value, false);
                     }
                 }
             }
@@ -936,7 +1139,7 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
 
             public int MorphIndex { get; private set; }
 
-            public List<(float value, bool enabled)> ValueList = new List<(float value, bool enabled)>();
+            public List<MorphValue> ValueList = new List<MorphValue>();
 
             public MorphDriver(List<FacialMorph> facialMorph, int morphIndex)
             {
@@ -951,7 +1154,8 @@ public class UnityHumanoidVMDRecorder : MonoBehaviour
                 {
                     val += morph.weight;
                 }
-                ValueList.Add((Mathf.Clamp(val, -1, 1), true));
+                // [Fix] Remove Clamp to support values > 1 (0-100 range)
+                ValueList.Add(new MorphValue(val, true));
             }
         }
     }

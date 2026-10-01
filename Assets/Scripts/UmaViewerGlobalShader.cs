@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class UmaViewerGlobalShader : MonoBehaviour
 {
-    //仅用于设置游戏开局shader全局变量的初始值，若想即时调整请使用Editor内部工具
+    
     public float _Global_MaxDensity = 1.0f;
     public float _Global_MaxHeight = 10.0f;
     public float _GlobalOutlineOffset = 1f;

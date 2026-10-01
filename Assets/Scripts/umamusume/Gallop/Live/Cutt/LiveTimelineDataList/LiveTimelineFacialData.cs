@@ -7,6 +7,10 @@ namespace Gallop.Live.Cutt
     [System.Serializable]
 	public class LiveTimelineKeyFacialFaceData : LiveTimelineKey
 	{
+		public override LiveTimelineKeyDataType dataType
+    	{
+        	get { return LiveTimelineKeyDataType.FacialFace; }
+    	}
 		public int facialId;
 		public int weight;
 		public int speed;
@@ -23,6 +27,10 @@ namespace Gallop.Live.Cutt
 	[System.Serializable]
 	public class LiveTimelineKeyFacialMouthData : LiveTimelineKey
 	{
+		public override LiveTimelineKeyDataType dataType
+    	{
+        	get { return LiveTimelineKeyDataType.FacialMouth; }
+    	}
 		public int facialId;
 		public int weight;
 		public int speed;
@@ -41,6 +49,10 @@ namespace Gallop.Live.Cutt
 	[System.Serializable]
 	public class LiveTimelineKeyFacialEyeData : LiveTimelineKey
 	{
+		public override LiveTimelineKeyDataType dataType
+    	{
+        	get { return LiveTimelineKeyDataType.FacialEye; }
+    	}
 		public int facialId;
 		public int weight;
 		public int speed;
@@ -59,6 +71,10 @@ namespace Gallop.Live.Cutt
 	[System.Serializable]
 	public class LiveTimelineKeyFacialEyebrowData : LiveTimelineKey
 	{
+		public override LiveTimelineKeyDataType dataType
+    	{
+        	get { return LiveTimelineKeyDataType.FacialEyebrow; }
+    	}
 		public int facialId;
 		public int weight;
 		public int speed;
@@ -78,6 +94,10 @@ namespace Gallop.Live.Cutt
 	[System.Serializable]
 	public class LiveTimelineKeyFacialEyeTrackData : LiveTimelineKey
 	{
+		public override LiveTimelineKeyDataType dataType
+    	{
+        	get { return LiveTimelineKeyDataType.FacialEyeTrack; }
+    	}
 		public LiveTimelineDefine.FacialEyeTrackTargetType targetType;
 		public int verticalRatePer;
 		public int horizontalRatePer;
@@ -97,6 +117,10 @@ namespace Gallop.Live.Cutt
 	[System.Serializable]
 	public class LiveTimelineKeyFacialEarData : LiveTimelineKey
 	{
+		public override LiveTimelineKeyDataType dataType
+    	{
+        	get { return LiveTimelineKeyDataType.FacialEar; }
+    	}
 		public int facialId;
 		public int weight;
 		public int speed;
@@ -115,6 +139,11 @@ namespace Gallop.Live.Cutt
 	[System.Serializable]
 	public class LiveTimelineKeyFacialEffectData : LiveTimelineKey
 	{
+		public override LiveTimelineKeyDataType dataType
+    	{
+        	get { return LiveTimelineKeyDataType.FacialEffect; }
+    	}
+		
 		[System.Serializable]
 		public class TeardropConfig
 		{

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -81,15 +81,19 @@ public class UmaDatabaseEntry
 
     public T Get<T>(bool withDependencies = true)
     {
-        Object asset = UmaAssetManager.LoadAssetBundle(this, isRecursive: withDependencies)
-            .LoadAllAssets().FirstOrDefault(a=>a.GetType() == typeof(T));
+        Object[] loaded = UmaAssetManager.LoadAssetBundle(this, isRecursive: withDependencies).LoadAllAssets();
+        Object asset = loaded.FirstOrDefault(a => a.GetType() == typeof(T));
+        if (Gallop.Live.LiveRuntimeDiagnostics.Enabled)
+            Gallop.Live.LiveRuntimeDiagnostics.RecordAssetLoad(Name, "Get", typeof(T), loaded, asset);
         return (T)System.Convert.ChangeType(asset, typeof(T));
     }
 
     public IEnumerable<T> GetAll<T>(bool withDependencies = true)
     {
-        IEnumerable<Object> assets = UmaAssetManager.LoadAssetBundle(this, isRecursive: withDependencies)
-            .LoadAllAssets().Where(a => a.GetType() == typeof(T));
+        Object[] loaded = UmaAssetManager.LoadAssetBundle(this, isRecursive: withDependencies).LoadAllAssets();
+        if (Gallop.Live.LiveRuntimeDiagnostics.Enabled)
+            Gallop.Live.LiveRuntimeDiagnostics.RecordAssetLoad(Name, "GetAll", typeof(T), loaded);
+        IEnumerable<Object> assets = loaded.Where(a => a.GetType() == typeof(T));
         return assets.Select(asset => (T)System.Convert.ChangeType(asset, typeof(T)));
     }
 

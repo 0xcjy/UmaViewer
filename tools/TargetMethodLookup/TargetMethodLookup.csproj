@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="LibCpp2IL" HintPath="C:\Users\Administrator\.nuget\packages\assetripper.libcpp2il\1.0.8\lib\net10.0\LibCpp2IL.dll" Private="true" />
+    <Reference Include="AssetRipper.Primitives" HintPath="C:\Users\Administrator\.nuget\packages\assetripper.primitives\3.2.0\lib\net9.0\AssetRipper.Primitives.dll" Private="true" />
+  </ItemGroup>
+</Project>

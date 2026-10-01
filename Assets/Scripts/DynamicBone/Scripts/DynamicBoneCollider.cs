@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [AddComponentMenu("Dynamic Bone/Dynamic Bone Collider")]
 public class DynamicBoneCollider : DynamicBoneColliderBase
@@ -19,7 +19,64 @@ public class DynamicBoneCollider : DynamicBoneColliderBase
         m_Height = Mathf.Max(m_Height, 0);
     }
 
+    // A batch ends BEFORE particle poses are written back to Transforms. Never cache
+    // across bones or frames: one chain can move a collider used by the next chain.
+    public static bool UseGeometryCache = true;
+    private static ulong nextBatch;
+    private static ulong activeBatch;
+    private ulong geometryBatch;
+    private float worldRadius;
+    private bool isSphere;
+    private Vector3 worldStart, worldEnd;
+
+    public struct CollisionBatch : System.IDisposable
+    {
+        private readonly ulong previous;
+        internal CollisionBatch(ulong previousBatch) { previous = previousBatch; }
+        public void Dispose() { activeBatch = previous; }
+    }
+
+    public static CollisionBatch BeginCollisionBatch()
+    {
+        var scope = new CollisionBatch(activeBatch);
+        activeBatch = ++nextBatch;
+        if (activeBatch == 0) activeBatch = ++nextBatch;
+        return scope;
+    }
+
     public override bool Collide(ref Vector3 particlePosition, float particleRadius)
+    {
+        if (!UseGeometryCache || activeBatch == 0)
+            return CollideUncached(ref particlePosition, particleRadius);
+        if (geometryBatch != activeBatch)
+        {
+            worldRadius = m_Radius * Mathf.Abs(transform.lossyScale.x);
+            float halfSpan = m_Height * 0.5f - m_Radius;
+            isSphere = halfSpan <= 0f;
+            Vector3 start = m_Center, end = m_Center;
+            if (!isSphere)
+            {
+                switch (m_Direction)
+                {
+                    case Direction.X: start.x -= halfSpan; end.x += halfSpan; break;
+                    case Direction.Y: start.y -= halfSpan; end.y += halfSpan; break;
+                    case Direction.Z: start.z -= halfSpan; end.z += halfSpan; break;
+                }
+            }
+            worldStart = transform.TransformPoint(start);
+            worldEnd = isSphere ? worldStart : transform.TransformPoint(end);
+            geometryBatch = activeBatch;
+        }
+        if (isSphere)
+            return m_Bound == Bound.Outside
+                ? OutsideSphere(ref particlePosition, particleRadius, worldStart, worldRadius)
+                : InsideSphere(ref particlePosition, particleRadius, worldStart, worldRadius);
+        return m_Bound == Bound.Outside
+            ? OutsideCapsule(ref particlePosition, particleRadius, worldStart, worldEnd, worldRadius)
+            : InsideCapsule(ref particlePosition, particleRadius, worldStart, worldEnd, worldRadius);
+    }
+
+    private bool CollideUncached(ref Vector3 particlePosition, float particleRadius)
     {
         float radius = m_Radius * Mathf.Abs(transform.lossyScale.x);
         float h = m_Height * 0.5f - m_Radius;

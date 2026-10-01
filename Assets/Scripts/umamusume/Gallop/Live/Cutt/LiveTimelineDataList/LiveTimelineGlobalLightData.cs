@@ -9,6 +9,10 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyGlobalLightData : LiveTimelineKeyWithInterpolate
     {
+        public override LiveTimelineKeyDataType dataType
+        {
+            get{return LiveTimelineKeyDataType.GlobalLight;}
+        }
         // Static field
         public static readonly Color DefaultRimColor;
 

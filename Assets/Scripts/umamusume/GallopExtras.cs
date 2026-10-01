@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static DynamicBone;
 using System;
 using Object = UnityEngine.Object;
 
@@ -74,9 +73,6 @@ public class TrsArray
     public Vector3 _rotation;
     public bool IsOverrideTarget;
 
-    public bool isPhysics;
-    public Particle physicsParticle;
-
     public override int GetHashCode()
     {
         return base.GetHashCode();
@@ -145,4 +141,3 @@ public class FaceOverrideElement
     public Gallop.Live.Cutt.LiveTimelineDefine.FacialEyeId Index; 
     public float Weight; 
 }
-

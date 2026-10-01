@@ -1,16 +1,14 @@
-{
-    "name": "StandalongFileBrowser.runtime",
-    "rootNamespace": "",
-    "references": [],
-    "includePlatforms": [],
-    "excludePlatforms": [
-        "Android"
-    ],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
+﻿{
+  "name": "StandaloneFileBrowser.LegacyWindows",
+  "rootNamespace": "SFB.LegacyWindows",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": ["Android"],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
 }
