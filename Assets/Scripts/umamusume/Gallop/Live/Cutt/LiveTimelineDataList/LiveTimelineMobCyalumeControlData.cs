@@ -10,9 +10,9 @@ namespace Gallop.Live.Cutt
         {
             get{return LiveTimelineKeyDataType.CyalumeControl;}
         }
-        public Vector3 position;
-        public Vector3 angle;
-        public Vector3 scale = Vector3.one;
+        public Vector3 Position;
+        public Vector3 Angle;
+        public Vector3 Scale = Vector3.one;
 
         [NonSerialized]
         private Quaternion _rotationCache = Quaternion.identity;
@@ -24,7 +24,7 @@ namespace Gallop.Live.Cutt
         {
             if (!_hasRotationCache)
             {
-                _rotationCache = Quaternion.Euler(angle);
+                _rotationCache = Quaternion.Euler(Angle);
                 _hasRotationCache = true;
             }
 
@@ -35,13 +35,13 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyMobCyalumeControlDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyMobCyalumeControlData>
     {
-        public int unk48;
     }
 
     [Serializable]
     public class LiveTimelineMobCyalumeControlData : ILiveTimelineGroupDataWithName
     {
-        public LiveTimelineKeyMobCyalumeControlDataList keys;
+        public int GroupIndex;
+        public LiveTimelineKeyMobCyalumeControlDataList Keys;
     }
 
     public delegate void MobCyalumeUpdateInfoDelegate(ref MobCyalumeUpdateInfo updateInfo);

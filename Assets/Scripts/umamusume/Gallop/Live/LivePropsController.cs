@@ -25,6 +25,9 @@ namespace Gallop.Live
         private readonly List<RuntimeProp> instances = new List<RuntimeProp>();
         private readonly HashSet<string> warnings = new HashSet<string>(StringComparer.Ordinal);
         private bool disposed;
+        private StageController registeredStage;
+        private StageBlinkLightDriver registeredBlinkDriver;
+        private Gallop.RenderPipeline.RecoveredLensFlareController registeredFlares;
 
         // Same predicate used by LiveEffectController. Gated tracks are not silently
         // enabled when the Director has not supplied a variation selection.
@@ -72,6 +75,8 @@ namespace Gallop.Live
             public bool DefaultPropParent;
             public readonly Dictionary<string, Transform> Nodes = new Dictionary<string, Transform>(StringComparer.Ordinal);
             public RendererState[] Renderers;
+            public Props[] StageProps;
+            public string NameSuffixToken;
             public LiveTimelineKeyPropsData Appearance, NextAppearance;
             public LiveTimelineKeyPropsAttachData Attachment, NextAttachment;
             public float AppearanceRatio, AttachmentRatio;
@@ -139,8 +144,11 @@ namespace Gallop.Live
                     var instance = Object.Instantiate(prefab, anchor, false);
                     var runtime = new RuntimeProp
                     {
-                        CharacterIndex = c, PropsId = id, Setting = setting,
-                        Instance = instance, Anchor = anchor,
+                        CharacterIndex = c,
+                        PropsId = id,
+                        Setting = setting,
+                        Instance = instance,
+                        Anchor = anchor,
                         Animator = instance.GetComponentInChildren<Animator>(true)
                     };
                     CacheNodes(runtime);
@@ -154,7 +162,40 @@ namespace Gallop.Live
             {
                 ResolveDefaultAttachment(prop);
                 if (prop.DefaultTarget != null) ApplyAttachment(prop);
+                var character = characters[prop.CharacterIndex];
+                prop.StageProps = prop.Instance.GetComponentsInChildren<Props>(true);
+                prop.NameSuffixToken = "_" + prop.CharacterIndex.ToString(CultureInfo.InvariantCulture);
+                foreach (var component in prop.StageProps)
+                    component.SetScale(character.HeadBone.transform, character.Position, character.BodyScale,
+                        prop.Setting.isInfluenceOfCharaHeight);
+                // Animation transitions restore the initialized pose, not the prefab's
+                // unadjusted stand height. Native CreateProps scales once before playback.
+                CacheNodes(prop);
             }
+        }
+
+        // Actual-game Director.CreateProps registers all three stage work arrays
+        // after creating/scaling props (Komoe RVA 0x7154755..0x71547ea).
+        internal void RegisterStageLighting(StageController stage,
+            Gallop.RenderPipeline.RecoveredLensFlareController flares)
+        {
+            if (stage == null) return;
+            registeredStage = stage;
+            registeredBlinkDriver = stage.GetComponent<StageBlinkLightDriver>();
+            registeredFlares = flares;
+            foreach (var prop in instances)
+                foreach (var component in prop.StageProps)
+                {
+                    var transforms = component.StageObjectTransformArray;
+                    if (transforms != null)
+                        foreach (var node in transforms)
+                            if (node != null) stage.RegisterObjectTransform(node, prop.NameSuffixToken);
+                    flares?.AddSources(component.transform, prop.NameSuffixToken);
+                    var roots = component.BlinkLightRootObjectArray;
+                    if (roots != null && registeredBlinkDriver != null)
+                        foreach (var root in roots)
+                            if (root != null) registeredBlinkDriver.RegisterRoot(root, prop.NameSuffixToken, flares);
+                }
         }
 
         public static void CollectResourcePaths(LiveTimelinePropsSettings settings,
@@ -464,6 +505,7 @@ namespace Gallop.Live
                 ApplyAppearance(prop);
                 ApplyAttachment(prop);
             }
+            registeredBlinkDriver?.UpdateRegisteredRoots();
         }
 
         private void DiagnoseRequestedResource(LiveTimelineKeyPropsData key)
@@ -691,6 +733,19 @@ namespace Gallop.Live
             disposed = true;
             foreach (var prop in instances)
             {
+                foreach (var component in prop.StageProps)
+                {
+                    if (component == null) continue;
+                    var transforms = component.StageObjectTransformArray;
+                    if (transforms != null && registeredStage != null)
+                        foreach (var node in transforms)
+                            if (node != null) registeredStage.UnregisterObjectTransform(node, prop.NameSuffixToken);
+                    var roots = component.BlinkLightRootObjectArray;
+                    if (roots != null && registeredBlinkDriver != null)
+                        foreach (var root in roots)
+                            if (root != null) registeredBlinkDriver.UnregisterRoot(root, prop.NameSuffixToken);
+                    registeredFlares?.RemoveSources(component.transform, prop.NameSuffixToken);
+                }
                 if (prop.Graph.IsValid()) prop.Graph.Destroy();
                 // Destroy separately: a prop-to-prop parent may already have been removed.
                 if (prop.Instance != null) Object.Destroy(prop.Instance);

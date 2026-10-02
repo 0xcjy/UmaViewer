@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -106,11 +106,11 @@ namespace Gallop.Live
             public float powerDiff;
 
             public int loopCountMax;
-            public float waitTime;   
+            public float waitTime;
             public float turnOnTime;
             public float turnOffTime;
             public float keepTime;
-            public float intervalTime;  
+            public float intervalTime;
             public float loopTime;
 
             public float currentPower;
@@ -161,6 +161,10 @@ namespace Gallop.Live
 
         private readonly Dictionary<string, RootCache> _rootCache = new Dictionary<string, RootCache>(256);
         private readonly Dictionary<string, BlinkRootRuntime> _runtime = new Dictionary<string, BlinkRootRuntime>(256);
+        private readonly Dictionary<string, List<RootCache>> _registeredRoots =
+            new Dictionary<string, List<RootCache>>(StringComparer.Ordinal);
+        private Gallop.RenderPipeline.RecoveredLensFlareController _registeredFlares;
+        private int _registeredUpdateFrame = -1;
 
         private enum IndexMode
         {
@@ -200,6 +204,7 @@ namespace Gallop.Live
             public bool wantsMpb;
 
             // 官方 RendererData 层
+            public Gallop.RenderPipeline.CustomLensFlare customLensFlare;
             public WashLightController washLightController;
             public UnityLensFlareController unityLensFlareController;
             public Material material;
@@ -225,6 +230,16 @@ namespace Gallop.Live
         private static readonly Regex ReSuffixNumber = new Regex(@"_(\d+)$", RegexOptions.Compiled);
         private static readonly Regex ReLastDigits = new Regex(@"(\d+)(?!.*\d)", RegexOptions.Compiled);
         private readonly List<Material> _sharedMaterialScratch = new List<Material>(4);
+        private readonly List<Material> _blendMaterialScratch = new List<Material>(4);
+
+        private struct BlendMaterialClassification
+        {
+            public Shader shader;
+            public bool isTarget;
+        }
+
+        private readonly Dictionary<Material, BlendMaterialClassification> _blendMaterialClassification =
+            new Dictionary<Material, BlendMaterialClassification>();
 
         private void Awake()
         {
@@ -238,6 +253,8 @@ namespace Gallop.Live
 
         private void OnDisable()
         {
+            _blendMaterialScratch.Clear();
+            _blendMaterialClassification.Clear();
             Unbind();
         }
 
@@ -275,9 +292,60 @@ namespace Gallop.Live
             _groundChosen.Clear();
         }
 
-        private static bool IsBlinkRootName(string name)
+        internal void RegisterRoot(GameObject root, string nameSuffixToken,
+            Gallop.RenderPipeline.RecoveredLensFlareController flares)
+        {
+            string name = root.name.Replace("(Clone)", string.Empty) + nameSuffixToken;
+            _registeredFlares = flares;
+            if (!_registeredRoots.TryGetValue(name, out var roots))
+            {
+                roots = new List<RootCache>();
+                _registeredRoots.Add(name, roots);
+            }
+            string runtimeKey = name + "__U" + root.GetInstanceID();
+            var cache = GetOrBuildRootCache(runtimeKey, root);
+            roots.Add(cache);
+            ApplyRootOffCached(runtimeKey, root);
+        }
+
+        internal void UpdateRegisteredRoots()
+        {
+            foreach (var entry in _registeredRoots)
+            {
+                if (!_latest.TryGetValue(entry.Key, out var item)) continue;
+                var info = item.updateInfo;
+                info.progressTime = Mathf.Max(0f, info.progressTime) * Mathf.Max(0.0001f, localTimeScale);
+                foreach (var root in entry.Value)
+                    if (root.rootGo != null)
+                        ApplyToRootCached(root.rootName, root.rootGo, info, item.currentLiveTime);
+            }
+            _registeredUpdateFrame = Time.frameCount;
+        }
+
+        internal void UnregisterRoot(GameObject root, string nameSuffixToken)
+        {
+            string name = root.name.Replace("(Clone)", string.Empty) + nameSuffixToken;
+            if (!_registeredRoots.TryGetValue(name, out var roots)) return;
+            for (int i = roots.Count - 1; i >= 0; i--)
+            {
+                var cache = roots[i];
+                if (cache.rootGo != root) continue;
+                _rootCache.Remove(cache.rootName);
+                _runtime.Remove(cache.rootName);
+                _rootBase.Remove(cache.rootName);
+                roots.RemoveAt(i);
+            }
+            if (roots.Count == 0)
+            {
+                _registeredRoots.Remove(name);
+                _latest.Remove(name);
+            }
+        }
+
+        private bool IsBlinkRootName(string name)
         {
             if (string.IsNullOrEmpty(name)) return false;
+            if (_registeredRoots.ContainsKey(NormalizeRuntimeRootName(name))) return true;
             if (name.IndexOf("_spotlight3d_controller", StringComparison.OrdinalIgnoreCase) >= 0) return false;
             if (name.IndexOf("ledlight", StringComparison.OrdinalIgnoreCase) >= 0) return false;
 
@@ -435,7 +503,7 @@ namespace Gallop.Live
             return false;
         }
 
-        private void OnBlinkLight(LiveTimelineBlinkLightData data,ref BlinkLightUpdateInfo info,float currentLiveTime)
+        private void OnBlinkLight(LiveTimelineBlinkLightData data, ref BlinkLightUpdateInfo info, float currentLiveTime)
         {
             string rootName = (data != null) ? data.name : null;
             if (string.IsNullOrEmpty(rootName)) return;
@@ -525,26 +593,37 @@ namespace Gallop.Live
 
                 float liveNow = item.currentLiveTime;
 
-                if (_stage.StageObjectUnitMap.TryGetValue(rootName, out var unit) &&
-                    unit != null && unit.ChildObjects != null && unit.ChildObjects.Length > 0)
+                if (_registeredRoots.TryGetValue(rootName, out var registeredRoots))
                 {
-                    for (int i = 0; i < unit.ChildObjects.Length; i++)
+                    if (_registeredUpdateFrame == Time.frameCount) continue;
+                    for (int i = 0; i < registeredRoots.Count; i++)
                     {
-                        var childPrefab = unit.ChildObjects[i];
-                        if (childPrefab == null)
-                            continue;
-
-                        if (_stage.StageObjectMap.TryGetValue(childPrefab.name, out var realGo) && realGo != null)
-                        {
-                            string runtimeKey = rootName + "__U" + i;
-                            ApplyToRootCached(runtimeKey, realGo, updateInfo, liveNow);
-                        }
+                        var root = registeredRoots[i];
+                        if (root.rootGo != null)
+                            ApplyToRootCached(root.rootName, root.rootGo, updateInfo, liveNow);
                     }
                 }
-                else if (_stage.StageObjectMap.TryGetValue(rootName, out var rootGo) && rootGo != null)
-                {
-                    ApplyToRootCached(rootName, rootGo, updateInfo, liveNow);
-                }
+                else
+                    if (_stage.StageObjectUnitMap.TryGetValue(rootName, out var unit) &&
+                        unit != null && unit.ChildObjects != null && unit.ChildObjects.Length > 0)
+                    {
+                        for (int i = 0; i < unit.ChildObjects.Length; i++)
+                        {
+                            var childPrefab = unit.ChildObjects[i];
+                            if (childPrefab == null)
+                                continue;
+
+                            if (_stage.StageObjectMap.TryGetValue(childPrefab.name, out var realGo) && realGo != null)
+                            {
+                                string runtimeKey = rootName + "__U" + i;
+                                ApplyToRootCached(runtimeKey, realGo, updateInfo, liveNow);
+                            }
+                        }
+                    }
+                    else if (_stage.StageObjectMap.TryGetValue(rootName, out var rootGo) && rootGo != null)
+                    {
+                        ApplyToRootCached(rootName, rootGo, updateInfo, liveNow);
+                    }
             }
 
             // Exclusivity must be enforced AFTER the cached timeline update:
@@ -639,6 +718,7 @@ namespace Gallop.Live
 
                     var wash = go.GetComponent<WashLightController>();
                     var flare = go.GetComponent<UnityLensFlareController>();
+                    var customFlare = go.GetComponent<Gallop.RenderPipeline.CustomLensFlare>();
                     var runtimeMat = r.material;
                     var mats = r.sharedMaterials;
                     pendingRenderers.Add(new RendererEntry
@@ -659,6 +739,7 @@ namespace Gallop.Live
 
                         washLightController = wash,
                         unityLensFlareController = flare,
+                        customLensFlare = customFlare,
                         material = runtimeMat,
                         isWashLight = false,
                         isWashLightProjection = false,
@@ -866,7 +947,7 @@ namespace Gallop.Live
             return b;
         }
 
-        private void ApplyToRootCached(string runtimeKey,GameObject rootGo,BlinkLightUpdateInfo updateInfo,float liveNow)
+        private void ApplyToRootCached(string runtimeKey, GameObject rootGo, BlinkLightUpdateInfo updateInfo, float liveNow)
         {
             var rc = GetOrBuildRootCache(runtimeKey, rootGo);
             if (rc.slotCount <= 0) return;
@@ -970,6 +1051,10 @@ namespace Gallop.Live
                 }
 
                 Color currentColor = new Color(slotColor.x, slotColor.y, slotColor.z, 1f);
+                // Native Blink.Update writes its power-weighted current color directly
+                // to the flare, with shader-color reading disabled (Komoe 0x7192856).
+                if (e.customLensFlare != null)
+                    _registeredFlares?.SetBlinkColor(e.customLensFlare, currentColor * p);
 
                 int uvBias = (rc.rootIsUv || e.isUvAlphaMask) ? uvSortingBias : 0;
                 r.sortingOrder = baseOrder + uvBias + e.stableSlot * stride;
@@ -1281,6 +1366,8 @@ namespace Gallop.Live
             {
                 var e = rc.renderers[i];
                 var r = e.r;
+                if (e.customLensFlare != null)
+                    _registeredFlares?.SetBlinkColor(e.customLensFlare, Color.black);
                 if (r == null)
                 {
                     rc.dirty = true;
@@ -1288,7 +1375,7 @@ namespace Gallop.Live
                 }
 
 
-                EnsureLightBlinkBlendState(r, ref e,(int)fallbackLightBlendMode);
+                EnsureLightBlinkBlendState(r, ref e, (int)fallbackLightBlendMode);
 
                 if (e.wantsMpb)
                 {
@@ -1336,7 +1423,18 @@ namespace Gallop.Live
         {
             if (m == null) return false;
 
-            string sn = (m.shader != null) ? (m.shader.name ?? "") : "";
+            Shader shader = m.shader;
+            if (_blendMaterialClassification.TryGetValue(m, out var cached) && cached.shader == shader)
+                return cached.isTarget;
+
+            bool isTarget = ClassifyBlinkBlendMaterial(m, shader);
+            _blendMaterialClassification[m] = new BlendMaterialClassification { shader = shader, isTarget = isTarget };
+            return isTarget;
+        }
+
+        private static bool ClassifyBlinkBlendMaterial(Material m, Shader shader)
+        {
+            string sn = shader != null ? (shader.name ?? "") : "";
 
             if (sn.IndexOf("LightBlinkBlend", StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
@@ -1401,19 +1499,17 @@ namespace Gallop.Live
 
             int modeId = (int)mode;
 
-            // 不要再提前 return。
-            // 官方 Update 末尾每帧都会 TrySetLightBlendModeMaterialProperty。
-            // 你这里如果 cache return，材质被 timeline / prefab / 其他脚本改回 One/One 后就不会再修。
-            // if (e.blendConfigured && e.blendConfiguredMode == modeId)
-            //     return;
+            // Preserve the native per-frame blend override, including recovery
+            // after another controller changes the material's blend properties.
 
-            var mats = r.materials;
-            if (mats == null || mats.Length == 0)
+            r.GetMaterials(_blendMaterialScratch);
+            var mats = _blendMaterialScratch;
+            if (mats.Count == 0)
                 return;
 
             bool touched = false;
 
-            for (int i = 0; i < mats.Length; i++)
+            for (int i = 0; i < mats.Count; i++)
             {
                 var m = mats[i];
                 if (!IsTargetBlinkBlendMaterial(m))

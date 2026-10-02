@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using RootMotion.FinalIK;
 
@@ -43,54 +44,94 @@ namespace Gallop.Live.Cutt
 
         public void Initialize(Transform target, int targetIndex, int seqDataIndex, LiveTimelineControl timelineControl, List<AnimationClip> animclips = null)
         {
-            if(animclips != null)
-            {
-                if (targetIndex < Director.instance.charaAnims.Count)
-                {
-                    _targetAnim = animclips[targetIndex];
-
-                    _tempAnim = Director.instance.charaAnims[targetIndex];
-                    _tempAnim.AddClip(_targetAnim, _targetAnim.name);
-                }
+            var animations = Director.instance.charaAnims;
+            if (targetIndex < 0 || targetIndex >= animations.Count || animations[targetIndex] == null)
                 return;
-            }
 
             _tempTarget = target;
             _targetIndex = targetIndex;
-
             charaIndex = targetIndex;
+            _tempAnim = animations[targetIndex];
+
+            if (animclips != null)
+            {
+                if (targetIndex >= animclips.Count) return;
+                _targetAnim = animclips[targetIndex];
+                if (_targetAnim != null) _tempAnim.AddClip(_targetAnim, _targetAnim.name);
+                return;
+            }
 
             _keyArray = timelineControl._keyArray;
-
-            if (seqDataIndex < _keyArray.Length)
+            if (seqDataIndex < 0 || seqDataIndex >= _keyArray.Length) return;
+            _currentKey = _keyArray[seqDataIndex];
+            _sampleIk = _tempAnim.GetComponent<BipedIK>();
+            if (_sampleIk != null)
             {
-                _currentKey = _keyArray[seqDataIndex];
+                // SolverManager.Update otherwise restores the bind pose after our manual sample.
+                _resetIkBeforeSample = _sampleIk.fixTransforms;
+                if (_resetIkBeforeSample) _sampleIk.fixTransforms = false;
             }
 
-            if (targetIndex < Director.instance.charaAnims.Count)
-            {
-                _tempAnim = Director.instance.charaAnims[targetIndex];
-                _sampleIk = _tempAnim.GetComponent<BipedIK>();
-                if (_sampleIk != null)
-                {
-                    // SolverManager.Update otherwise restores the bind pose after our manual sample.
-                    _resetIkBeforeSample = _sampleIk.fixTransforms;
-                    if (_resetIkBeforeSample) _sampleIk.fixTransforms = false;
-                }
-            }
-
-            if(_currentKey != null && _tempAnim != null)
+            if (_currentKey != null)
             {
                 foreach (var key in _currentKey.thisList)
-                {
-                   if(key.clip != null)
-                   {
-                        _tempAnim.AddClip(key.clip, key.clip.name);
-                   }
-                }
+                    SetupAnimationClip(key);
             }
             _tempAnim.wrapMode = WrapMode.Clamp;
             _tempAnim.enabled = false;
+        }
+
+        private void SetupAnimationClip(LiveTimelineKeyCharaMotionData key)
+        {
+            // Native SetupAnimationClip (0x1af9ed0) ignores unnamed main-motion keys.
+            if (key == null || string.IsNullOrEmpty(key.motionName)) return;
+            // Native LoadAnimationClip (0x1ae4780) uses the existing clip triplet first.
+            if (key.clip == null)
+            {
+                key.clip = LoadLiveAnimationClip(key.motionName, key.clip);
+                key.clip2 = LoadLiveAnimationClip(key.motionName2, key.clip2);
+                key.clip3 = LoadLiveAnimationClip(key.motionName3, key.clip3);
+            }
+            if (key.clip != null) _tempAnim.AddClip(key.clip, key.clip.name);
+            if (key.clip2 != null) _tempAnim.AddClip(key.clip2, key.clip2.name);
+            if (key.clip3 != null) _tempAnim.AddClip(key.clip3, key.clip3.name);
+        }
+
+        private static AnimationClip LoadLiveAnimationClip(string motionName, AnimationClip existingClip)
+        {
+            if (existingClip != null || string.IsNullOrEmpty(motionName)) return existingClip;
+            // ResourcePath.GetLiveAnimationClipPath: original body motion, not a substitute action.
+            string path = "3d/motion/live/body/" + motionName;
+            var entry = LiveEffectController.FindResourceEntry(path);
+            if (entry == null)
+            {
+                Debug.LogError("[LiveTimelineMotionSequence] Motion resource not found: " + path);
+                return null;
+            }
+            var bundle = UmaAssetManager.LoadAssetBundle(entry);
+            if (bundle == null)
+            {
+                Debug.LogError("[LiveTimelineMotionSequence] Motion bundle load failed: " + path);
+                return null;
+            }
+            string assetName = Path.GetFileNameWithoutExtension(entry.Name);
+            var clip = bundle.LoadAsset<AnimationClip>(assetName);
+            if (clip == null)
+            {
+                foreach (string asset in bundle.GetAllAssetNames())
+                {
+                    if (!string.Equals(Path.GetFileNameWithoutExtension(asset), assetName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    clip = bundle.LoadAsset<AnimationClip>(asset);
+                    break;
+                }
+            }
+            if (LiveRuntimeDiagnostics.Enabled)
+                LiveRuntimeDiagnostics.RecordAssetLoad(entry.Name, "LoadAsset", typeof(AnimationClip),
+                    new UnityEngine.Object[] { clip }, clip, assetName);
+            if (clip == null)
+                Debug.LogError("[LiveTimelineMotionSequence] Motion clip load failed: " + path + " (" + assetName + ")");
+            return clip;
         }
 
         public void AlterUpdate(float currentTime, LiveTimelineKeyTimescaleDataList timescaleKeys)
@@ -122,6 +163,7 @@ namespace Gallop.Live.Cutt
 
                 _curIndex = curKey.index;
                 LiveTimelineKeyCharaMotionData arg = curKey.key as LiveTimelineKeyCharaMotionData;
+                if (arg == null || string.IsNullOrEmpty(arg.motionName) || arg.clip == null) return;
                 AnimationClip anim = arg.clip;
 
                 double start;

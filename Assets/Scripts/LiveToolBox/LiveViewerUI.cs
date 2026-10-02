@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -23,7 +23,6 @@ public class LiveViewerUI : MonoBehaviour
     public List<UmaLyricsData> CurrentLyrics = new List<UmaLyricsData>();
 
     private UnityEngine.UI.Text progressSeconds;
-    private UnityEngine.UI.Text dofButtonLabel;
     private int displayedCurrentTenth = -1;
     private int displayedTotalTenth = -1;
 
@@ -36,6 +35,8 @@ public class LiveViewerUI : MonoBehaviour
             new Config();
         }
         ApplyFrameRateOptions();
+        UISettingsGraphics.Build(FrameRateDropDown);
+        RuntimeGraphicsSettings.Apply();
         UmaViewerMain.ApplyFrameRateLimit();
 
         height = BottonUITransform.rect.height;
@@ -59,32 +60,6 @@ public class LiveViewerUI : MonoBehaviour
         progressSeconds.alignment = TextAnchor.MiddleRight;
         progressSeconds.text = "0.0s / 0.0s";
 
-        var buttonObject = new GameObject("DofDiagnosticToggle", typeof(RectTransform),
-            typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
-        buttonObject.layer = BottonUITransform.gameObject.layer;
-        var buttonRect = (RectTransform)buttonObject.transform;
-        buttonRect.SetParent(BottonUITransform, false);
-        buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0, 0.5f);
-        buttonRect.pivot = new Vector2(0, 0.5f);
-        buttonRect.anchoredPosition = new Vector2(8, 0);
-        buttonRect.sizeDelta = new Vector2(176, 24);
-        var image = buttonObject.GetComponent<UnityEngine.UI.Image>();
-        image.color = new Color(0.08f, 0.08f, 0.08f, 0.9f);
-        var button = buttonObject.GetComponent<UnityEngine.UI.Button>();
-        button.targetGraphic = image;
-        button.navigation = new UnityEngine.UI.Navigation { mode = UnityEngine.UI.Navigation.Mode.None };
-        button.onClick.AddListener(() =>
-        {
-            Gallop.GallopImageEffect.SetUserDofEnabled(!Gallop.GallopImageEffect.UserDofEnabled);
-            RefreshDofLabel();
-            OnMouse(true);
-            OnMouse(false);
-        });
-        dofButtonLabel = CreateDiagnosticText("Label", buttonRect);
-        dofButtonLabel.rectTransform.anchorMin = Vector2.zero;
-        dofButtonLabel.rectTransform.anchorMax = Vector2.one;
-        dofButtonLabel.rectTransform.sizeDelta = Vector2.zero;
-        RefreshDofLabel();
     }
 
     private UnityEngine.UI.Text CreateDiagnosticText(string name, RectTransform parent)
@@ -106,11 +81,6 @@ public class LiveViewerUI : MonoBehaviour
         return text;
     }
 
-    private void RefreshDofLabel()
-    {
-        if (dofButtonLabel != null)
-            dofButtonLabel.text = Gallop.GallopImageEffect.UserDofEnabled ? "DOF: ON (test)" : "DOF: OFF";
-    }
 
     private void LateUpdate()
     {
@@ -157,7 +127,7 @@ public class LiveViewerUI : MonoBehaviour
 
     public void SetFrameRate(int fps)
     {
-        Config.Instance.TargetFrameRate = fps == 1 ? 30 : 60;
+        Config.Instance.TargetFrameRate = UISettingsGraphics.FrameRateAt(fps);
         Config.Instance.UpdateConfig(false);
         UmaViewerMain.ApplyFrameRateLimit();
     }
@@ -167,8 +137,8 @@ public class LiveViewerUI : MonoBehaviour
         if (FrameRateDropDown == null) return;
 
         FrameRateDropDown.ClearOptions();
-        FrameRateDropDown.AddOptions(new List<string> { "60", "30" });
-        FrameRateDropDown.SetValueWithoutNotify(Config.Instance.GetTargetFrameRate() == 30 ? 1 : 0);
+        FrameRateDropDown.AddOptions(UISettingsGraphics.FrameRateLabels());
+        FrameRateDropDown.SetValueWithoutNotify(UISettingsGraphics.FrameRateIndex());
         FrameRateDropDown.RefreshShownValue();
     }
 

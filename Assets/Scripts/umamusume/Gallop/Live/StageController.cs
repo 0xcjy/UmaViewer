@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Gallop.Live
 {
@@ -131,7 +132,7 @@ namespace Gallop.Live
         [Tooltip("レーザーマテリアル")]
         private Material[] _laserMaterials;
 
-        
+
         private bool _laserSetupDone = false;
         private LiveTimelineControl _laserSetupTimelineControl;
         private readonly Dictionary<object, int> _laserDataIndexMap =
@@ -177,6 +178,237 @@ namespace Gallop.Live
         private readonly Dictionary<int, MirrorReflection> _mirrorByTimelineHash = new Dictionary<int, MirrorReflection>();
         private LiveTimelineControl _boundTimelineControl;
 
+        private const int MirrorCharacterSlotCount = 20;
+        private sealed class MirrorCameraTarget
+        {
+            internal MirrorReflection Mirror;
+            internal int BodyMask;
+            internal int HeadMask;
+            internal readonly Stack<Camera> ReceiverCameras = new Stack<Camera>(4);
+        }
+
+        private readonly List<MirrorCameraTarget> _mirrorCameraTargets = new List<MirrorCameraTarget>();
+        private readonly UmaContainerCharacter[] _mirrorBoundCharacters = new UmaContainerCharacter[MirrorCharacterSlotCount];
+        private IList<UmaContainerCharacter> _mirrorCharacters;
+        private LiveTimelineData _mirrorTimelineData;
+        private Camera _activeMirrorRenderingCamera;
+        private bool _mirrorRenderingCallbacksBound;
+
+        internal void InitializeMirrorReflections(IReadOnlyList<MirrorReflection> mirrors, Camera baseCamera,
+            Func<float> fovFactor, LiveTimelineControl timeline, IList<UmaContainerCharacter> characters)
+        {
+            DestroyMirrorReflections();
+            _mirrorTimelineData = timeline != null ? timeline.data : null;
+            _mirrorCharacters = characters;
+            _environmentMirrorTargets.Clear();
+            _mirrorByTimelineHash.Clear();
+            for (int i = 0; i < mirrors.Count; i++)
+            {
+                var mirror = mirrors[i];
+                if (mirror == null)
+                    continue;
+                mirror.Initialize(baseCamera, i, false);
+                mirror.SetupBaseCamera(baseCamera, fovFactor);
+                mirror.LifecycleOwner = this;
+                // Native MirrorCameraTarget construction leaves both actor masks zero.
+                _mirrorCameraTargets.Add(new MirrorCameraTarget { Mirror = mirror });
+                RegisterMirrorReflection(mirror);
+            }
+            PrepareMirrorCharacters();
+            BindMirrorRenderingCallbacks();
+        }
+
+        internal void PrepareMirrorCharacters()
+        {
+            for (int i = 0; i < MirrorCharacterSlotCount; i++)
+            {
+                var character = _mirrorCharacters != null && i < _mirrorCharacters.Count ? _mirrorCharacters[i] : null;
+                if (_mirrorBoundCharacters[i] == character)
+                    continue;
+                if (_mirrorBoundCharacters[i] != null)
+                    _mirrorBoundCharacters[i].RestoreMirrorChangedLayers();
+                _mirrorBoundCharacters[i] = character;
+                if (character != null)
+                    character.PrepareMirrorLayerCache();
+            }
+        }
+
+        private void BindMirrorRenderingCallbacks()
+        {
+            if (_mirrorRenderingCallbacksBound || !isActiveAndEnabled || _mirrorTimelineData == null ||
+                !_mirrorTimelineData.IsChangedCharaLayerOnlyMirrorRendering)
+                return;
+
+            _mirrorRenderingCallbacksBound = true;
+            for (int i = 0; i < _mirrorCameraTargets.Count; i++)
+                CompleteMirrorReinitialization(_mirrorCameraTargets[i].Mirror);
+            RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+            RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+            Camera.onPreCull += OnBeginBuiltInCameraRendering;
+            Camera.onPostRender += OnEndBuiltInCameraRendering;
+        }
+
+        private void UnbindMirrorRenderingCallbacks()
+        {
+            if (_mirrorRenderingCallbacksBound)
+            {
+                RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+                RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+                Camera.onPreCull -= OnBeginBuiltInCameraRendering;
+                Camera.onPostRender -= OnEndBuiltInCameraRendering;
+                _mirrorRenderingCallbacksBound = false;
+            }
+            for (int i = 0; i < _mirrorCameraTargets.Count; i++)
+                PrepareMirrorReinitialization(_mirrorCameraTargets[i].Mirror);
+            RestoreMirrorActorLayers();
+        }
+
+        internal void DestroyMirrorReflections()
+        {
+            UnbindMirrorRenderingCallbacks();
+            for (int i = 0; i < _mirrorCameraTargets.Count; i++)
+                if (_mirrorCameraTargets[i].Mirror != null)
+                    _mirrorCameraTargets[i].Mirror.LifecycleOwner = null;
+            _mirrorCameraTargets.Clear();
+            _mirrorCharacters = null;
+            _mirrorTimelineData = null;
+            for (int i = 0; i < MirrorCharacterSlotCount; i++)
+                _mirrorBoundCharacters[i] = null;
+        }
+
+        internal void PrepareMirrorReinitialization(MirrorReflection mirror)
+        {
+            if (mirror == null)
+                return;
+            mirror.RemoveBeginCameraRenderingCallback(OnBeginMirrorCameraRendering);
+            mirror.RemoveEndCameraRenderingCallback(OnEndMirrorCameraRendering);
+            RestoreMirrorActorLayers(mirror.MirrorCamera);
+            mirror.RestoreMirrorObjectLayers();
+            var target = GetMirrorCameraTarget(mirror);
+            if (target != null)
+            {
+                target.BodyMask = 0;
+                target.HeadMask = 0;
+                target.ReceiverCameras.Clear();
+            }
+        }
+
+        internal void CompleteMirrorReinitialization(MirrorReflection mirror)
+        {
+            if (!_mirrorRenderingCallbacksBound || mirror == null || !mirror.IsInitialized)
+                return;
+            mirror.RemoveBeginCameraRenderingCallback(OnBeginMirrorCameraRendering);
+            mirror.RemoveEndCameraRenderingCallback(OnEndMirrorCameraRendering);
+            mirror.AddBeginCameraRenderingCallback(OnBeginMirrorCameraRendering);
+            mirror.AddEndCameraRenderingCallback(OnEndMirrorCameraRendering);
+        }
+
+        internal void ReleaseMirrorReflection(MirrorReflection mirror)
+        {
+            PrepareMirrorReinitialization(mirror);
+            for (int i = _mirrorCameraTargets.Count - 1; i >= 0; i--)
+                if (_mirrorCameraTargets[i].Mirror == mirror)
+                    _mirrorCameraTargets.RemoveAt(i);
+            mirror.LifecycleOwner = null;
+        }
+
+        private MirrorCameraTarget GetMirrorCameraTarget(MirrorReflection mirror)
+        {
+            for (int i = 0; i < _mirrorCameraTargets.Count; i++)
+                if (_mirrorCameraTargets[i].Mirror == mirror)
+                    return _mirrorCameraTargets[i];
+            return null;
+        }
+
+        private MirrorCameraTarget GetMirrorCameraTarget(Camera camera)
+        {
+            for (int i = 0; i < _mirrorCameraTargets.Count; i++)
+            {
+                var mirror = _mirrorCameraTargets[i].Mirror;
+                if (mirror != null && mirror.MirrorCamera == camera)
+                    return _mirrorCameraTargets[i];
+            }
+            return null;
+        }
+
+        private void OnBeginMirrorCameraRendering(ScriptableRenderContext context, Camera camera)
+        {
+            var target = GetMirrorCameraTarget(camera);
+            if (target == null)
+                return;
+            RestoreMirrorActorLayers();
+            _activeMirrorRenderingCamera = camera;
+            int layer = GraphicSettings.GetLayer(GraphicSettings.LayerIndex.LayerCharacter3D_NotReflect);
+            for (int i = 0; i < MirrorCharacterSlotCount; i++)
+                if (_mirrorBoundCharacters[i] != null)
+                    _mirrorBoundCharacters[i].SetLayerBeforeMirrorCameraRendering(
+                        (target.BodyMask & (1 << i)) != 0, (target.HeadMask & (1 << i)) != 0, layer);
+        }
+
+        private void OnEndMirrorCameraRendering(ScriptableRenderContext context, Camera camera)
+        {
+            RestoreMirrorActorLayers(camera);
+        }
+
+        internal void RestoreMirrorActorLayers(Camera camera)
+        {
+            if (_activeMirrorRenderingCamera == camera)
+                RestoreMirrorActorLayers();
+        }
+
+        private void RestoreMirrorActorLayers()
+        {
+            for (int i = 0; i < MirrorCharacterSlotCount; i++)
+                if (_mirrorBoundCharacters[i] != null)
+                    _mirrorBoundCharacters[i].RestoreMirrorChangedLayers();
+            _activeMirrorRenderingCamera = null;
+        }
+
+        private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+        {
+            // Mirror cameras already have their own callbacks. Never overwrite a parent receiver scope.
+            if (!_mirrorRenderingCallbacksBound || GetMirrorCameraTarget(camera) != null)
+                return;
+            int layer = GraphicSettings.GetLayer(GraphicSettings.LayerIndex.LayerNO_VISIBLE);
+            if (layer < 0)
+                return;
+            for (int i = 0; i < _mirrorCameraTargets.Count; i++)
+            {
+                var target = _mirrorCameraTargets[i];
+                if (target.Mirror == null || !target.Mirror.IsInitialized || target.Mirror.BaseCamera == camera)
+                    continue;
+                target.Mirror.SetMirrorObjectLayer(layer);
+                target.ReceiverCameras.Push(camera);
+            }
+        }
+
+        private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
+        {
+            if (GetMirrorCameraTarget(camera) != null)
+                return;
+            for (int i = 0; i < _mirrorCameraTargets.Count; i++)
+            {
+                var target = _mirrorCameraTargets[i];
+                if (target.ReceiverCameras.Count == 0 || target.ReceiverCameras.Peek() != camera)
+                    continue;
+                target.ReceiverCameras.Pop();
+                if (target.Mirror != null)
+                    target.Mirror.ResetMirrorObjectLayer();
+            }
+        }
+
+        private void OnBeginBuiltInCameraRendering(Camera camera)
+        {
+            if (GraphicsSettings.currentRenderPipeline == null)
+                OnBeginCameraRendering(default, camera);
+        }
+
+        private void OnEndBuiltInCameraRendering(Camera camera)
+        {
+            if (GraphicsSettings.currentRenderPipeline == null)
+                OnEndCameraRendering(default, camera);
+        }
+
         private void Awake()
         {
             _stageColorBlock = new UnityEngine.MaterialPropertyBlock();
@@ -204,6 +436,7 @@ namespace Gallop.Live
                 Director.instance._stageController = this;
 
             TryBindTimelineCallbacks();
+            BindMirrorRenderingCallbacks();
         }
 
         // Laser 的 AlterUpdate 必须在 LiveTimelineControl 下发本帧 UpdateInfo 之后执行。
@@ -651,7 +884,7 @@ namespace Gallop.Live
                 return;
             }
 
-            LaserController controller =_laserControllerArray[index];
+            LaserController controller = _laserControllerArray[index];
 
             controller?.UpdateInfo(ref updateInfo);
         }
@@ -833,7 +1066,7 @@ namespace Gallop.Live
                 return obj != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj) : 0;
             }
         }
-        
+
         private void AutoAddDriver(string shortTypeName)
         {
             Type t = null;
@@ -867,12 +1100,14 @@ namespace Gallop.Live
 
         private void OnDisable()
         {
+            UnbindMirrorRenderingCallbacks();
             UnbindTimelineCallbacks(_boundTimelineControl);
             _boundTimelineControl = null;
         }
 
         private void OnDestroy()
         {
+            DestroyMirrorReflections();
             UnbindTimelineCallbacks(_boundTimelineControl);
             _boundTimelineControl = null;
         }
@@ -1126,6 +1361,16 @@ namespace Gallop.Live
             mirror.SetLightMirrorShader(!updateInfo.IsToonMirror);
             mirror.MirrorReflectionRate = updateInfo.MirrorReflectionRate;
 
+            if (_mirrorRenderingCallbacksBound && updateInfo.EnableMirror)
+            {
+                var target = GetMirrorCameraTarget(mirror);
+                if (target != null)
+                {
+                    target.BodyMask = (int)updateInfo.TargetChara;
+                    target.HeadMask = (int)(updateInfo.EnableCharaHead ? updateInfo.TargetCharaHead : updateInfo.TargetChara);
+                }
+            }
+
             mirror.ResetCullingMask();
 
             if (_mirrorBgLayerMask != 0)
@@ -1169,33 +1414,10 @@ namespace Gallop.Live
 
                 foreach (var child in instance.GetComponentsInChildren<Transform>(true))
                 {
-                    string objectName = child.name.Replace("(Clone)", "");
-                    if (!StageObjectMap.ContainsKey(objectName))
-                    {
-                        if (child.name.IndexOf("light", StringComparison.OrdinalIgnoreCase) >= 0)
-                            child.gameObject.SetActive(true);
-                        StageObjectMap.Add(objectName, child.gameObject);
-                        StageParentMap.Add(objectName, child.parent);
-                    }
-
-                    int objectHash = FNVHash.Generate(objectName);
-                    if (!_objectsWorkInfoDictionary.TryGetValue(objectHash, out var works))
-                    {
-                        works = new List<StageObjectWorkInfo>();
-                        _objectsWorkInfoDictionary.Add(objectHash, works);
-                    }
-                    works.Add(new StageObjectWorkInfo
-                    {
-                        transform = child,
-                        originalParent = child.parent,
-                        startTransform = new TransformBaseData
-                        {
-                            position = child.localPosition,
-                            rotation = child.localRotation,
-                            scale = child.localScale
-                        },
-                        renderers = child.GetComponents<Renderer>()
-                    });
+                    if (child.name.IndexOf("light", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                        !StageObjectMap.ContainsKey(child.name.Replace("(Clone)", "")))
+                        child.gameObject.SetActive(true);
+                    RegisterObjectTransform(child, string.Empty);
                 }
             }
 
@@ -1212,6 +1434,67 @@ namespace Gallop.Live
             var washBeams = GetComponent<StageWashBeamDriver>();
             if (washBeams == null) washBeams = gameObject.AddComponent<StageWashBeamDriver>();
             washBeams.Initialize();
+        }
+
+        internal void RegisterObjectTransform(Transform child, string nameSuffixToken)
+        {
+            string objectName = child.name.Replace("(Clone)", "") + nameSuffixToken;
+            if (!StageObjectMap.ContainsKey(objectName))
+            {
+                StageObjectMap.Add(objectName, child.gameObject);
+                StageParentMap.Add(objectName, child.parent);
+            }
+            int objectHash = FNVHash.Generate(objectName);
+            if (!_objectsWorkInfoDictionary.TryGetValue(objectHash, out var works))
+            {
+                works = new List<StageObjectWorkInfo>();
+                _objectsWorkInfoDictionary.Add(objectHash, works);
+            }
+            var renderers = child.GetComponents<Renderer>();
+            for (int i = 0; i < renderers.Length; i++) CacheBgColor1Renderer(renderers[i]);
+            works.Add(new StageObjectWorkInfo
+            {
+                transform = child,
+                originalParent = child.parent,
+                startTransform = new TransformBaseData
+                {
+                    position = child.localPosition,
+                    rotation = child.localRotation,
+                    scale = child.localScale
+                },
+                renderers = renderers
+            });
+        }
+
+        internal void UnregisterObjectTransform(Transform child, string nameSuffixToken)
+        {
+            string objectName = child.name.Replace("(Clone)", "") + nameSuffixToken;
+            int hash = FNVHash.Generate(objectName);
+            if (!_objectsWorkInfoDictionary.TryGetValue(hash, out var works)) return;
+            for (int i = works.Count - 1; i >= 0; i--)
+            {
+                if (works[i].transform != child) continue;
+                foreach (var renderer in works[i].renderers)
+                {
+                    _bgColor1RendererProperties.Remove(renderer);
+                    _ambientColorRenderers.Remove(renderer);
+                }
+                works.RemoveAt(i);
+            }
+            if (works.Count == 0) _objectsWorkInfoDictionary.Remove(hash);
+            if (StageObjectMap.TryGetValue(objectName, out var mapped) && mapped == child.gameObject)
+            {
+                if (works.Count > 0)
+                {
+                    StageObjectMap[objectName] = works[0].transform.gameObject;
+                    StageParentMap[objectName] = works[0].originalParent;
+                }
+                else
+                {
+                    StageObjectMap.Remove(objectName);
+                    StageParentMap.Remove(objectName);
+                }
+            }
         }
 
         private StageObjectUnit FindStageObjectUnit(int hash)
@@ -1594,19 +1877,7 @@ namespace Gallop.Live
                 if (r == null) continue;
                 _allStageRenderers.Add(r);
                 IndexRendererSharedMaterials(r);
-                int stageColorProperties = 0;
-                bool hasAmbient = false;
-                var materials = r.sharedMaterials;
-                for (int m = 0; m < materials.Length; m++)
-                {
-                    var material = materials[m];
-                    if (material == null) continue;
-                    if (material.HasProperty(BgColor1MulColor0Id)) stageColorProperties |= 1;
-                    if (material.HasProperty(BgColor1ColorPowerId)) stageColorProperties |= 2;
-                    if (material.HasProperty(BgColor1AmbientColorId)) hasAmbient = true;
-                }
-                if (stageColorProperties != 0) _bgColor1RendererProperties.Add(r, stageColorProperties);
-                if (hasAmbient) _ambientColorRenderers.Add(r);
+                CacheBgColor1Renderer(r);
 
                 if (RendererHasAnyBgColorProps(r))
                     _bgColorAllEligibleRenderers.Add(r);
@@ -1618,6 +1889,23 @@ namespace Gallop.Live
             {
                 Debug.Log($"[StageController] BgColor cache rebuilt. eligibleRenderers={_bgColorAllEligibleRenderers.Count}, materialGroups={_bgColor2Groups.Count}");
             }
+        }
+
+        private void CacheBgColor1Renderer(Renderer r)
+        {
+            int stageColorProperties = 0;
+            bool hasAmbient = false;
+            var materials = r.sharedMaterials;
+            for (int m = 0; m < materials.Length; m++)
+            {
+                var material = materials[m];
+                if (material == null) continue;
+                if (material.HasProperty(BgColor1MulColor0Id)) stageColorProperties |= 1;
+                if (material.HasProperty(BgColor1ColorPowerId)) stageColorProperties |= 2;
+                if (material.HasProperty(BgColor1AmbientColorId)) hasAmbient = true;
+            }
+            if (stageColorProperties != 0) _bgColor1RendererProperties[r] = stageColorProperties;
+            if (hasAmbient && !_ambientColorRenderers.Contains(r)) _ambientColorRenderers.Add(r);
         }
 
         private void IndexRendererSharedMaterials(Renderer r)

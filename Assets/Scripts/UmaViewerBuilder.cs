@@ -1,4 +1,4 @@
-﻿using CriWareFormats;
+using CriWareFormats;
 using Gallop;
 using Gallop.Live;
 using Gallop.Live.Cutt;
@@ -841,20 +841,18 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
 
     public void LoadLive(LiveEntry live, List<LiveCharacterSelect> characters)
     {
-        characters.ForEach(a =>
+        if (!LiveAutoSelection.FillMissing(Main, live, characters, UI.CostumeIconDefault))
         {
-            if (a.CharaEntry == null || string.IsNullOrEmpty(a.CostumeId))
-            {
-                a.CharaEntry = Main.Characters[Random.Range(0, Main.Characters.Count / 2)];
-                a.CostumeId = "0002_00_00";
-            }
-        });
+            UI.ShowMessage("Cannot fill the live selection: no available character-owned winning costume matches an empty slot.", UIMessageType.Error);
+            return;
+        }
 
         // 在旧 UI 场景卸载前复制成普通 C# 数据。后续异步加载不会丢角色选择。
         List<LiveCharacterLoadData> liveCharacters =
             LiveCharacterLoadData.CaptureAll(characters);
 
         bool requireStage = UI.isRequireStage;
+        int liveMode = UI.LiveMode;
         // Opt-in diagnostics begin before root registration, then follow the
         // exact dependency-expanded request count shown by the progress UI.
         LiveRuntimeDiagnostics.BeginPreload(live, liveCharacters, requireStage);
@@ -912,25 +910,19 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
 
                     controller.Initialize();
                     LiveRuntimeDiagnostics.RecordPhase("director_initialized", controller);
-
-                    int actualMemberCount = controller
-                        ._liveTimelineControl
-                        .data
-                        .worksheetList[0]
-                        .charaMotSeqList
-                        .Count;
-
-                    if (actualMemberCount > liveCharacters.Count && liveCharacters.Count > 0)
+                    // Native full-mode callback (RVA 0x1ba8981..0x1ba8b76) cycles
+                    // selected identities through the raw authored channel count.
+                    // Simple mode uses only the UI's basic-motion selection capacity.
+                    int motionChannelCount = controller._liveTimelineControl.data.worksheetList[0].charaMotSeqList.Count;
+                    if (liveMode == 1 && liveCharacters.Count > 0 && motionChannelCount > liveCharacters.Count)
                     {
-                        Debug.LogWarning(
-                            $"actual member count is {actualMemberCount} current {liveCharacters.Count}");
-
-                        var expandedCharacters = new List<LiveCharacterLoadData>();
-                        for (int i = 0; i < actualMemberCount; i++)
-                            expandedCharacters.Add(liveCharacters[i % liveCharacters.Count]);
-
-                        liveCharacters = expandedCharacters;
+                        var channelCharacters = new List<LiveCharacterLoadData>(motionChannelCount);
+                        for (int i = 0; i < motionChannelCount; i++)
+                            channelCharacters.Add(liveCharacters[i % liveCharacters.Count]);
+                        liveCharacters = channelCharacters;
                     }
+
+
 
                     LoadLiveUma(liveCharacters);
                     LiveRuntimeDiagnostics.RecordPhase("characters_loaded", controller);
@@ -989,7 +981,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                         {
                             if (director == null) return;
                             director.InitializeUI();
-                            director.InitializeTimeline(liveCharacters, UI.LiveMode);
+                            director.InitializeTimeline(liveCharacters, liveMode);
                             director.InitializeMusic(live.MusicId, liveCharacters);
                             LiveRuntimeDiagnostics.RecordPhase("timeline_music_initialized", director);
                             director.Play();

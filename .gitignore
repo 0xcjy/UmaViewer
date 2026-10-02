@@ -105,5 +105,11 @@ global-metadata*.dat
 *.pfx
 *.p12
 
+# Local agent instructions and internal handoff plans
+/AGENTS.md
+/CLAUDE.md
+/implementation_plan.md
+/docs/CLAUDE_LIVE_HANDOFF.md
+
 # Handwritten tool project; Unity-generated root IDE projects stay ignored
 !/tools/TargetMethodLookup/TargetMethodLookup.csproj

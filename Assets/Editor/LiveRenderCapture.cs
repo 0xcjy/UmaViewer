@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -208,8 +208,11 @@ public static class LiveRenderCapture
                 var live = main.Lives.FirstOrDefault(x => x.MusicId == plan.songId);
                 if (live == null || main.Characters.Count < live.MemberCount) return;
                 var selections = new List<LiveCharacterSelect>();
-                if (live.MemberCount != plan.characters.Length || live.BackGroundId != plan.stageId)
-                    throw new InvalidOperationException("Reference song/stage/member count differs from loaded Live metadata.");
+                // Reference identity includes optional actors created by the native
+                // channel expansion; only MemberCount identities are selected in UI.
+                // The complete instantiated cast is still checked below.
+                if (live.MemberCount <= 0 || live.MemberCount > plan.characters.Length || live.BackGroundId != plan.stageId)
+                    throw new InvalidOperationException("Reference song/stage/selected members differ from loaded Live metadata.");
                 for (int i = 0; i < live.MemberCount; ++i)
                 {
                     var item = new GameObject("CaptureSelection_" + i).AddComponent<LiveCharacterSelect>();

@@ -1,4 +1,4 @@
-﻿using NAudio.Wave;
+using NAudio.Wave;
 using System;
 using UnityEngine;
 using System.IO;
@@ -9,19 +9,13 @@ namespace UmaMusumeAudio
 {
     public class UmaWaveStream : WaveStream
     {
-        /*
-         * Open Umamusume > umamusume_Data > resources.assets with a hex editor.
-         * Check the results when finding the string "StreamingAssets".
-         * The key should be near a string named "cri_auth". 
-         */
-        private const ulong umaMusumeKey = 75923756697503;
-
         private readonly HcaWaveStream hcaWaveStream;
 
         public UmaWaveStream(AwbReader awbReader, int waveId)
         {
+            ulong audioKey = Config.Instance.GetAudioKey();
             Stream awbSubfile = awbReader.GetWaveSubfileStream(awbReader.Waves.Find((wave) => wave.WaveId == waveId));
-            hcaWaveStream = new HcaWaveStream(awbSubfile, MixKey(umaMusumeKey, awbReader.Subkey));
+            hcaWaveStream = new HcaWaveStream(awbSubfile, MixKey(audioKey, awbReader.Subkey));
         }
 
         public override WaveFormat WaveFormat => hcaWaveStream.WaveFormat;

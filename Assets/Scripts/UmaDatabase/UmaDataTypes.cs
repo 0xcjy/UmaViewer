@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using Gallop;
 using System;
@@ -111,39 +111,36 @@ public class PartEntry
     public int SingerCount = 0;
     public PartEntry(string data)
     {
-        string[] lines = data.Split('\n');
-
-        string[] names = lines[0].Split(',');
-
-        foreach (var name in names)
+        var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var names = lines[0].Split(',');
+        var columns = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (int j = 0; j < names.Length; j++)
         {
-            var temp = name;
-            temp.Replace("lleft", "left2");
-            temp.Replace("rright", "right2");
-            temp.Replace("llleft", "left3");
-            temp.Replace("rrright", "right3");
-            PartSettings[temp] = new List<float>();
+            string name = names[j].Trim();
+            int suffix = name.IndexOf('_');
+            string part = suffix < 0 ? name : name.Substring(0, suffix);
+            switch (part)
+            {
+                case "lleft": part = "left2"; break;
+                case "rright": part = "right2"; break;
+                case "llleft": part = "left3"; break;
+                case "rrright": part = "right3"; break;
+            }
+            name = part + (suffix < 0 ? "" : name.Substring(suffix));
+            columns[name] = j;
+            PartSettings[name] = new List<float>();
         }
-
-        for (int i = 1; i < lines.Length - 1; i++)
+        for (int i = 1; i < lines.Length; i++)
         {
             var values = lines[i].Split(',');
-            for (int j = 0; j < names.Length; j++)
-            {
-                PartSettings[names[j]].Add((float)Convert.ToDouble(values[j]));
-            }
+            foreach (var column in columns)
+                PartSettings[column.Key].Add(float.Parse(values[column.Value], System.Globalization.CultureInfo.InvariantCulture));
         }
-
-        foreach(var part in PartSettings)
+        foreach (var part in PartSettings)
         {
-            if (part.Key != "time" && !part.Key.Contains("_"))
-            {
-                if (part.Value.FindAll(v => v > 0).Count > 0) 
-                {
-                    SingerCount += 1;
-                }
-            }
-        } 
+            if (part.Key != "time" && !part.Key.Contains("_") && part.Value.Exists(v => v > 0f))
+                SingerCount++;
+        }
     }
 }
 

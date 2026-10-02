@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
@@ -331,7 +331,7 @@ namespace Gallop.Live.Cutt
         public event HdrBloomUpdateInfoDelegate OnUpdateHdrBloom;
 
         public event Action<PostEffectUpdateInfo_BloomDiffusion> OnUpdatePostEffect_BloomDiffusion;
-        public event Action<LiveTimelineKeyPostEffectDOFData> OnUpdatePostEffect_Dof;
+        public event Action<LiveTimelineKeyPostEffectDOFData, Vector3?> OnUpdatePostEffect_Dof;
         public bool HasDofCameraLookAt { get; private set; }
         public Vector3 DofCameraLookAt { get; private set; }
         public Camera DofTrackCamera { get; private set; }
@@ -395,6 +395,7 @@ namespace Gallop.Live.Cutt
         public event Action RecordUma;
 
         public Dictionary<string, GameObject> StageObjectMap = new Dictionary<string, GameObject>();
+        public Dictionary<string, StageObjectUnit> StageObjectUnitMap = new Dictionary<string, StageObjectUnit>();
 
         public float currentLiveTime
         {
@@ -553,16 +554,18 @@ namespace Gallop.Live.Cutt
 
         public void InitCharaMotionSequence(int[] motionSequence)
         {
-            //Create Animation
-            foreach (var obj in Director.instance.charaObjs)
+            var director = Director.instance;
+            // Native InitCharaMotionSequence retains an entry for each physical slot.
+            foreach (var obj in director.charaObjs)
             {
-                var container = obj.GetComponentInChildren<UmaContainer>();
-                if (container)
+                var container = obj != null ? obj.GetComponentInChildren<UmaContainer>() : null;
+                Animation animation = null;
+                if (container != null)
                 {
                     EnsureMicMotionTransforms(container.transform);
-                    var animation = container.gameObject.AddComponent<Animation>();
-                    Director.instance.charaAnims.Add(animation);
+                    animation = container.gameObject.AddComponent<Animation>();
                 }
+                director.charaAnims.Add(animation);
             }
 
             //Get KeyArray
@@ -578,14 +581,14 @@ namespace Gallop.Live.Cutt
             if (Director.instance.liveMode == 1)
             {
                 //Set Motion
-                int CharaPositionMax = Director.instance.allowCount;
+                int CharaPositionMax = Mathf.Max(0, Mathf.Min(director.allowCount,
+                    Mathf.Min(director.charaObjs.Count, motionSequence != null ? motionSequence.Length : 0)));
 
                 _motionSequenceArray = new LiveTimelineMotionSequence[CharaPositionMax];
 
 
                 for (int i = 0; i < CharaPositionMax; i++)
                 {
-                    Debug.Log(i);
                     _motionSequenceArray[i] = new LiveTimelineMotionSequence();
                     _motionSequenceArray[i].Initialize(Director.instance.charaObjs[i], i, motionSequence[i], this);
                 }
@@ -597,7 +600,10 @@ namespace Gallop.Live.Cutt
                 foreach (var motion in UmaViewerMain.Instance.AbMotions.Where(a => a.Name.StartsWith($"3d/motion/live/body/son{Director.instance.live.MusicId}") && Path.GetFileName(a.Name).Split('_').Length == 4))
                 {
                     AssetBundle motionAB = UmaAssetManager.LoadAssetBundle(motion);
-                    AnimationClip motionAnim = motionAB.LoadAsset<AnimationClip>(Path.GetFileName(motion.Name).Split('.')[0]);
+                    AnimationClip motionAnim = motionAB != null
+                        ? motionAB.LoadAsset<AnimationClip>(Path.GetFileName(motion.Name).Split('.')[0]) : null;
+                    if (motionAnim == null)
+                        Debug.LogError("[LiveTimelineControl] Basic motion clip load failed: " + motion.Name);
                     if (Gallop.Live.LiveRuntimeDiagnostics.Enabled)
                         Gallop.Live.LiveRuntimeDiagnostics.RecordAssetLoad(motion.Name, "LoadAsset", typeof(AnimationClip),
                             new UnityEngine.Object[] { motionAnim }, motionAnim, Path.GetFileName(motion.Name).Split('.')[0]);
@@ -605,7 +611,8 @@ namespace Gallop.Live.Cutt
                 }
 
                 //Set Motion
-                int CharaPositionMax = Director.instance.allowCount;
+                int CharaPositionMax = Mathf.Max(0, Mathf.Min(director.allowCount,
+                    Mathf.Min(director.charaObjs.Count, Mathf.Min(director.charaAnims.Count, Anims.Count))));
 
                 _motionSequenceArray = new LiveTimelineMotionSequence[CharaPositionMax];
 
@@ -613,7 +620,7 @@ namespace Gallop.Live.Cutt
                 for (int i = 0; i < CharaPositionMax; i++)
                 {
                     _motionSequenceArray[i] = new LiveTimelineMotionSequence();
-                    _motionSequenceArray[i].Initialize(Director.instance.charaObjs[i], i, motionSequence[i], this, Anims);
+                    _motionSequenceArray[i].Initialize(director.charaObjs[i], i, i, this, Anims);
                 }
             }
 
@@ -1585,26 +1592,15 @@ namespace Gallop.Live.Cutt
             LiveTimelineKeyCameraPositionData liveTimelineKeyCameraPositionData = curKey as LiveTimelineKeyCameraPositionData;
             camera.camera.nearClipPlane = liveTimelineKeyCameraPositionData.nearClip;
             camera.camera.farClipPlane = liveTimelineKeyCameraPositionData.farClip;
+            // Native AlterUpdate_CameraPos (0x1acd38c..0x1acd3f4) preserves unflagged state.
+            if (((int)liveTimelineKeyCameraPositionData.attribute & 0x20000) != 0)
+                camera.camera.cullingMask = liveTimelineKeyCameraPositionData.GetCullingMask();
+            if (((int)liveTimelineKeyCameraPositionData.attribute & 0x40000) != 0)
+                camera.camera.backgroundColor = liveTimelineKeyCameraPositionData.BgColor;
             if (CalculateCameraPos(out var pos, sheet, curKey, nextKey, currentFrame))
             {
                 camera.cacheTransform.position = pos;
 
-                // TODO 锟斤拷锟斤拷锟矫的伙拷锟斤拷CGSS锟斤拷layer枚锟劫ｏ拷要锟斤拷锟斤拷锟芥换
-                /*
-                int num = liveTimelineKeyCameraPositionData.GetCullingMask();
-                if (num == 0)
-                {
-                    num = LiveTimelineKeyCameraPositionData.GetDefaultCullingMask();
-                }
-                camera.camera.cullingMask = num;
-                if (OnUpdateCameraPos != null)
-                {
-                    CameraPosUpdateInfo updateInfo = default(CameraPosUpdateInfo);
-                    updateInfo.outlineZOffset = liveTimelineKeyCameraPositionData.outlineZOffset;
-                    updateInfo.characterLODMask = (int)liveTimelineKeyCameraPositionData.characterLODMask;
-                    OnUpdateCameraPos(ref updateInfo);
-                }
-                */
             }
         }
 
@@ -2440,7 +2436,7 @@ namespace Gallop.Live.Cutt
         private void AlterUpdate_MobControl(LiveTimelineWorkSheet sheet, float currentFrame)
         {
             AlterUpdate_MobCyalumeControl(
-                sheet != null ? sheet.mobControlList : null,
+                sheet != null ? sheet.MobControlKeys : null,
                 currentFrame,
                 OnUpdateMobControl);
         }
@@ -2448,7 +2444,7 @@ namespace Gallop.Live.Cutt
         private void AlterUpdate_CyalumeControl(LiveTimelineWorkSheet sheet, float currentFrame)
         {
             AlterUpdate_MobCyalumeControl(
-                sheet != null ? sheet.cyalumeControlList : null,
+                sheet != null ? sheet.CyalumeControlKeys : null,
                 currentFrame,
                 OnUpdateCyalumeControl);
         }
@@ -2465,10 +2461,10 @@ namespace Gallop.Live.Cutt
             for (int i = 0; i < count; i++)
             {
                 var controlData = dataList[i];
-                if (controlData == null || controlData.keys == null)
+                if (controlData == null || controlData.Keys == null || (uint)controlData.GroupIndex >= 11u)
                     continue;
 
-                var keys = controlData.keys;
+                var keys = controlData.Keys;
                 if (keys.Count <= 0)
                     continue;
                 if (keys.HasAttribute(LiveTimelineKeyDataListAttr.Disable))
@@ -2485,22 +2481,22 @@ namespace Gallop.Live.Cutt
 
                 MobCyalumeUpdateInfo info = default;
                 info.data = controlData;
-                info.unk0 = (uint)keys.unk48 < 11u ? keys.unk48 : i;
+                info.unk0 = controlData.GroupIndex;
                 info.currentFrame = currentFrame;
                 info.currentLiveTime = currentLiveTime;
 
                 if (next != null && next.interpolateType != 0)
                 {
                     float t = CalculateInterpolationValue(current, next, currentFrame);
-                    info.position = Vector3.Lerp(current.position, next.position, t);
+                    info.position = Vector3.Lerp(current.Position, next.Position, t);
                     info.rotation = Quaternion.Lerp(current.GetRotation(), next.GetRotation(), t);
-                    info.scale = Vector3.Lerp(current.scale, next.scale, t);
+                    info.scale = Vector3.Lerp(current.Scale, next.Scale, t);
                 }
                 else
                 {
-                    info.position = current.position;
+                    info.position = current.Position;
                     info.rotation = current.GetRotation();
-                    info.scale = current.scale;
+                    info.scale = current.Scale;
                 }
 
                 callback.Invoke(ref info);
@@ -2975,7 +2971,8 @@ namespace Gallop.Live.Cutt
                     continue;
                 }
 
-                if (StageObjectMap == null || !StageObjectMap.ContainsKey(objectEntry.name))
+                if ((StageObjectMap == null || !StageObjectMap.ContainsKey(objectEntry.name)) &&
+                    (StageObjectUnitMap == null || !StageObjectUnitMap.ContainsKey(objectEntry.name)))
                     continue;
 
                 FindTimelineKey(out var curKey, out var nextKey, keys, currentFrame);
@@ -3207,6 +3204,27 @@ namespace Gallop.Live.Cutt
             }
         }
 
+        private Vector3? ResolveDofWorldFocus(LiveTimelineKeyPostEffectDOFData key)
+        {
+            if (((int)key.attribute & (1 << 16)) != 0)
+                return HasDofCameraLookAt ? DofCameraLookAt : (Vector3?)null;
+            bool valid = key.charactor == 0;
+            for (int i = 0; !valid && i < liveCharactorLocators.Length && i < liveCharaPositionMax; ++i)
+                valid = (key.charactor & (1 << i)) != 0 && liveCharactorLocators[i] != null;
+            return valid ? GetPositionWithCharacters(key.FocusCharacters, LiveCameraCharaParts.Face,
+                Vector3.zero, Vector3.zero) : (Vector3?)null;
+        }
+
+        private Vector3? SetupDofWorldFocus(LiveTimelineKeyPostEffectDOFData current,
+            LiveTimelineKeyPostEffectDOFData next, float progress)
+        {
+            var start = ResolveDofWorldFocus(current);
+            if (ReferenceEquals(current, next)) return start;
+            var end = ResolveDofWorldFocus(next);
+            return start.HasValue && end.HasValue
+                ? Vector3.LerpUnclamped(start.Value, end.Value, progress) : (Vector3?)null;
+        }
+
         private void AlterUpdate_PostEffect_Dof(LiveTimelineWorkSheet sheet, int frame)
         {
             DofTrackCamera = GetCamera(sheet.targetCameraIndex)?.camera;
@@ -3214,32 +3232,32 @@ namespace Gallop.Live.Cutt
             if (keys == null || keys.HasAttribute(LiveTimelineKeyDataListAttr.Disable) ||
                 !keys.EnablePlayModeTimeline(_playMode))
             {
-                OnUpdatePostEffect_Dof?.Invoke(null);
+                OnUpdatePostEffect_Dof?.Invoke(null, null);
                 return;
             }
             FindTimelineKey(out var currentBase, out var nextBase, keys, frame);
             var current = currentBase as LiveTimelineKeyPostEffectDOFData;
             var next = nextBase as LiveTimelineKeyPostEffectDOFData;
-            if (current == null) { OnUpdatePostEffect_Dof?.Invoke(null); return; }
+            if (current == null) { OnUpdatePostEffect_Dof?.Invoke(null, null); return; }
             float t = next != null && next.IsInterpolateKey()
                 ? CalculateInterpolationValue(current, next, frame) : 0f;
-            if (next == null) next = current;
+            if (next == null || !next.IsInterpolateKey()) next = current;
             var sample = _dofSample;
             sample.frame = current.frame;
             sample.attribute = current.attribute;
             sample.charactor = current.charactor;
             sample.dofBlurType = current.dofBlurType;
             sample.dofQuality = current.dofQuality;
-            sample.forcalSize = Mathf.Lerp(current.forcalSize, next.forcalSize, t);
-            sample.blurSpread = Mathf.Lerp(current.blurSpread, next.blurSpread, t);
-            sample.dofForegroundSize = Mathf.Lerp(current.dofForegroundSize, next.dofForegroundSize, t);
-            sample.dofFocalPoint = Mathf.Lerp(current.dofFocalPoint, next.dofFocalPoint, t);
-            sample.dofSmoothness = Mathf.Lerp(current.dofSmoothness, next.dofSmoothness, t);
-            sample.BallBlurPowerFactor = Mathf.Lerp(current.BallBlurPowerFactor, next.BallBlurPowerFactor, t);
-            sample.BallBlurBrightnessThreshhold = Mathf.Lerp(current.BallBlurBrightnessThreshhold, next.BallBlurBrightnessThreshhold, t);
-            sample.BallBlurBrightnessIntensity = Mathf.Lerp(current.BallBlurBrightnessIntensity, next.BallBlurBrightnessIntensity, t);
-            sample.BallBlurSpread = Mathf.Lerp(current.BallBlurSpread, next.BallBlurSpread, t);
-            OnUpdatePostEffect_Dof?.Invoke(sample);
+            sample.forcalSize = LerpWithoutClamp(current.forcalSize, next.forcalSize, t);
+            sample.blurSpread = LerpWithoutClamp(current.blurSpread, next.blurSpread, t);
+            sample.dofForegroundSize = LerpWithoutClamp(current.dofForegroundSize, next.dofForegroundSize, t);
+            sample.dofFocalPoint = LerpWithoutClamp(current.dofFocalPoint, next.dofFocalPoint, t);
+            sample.dofSmoothness = LerpWithoutClamp(current.dofSmoothness, next.dofSmoothness, t);
+            sample.BallBlurPowerFactor = LerpWithoutClamp(current.BallBlurPowerFactor, next.BallBlurPowerFactor, t);
+            sample.BallBlurBrightnessThreshhold = LerpWithoutClamp(current.BallBlurBrightnessThreshhold, next.BallBlurBrightnessThreshhold, t);
+            sample.BallBlurBrightnessIntensity = LerpWithoutClamp(current.BallBlurBrightnessIntensity, next.BallBlurBrightnessIntensity, t);
+            sample.BallBlurSpread = LerpWithoutClamp(current.BallBlurSpread, next.BallBlurSpread, t);
+            OnUpdatePostEffect_Dof?.Invoke(sample, SetupDofWorldFocus(current, next, t));
         }
 
         private void AlterUpdate_PostEffect_BloomDiffusion( LiveTimelineWorkSheet sheet, int currentFrame)

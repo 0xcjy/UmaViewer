@@ -23,6 +23,7 @@ public class UISettingsOther : MonoBehaviour
     public TMP_Dropdown LanguageDropdown;
     public TMP_Dropdown FrameRateDropdown;
     private GameObject _runtimeFrameRateRow;
+    private InputField _customFrameRateInput;
     private IEnumerator _updateResVerCoroutine;
 
     public void ApplySettings()
@@ -32,8 +33,8 @@ public class UISettingsOther : MonoBehaviour
         WorkModeDropdown.SetValueWithoutNotify((int)Config.Instance.WorkMode);
         RegionDropdown.SetValueWithoutNotify((int)Config.Instance.Region);
         LanguageDropdown.SetValueWithoutNotify(LanguageToDropdownValue(Config.Instance.Language));
-        FrameRateDropdown?.SetValueWithoutNotify(FrameRateToDropdownValue(Config.Instance.GetTargetFrameRate()));
-        FrameRateDropdown?.RefreshShownValue();
+        if (FrameRateDropdown != null) RefreshFrameRateOptions();
+        if (_customFrameRateInput != null) _customFrameRateInput.SetTextWithoutNotify(Config.Instance.TargetFrameRate.ToString());
         UmaViewerMain.ApplyFrameRateLimit();
         UpdateDBButton.interactable = (Config.Instance.WorkMode == WorkMode.Standalone);
     }
@@ -120,38 +121,41 @@ public class UISettingsOther : MonoBehaviour
         FrameRateDropdown = _runtimeFrameRateRow.GetComponentInChildren<TMP_Dropdown>(true);
         FrameRateDropdown.name = "FrameRateDropdown";
         FrameRateDropdown.ClearOptions();
-        FrameRateDropdown.AddOptions(new List<string> { "60 FPS", "30 FPS" });
+        FrameRateDropdown.AddOptions(UISettingsGraphics.FrameRateLabels());
         FrameRateDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
         FrameRateDropdown.onValueChanged.AddListener(ChangeFrameRate);
+        var customInput = UISettingsGraphics.AddFrameRateInput(parent, RefreshFrameRateOptions);
+        _customFrameRateInput = customInput;
+        FrameRateDropdown.onValueChanged.AddListener(index => customInput.SetTextWithoutNotify(UISettingsGraphics.FrameRateAt(index).ToString()));
+        customInput.transform.parent.SetSiblingIndex(_runtimeFrameRateRow.transform.GetSiblingIndex() + 1);
 
         var parentRect = parent as RectTransform;
         var sourceRect = sourceRow as RectTransform;
         if (parentRect != null && sourceRect != null)
         {
-            parentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, parentRect.rect.height + sourceRect.rect.height);
+            parentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, parentRect.rect.height + sourceRect.rect.height + 30);
             LayoutRebuilder.MarkLayoutForRebuild(parentRect);
         }
     }
 
-    private int FrameRateToDropdownValue(int frameRate)
-    {
-        return frameRate == 30 ? 1 : 0;
-    }
-
-    private int DropdownValueToFrameRate(int value)
-    {
-        return value == 1 ? 30 : 60;
-    }
 
     public void ChangeFrameRate(int value)
     {
-        var frameRate = DropdownValueToFrameRate(value);
+        var frameRate = UISettingsGraphics.FrameRateAt(value);
         if (Config.Instance.TargetFrameRate != frameRate)
         {
             Config.Instance.TargetFrameRate = frameRate;
             Config.Instance.UpdateConfig(false);
         }
         UmaViewerMain.ApplyFrameRateLimit();
+    }
+
+    private void RefreshFrameRateOptions()
+    {
+        FrameRateDropdown.ClearOptions();
+        FrameRateDropdown.AddOptions(UISettingsGraphics.FrameRateLabels());
+        FrameRateDropdown.SetValueWithoutNotify(UISettingsGraphics.FrameRateIndex());
+        FrameRateDropdown.RefreshShownValue();
     }
 
     public void ChangeLanguage(int lang)

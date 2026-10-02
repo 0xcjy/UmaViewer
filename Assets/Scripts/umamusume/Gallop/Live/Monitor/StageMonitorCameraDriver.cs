@@ -168,7 +168,7 @@ namespace Gallop.Live
             // updates these only on flagged keys; CopyFrom must not erase their state.
             if (((int)positionKey.attribute & 0x20000) != 0)
             {
-                _timelineCullingMask = GetMonitorCullingMask(positionKey.cullingLayer);
+                _timelineCullingMask = positionKey.GetCullingMask();
                 _hasTimelineCullingMask = true;
             }
             if (((int)positionKey.attribute & 0x40000) != 0)
@@ -241,24 +241,6 @@ namespace Gallop.Live
             return _texture.IsCreated() || _texture.Create();
         }
 
-        private static int GetMonitorCullingMask(LiveCameraCullingLayer layers)
-        {
-            // LiveCameraCullingLayer_Helper.GetCullingMask RVA 0x1af2220.
-            int mask = 0;
-            if ((layers & LiveCameraCullingLayer.TransparentFX) != 0) mask |= 1 << 1;
-            if ((layers & LiveCameraCullingLayer.Effect) != 0) mask |= 1 << 11;
-            if ((layers & LiveCameraCullingLayer.Background3d_NotReflect) != 0) mask |= 1 << 25;
-            if ((layers & LiveCameraCullingLayer.Background3d) != 0) mask |= 1 << 12;
-            if ((layers & LiveCameraCullingLayer.Character3d) != 0) mask |= 1 << 13;
-            if ((layers & LiveCameraCullingLayer.Character3d_0) != 0) mask |= 1 << 27;
-            if ((layers & LiveCameraCullingLayer.Character3d_1) != 0) mask |= 1 << 28;
-            if ((layers & LiveCameraCullingLayer.Character3d_NotReflect) != 0) mask |= 1 << 26;
-            if ((layers & LiveCameraCullingLayer.NotLayerDefault) == 0)
-                mask |= GraphicSettings.GetCullingLayer(GraphicSettings.LayerIndex.LayerDefault);
-            if ((layers & LiveCameraCullingLayer.NotLayer3d) == 0)
-                mask |= GraphicSettings.GetCullingLayer(GraphicSettings.LayerIndex.Layer3D);
-            return mask;
-        }
 
         private static bool FindKeys<T>(ILiveTimelineKeyDataList keys, LiveTimelineControl timeline, float frame,
             out T current, out T next) where T : LiveTimelineKey

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Gallop.Live.Cutt;
@@ -31,7 +31,7 @@ namespace Gallop.Live
         public string baseColorProperty = "_BaseColor";
         public string monitorWidthProperty = "_MonitorWidth";
         public string monitorHeightProperty = "_MonitorHeight";
-        public string crossFadeRateProperty = "_CrossFadeRate";
+        public string blendFactorProperty = "_BlendFactor";
         public string srcBlendModeProperty = "_SrcBlendMode";
         public string dstBlendModeProperty = "_DstBlendMode";
         public string srcBlendProperty = "_SrcBlend";
@@ -45,6 +45,7 @@ namespace Gallop.Live
             public Vector2 baseMainScale;
             public Vector2 baseMainOffset;
             public bool cameraAppliedThisFrame;
+            public bool cameraTextureBound;
             public string rendererKey;
             public string materialKey;
             public string rendererCompact;
@@ -82,7 +83,7 @@ namespace Gallop.Live
             public float alpha;
             public Color colorFade;
             public Color baseColor;
-            public float crossFadeRate;
+            public float blendFactor;
             public float filterTexScale;
             public int srcBlendMode;
             public int dstBlendMode;
@@ -312,10 +313,11 @@ namespace Gallop.Live
             _lastPreparedMusicId = musicId;
 
             bool synced = false;
-            if (!_providerContextReady || stageChanged || _provider.ContextSlotCount == 0)
+            if (!_providerContextReady || stageChanged ||
+                (_provider.ContextSlotCount == 0 && !_provider.HasResolvedContextSlots))
             {
                 synced = _provider.RebuildContextSlotsFromLiveSettings(_ctl, musicId, force: stageChanged || musicChanged);
-                _providerContextReady = synced || _provider.ContextSlotCount > 0;
+                _providerContextReady = synced || _provider.ContextSlotCount > 0 || _provider.HasResolvedContextSlots;
             }
 
             if (_stage != null)
@@ -685,14 +687,14 @@ namespace Gallop.Live
             if (assignMaskTextureToFilterTex && state.hasMainTexture)
                 state.filterTexture = state.main.maskTexture;
 
-            // 保持 _Alpha 为材质原本的值
-            // 时间轴的监视器数据没有提供专用的透明度字段；
-            // colorFade 和 BaseColor 会分别传递给对应的着色器参数
-            state.alpha = 0f;
+            // Native UpdateMonitor (0x1a93a70) applies these even when neither
+            // movie slot resolves. An empty slot is not an absent control key:
+            // ColorFade=(0,0,0,0) must still turn the authored white screen black.
+            state.alpha = crossFadeRate;
             state.colorFade = colorFade;
             state.useBaseColor = !IsColorEffectivelyClear(baseColor);
             state.baseColor = state.useBaseColor ? baseColor : Color.white;
-            state.crossFadeRate = crossFadeRate;
+            state.blendFactor = blendFactor;
             state.filterTexScale = filterTexScale;
             state.srcBlendMode = curKey.SrcBlendMode;
             state.dstBlendMode = curKey.DstBlendMode;
@@ -700,7 +702,7 @@ namespace Gallop.Live
             state.renderQueue = curKey.RenderQueueNo;
             state.hasRenderQueue = curKey.IsRenderQueue != 0;
 
-            return state.hasMainTexture;
+            return true;
         }
 
         private MonitorUvMovieContextSlot ResolvePrimarySlot(
@@ -1043,7 +1045,7 @@ namespace Gallop.Live
             for (int i = 0; i < _bindings.Count; i++)
             {
                 MonitorMaterialBinding binding = _bindings[i];
-                if (!binding.hasAppliedState || !binding.appliedState.useMonitorCamera ||
+                if (!binding.cameraTextureBound ||
                     (!force && binding.cameraAppliedThisFrame))
                     continue;
                 Material material = binding.material;
@@ -1056,6 +1058,7 @@ namespace Gallop.Live
                     if (binding.hasUvAdjust)
                         material.SetVector("_UVAdjust", binding.baseUvAdjust);
                 }
+                binding.cameraTextureBound = false;
                 binding.hasAppliedState = false;
             }
         }
@@ -1066,7 +1069,11 @@ namespace Gallop.Live
             if (material == null)
                 return;
 
-            binding.cameraAppliedThisFrame = state.useMonitorCamera;
+            // An empty movie slot leaves the current texture untouched, as native
+            // UpdateMonitorInMovie does. Keep ownership until a real replacement
+            // arrives, so disabling/rebinding still detaches the capture RT.
+            binding.cameraAppliedThisFrame = state.useMonitorCamera ||
+                (!state.hasMainTexture && binding.cameraTextureBound);
 
             if (state.hasMainTexture && HasTextureProperty(material, mainTexProperty))
             {
@@ -1079,6 +1086,7 @@ namespace Gallop.Live
                     material.SetTextureScale(mainTexProperty, state.main.scale);
                     material.SetTextureOffset(mainTexProperty, state.main.offset);
                 }
+                binding.cameraTextureBound = state.useMonitorCamera;
             }
 
             if (HasTextureProperty(material, fadeTexProperty))
@@ -1124,7 +1132,11 @@ namespace Gallop.Live
                 }
             }
 
-            float appliedAlpha = state.useMonitorCamera ? 0f : binding.baseAlpha;
+            // Native movie mode maps CrossFadeRate to _Alpha; capture mode does
+            // not overwrite it. Retain the last value across capture transitions.
+            float appliedAlpha = state.useMonitorCamera
+                ? (binding.hasAppliedState ? binding.appliedState.alpha : binding.baseAlpha)
+                : state.alpha;
             Color appliedColorFade = state.colorFade;
             Color appliedBaseColor = state.useBaseColor ? state.baseColor : binding.baseColor;
 
@@ -1161,8 +1173,8 @@ namespace Gallop.Live
                 }
                 material.SetVector("_UVAdjust", uvAdjust);
             }
-            if (!binding.hasAppliedState || !Approximately(binding.appliedState.crossFadeRate, state.crossFadeRate))
-                TrySetFloat(material, crossFadeRateProperty, state.crossFadeRate);
+            if (!binding.hasAppliedState || !Approximately(binding.appliedState.blendFactor, state.blendFactor))
+                TrySetFloat(material, blendFactorProperty, state.blendFactor);
 
             if (applyBlendModeProperties)
             {

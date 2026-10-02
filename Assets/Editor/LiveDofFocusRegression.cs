@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using Gallop;
 using Gallop.Live;
@@ -54,10 +54,14 @@ public static class LiveDofFocusRegression
         bool previousDof = GallopImageEffect.UserDofEnabled;
         var root = new GameObject("DofFocusRegression");
         root.SetActive(false);
+        var timelineData = ScriptableObject.CreateInstance<LiveTimelineData>();
+        timelineData.maxForcalSize = 30f;
+        var worksheet = ScriptableObject.CreateInstance<LiveTimelineWorkSheet>();
         try
         {
             var director = root.AddComponent<Director>();
             var timeline = root.AddComponent<LiveTimelineControl>();
+            timeline.data = timelineData;
             director._liveTimelineControl = timeline;
             var cameraObject = new GameObject("DofTestCamera");
             cameraObject.transform.SetParent(root.transform);
@@ -84,7 +88,9 @@ public static class LiveDofFocusRegression
                 dofSmoothness = 0.5f, dofQuality = 1, charactor = 1
             };
             var update = typeof(Director).GetMethod("OnUpdatePostEffect_Dof", PrivateInstance);
-            Action apply = () => update.Invoke(director, new object[] { key });
+            var resolve = typeof(LiveTimelineControl).GetMethod("ResolveDofWorldFocus", PrivateInstance);
+            Action apply = () => update.Invoke(director,
+                new[] { (object)key, resolve.Invoke(timeline, new object[] { key }) });
             PostImageEffectFeature.ResetRuntimeParameter();
             GallopImageEffect.SetUserDofEnabled(true);
             apply();
@@ -118,6 +124,44 @@ public static class LiveDofFocusRegression
 
             RequirePreparedFocus(4f);
 
+            // A valid focus does not override the author's DOF enable flag (bit18).
+            // Bit19 is point-ball-blur mode, not permission to turn DOF on.
+            key.attribute = (LiveTimelineKeyAttribute)0x90000;
+            apply();
+            state = PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay;
+            Require(!state.IsEnableDof && state.UseDofDiffusionBloomType ==
+                Gallop.ImageEffect.DofDiffusionBloomOverlayParam.DofDiffusionBloomType.DiffusionBloom,
+                "An authored disabled key must keep the frame sharp while preserving Bloom/Diffusion.");
+            GallopImageEffect.SetUserDofEnabled(false);
+            GallopImageEffect.SetUserDofEnabled(true);
+            Require(!PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.IsEnableDof,
+                "The user toggle must not resurrect author-disabled DOF while paused.");
+            key.attribute = (LiveTimelineKeyAttribute)0x50000;
+            apply();
+            Require(PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.IsEnableDof,
+                "The next authored enabled key must restore positional DOF.");
+
+            // Explicit render auto state, not the unrelated source constructor default.
+            PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.IsEnableDofAutoDisable = true;
+            key.forcalSize = 29f;
+            apply();
+            Require(PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.UseDofDiffusionBloomType ==
+                Gallop.ImageEffect.DofDiffusionBloomOverlayParam.DofDiffusionBloomType.DiffusionDofBloom,
+                "Size29 below the authored30 threshold must remain a DOF render mode.");
+            key.forcalSize = 30f;
+            apply();
+            Require(PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.UseDofDiffusionBloomType ==
+                Gallop.ImageEffect.DofDiffusionBloomOverlayParam.DofDiffusionBloomType.DiffusionBloom,
+                "Equality to the authored threshold must bypass only DOF.");
+            timelineData.maxForcalSize = 31f;
+            apply();
+            Require(PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.UseDofDiffusionBloomType ==
+                Gallop.ImageEffect.DofDiffusionBloomOverlayParam.DofDiffusionBloomType.DiffusionDofBloom,
+                "Changing the authored threshold must release temporary disable, not retain size history.");
+            timelineData.maxForcalSize = 30f;
+            PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.IsEnableDofAutoDisable = false;
+            apply();
+
             // Invalid target bypasses only DOF, rather than falling back to 1m.
             SetProperty(timeline, "HasDofCameraLookAt", false);
             apply();
@@ -136,11 +180,62 @@ public static class LiveDofFocusRegression
             state = PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay;
             Require(state.IsEnableDof && state.DofFocalType == DepthBlurAndBloom.DofFocalType.Position,
                 "Re-enabling while paused must restore positional focus.");
-            Debug.Log("[LiveDofFocusRegression] PASS: startup look-at, metric focus, camera cut, missing target, depth request, prepared focal depths/sharp intervals, DOF gate, paused restore.");
+
+            // The NEXT key owns interpolation; focus endpoints have independent flags.
+            Set(timeline, "_liveStageCenterPos", new Vector3(4f, 1f, 12f));
+            worksheet.postEffectDOFKeys = new LiveTimelineKeyPostEffectDOFDataList();
+            worksheet.postEffectDOFKeys.thisList.Add(key);
+            worksheet.postEffectDOFKeys.thisList.Add(new LiveTimelineKeyPostEffectDOFData
+            {
+                frame = 60, attribute = (LiveTimelineKeyAttribute)0x20000, charactor = 0,
+                forcalSize = 10f, dofFocalPoint = 8f, dofQuality = 5,
+                interpolateType = LiveCameraInterpolateType.Curve,
+                curve = AnimationCurve.Linear(0f, 1.25f, 1f, 1.25f)
+            });
+            timeline.OnUpdatePostEffect_Dof += (sample, world) =>
+                update.Invoke(director, new object[] { sample, world });
+            typeof(LiveTimelineControl).GetMethod("AlterUpdate_PostEffect_Dof", PrivateInstance)
+                .Invoke(timeline, new object[] { worksheet, 30 });
+            state = PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay;
+            Require(state.DofFocalType == DepthBlurAndBloom.DofFocalType.Position &&
+                state.DofFocalPosition == new Vector3(4.75f, 0.75f, 14f),
+                "Mixed look-at/character targets must interpolate world focus without changing the current coordinate mode.");
+            Require(Mathf.Approximately(state.DofFocalSize, 5f) && state.IsEnableDof,
+                "An overshooting next curve must retain signed, unclamped sampling and the current enable flag.");
+            apply();
+
+            // Real Live subtype owns auto-disable; a plain/helper adapter must not inherit it.
+            var liveCameraObject = new GameObject("LiveDofTestCamera");
+            liveCameraObject.transform.SetParent(root.transform);
+            var liveCamera = liveCameraObject.AddComponent<Camera>();
+            var liveEffect = liveCameraObject.AddComponent<LiveImageEffect>();
+            liveEffect.DofDiffusionBloomOverlayParam.IsEnableBloom = true;
+            liveEffect.DofDiffusionBloomOverlayParam.IsEnableDiffusion = true;
+            Set(director, "_cameraObjects", new[] { camera, liveCamera });
+            Set(director, "_activeCameraIndex", 1);
+            key.forcalSize = 30f;
+            apply();
+            Require(PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.UseDofDiffusionBloomType ==
+                Gallop.ImageEffect.DofDiffusionBloomOverlayParam.DofDiffusionBloomType.DiffusionBloom,
+                "Live initialization must make a threshold-wide shot sharp without removing Bloom/Diffusion.");
+            key.forcalSize = 1f;
+            apply();
+            Require(PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.UseDofDiffusionBloomType ==
+                Gallop.ImageEffect.DofDiffusionBloomOverlayParam.DofDiffusionBloomType.DiffusionDofBloom,
+                "A Live close-up below the authored threshold must still render DOF.");
+            Set(director, "_activeCameraIndex", 0);
+            key.forcalSize = 30f;
+            apply();
+            Require(PostImageEffectFeature.RuntimeParameter.DofDiffuionBloomOverlay.UseDofDiffusionBloomType ==
+                Gallop.ImageEffect.DofDiffusionBloomOverlayParam.DofDiffusionBloomType.DiffusionDofBloom,
+                "Switching from Live to a plain adapter must not leak the Live auto-disable state.");
+            Debug.Log("[LiveDofFocusRegression] PASS: focus modes, authored enable, threshold equality/recovery, Live/helper camera isolation, user gate and paused restore.");
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(root);
+            UnityEngine.Object.DestroyImmediate(timelineData);
+            UnityEngine.Object.DestroyImmediate(worksheet);
             typeof(Director).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, null);
             typeof(PostImageEffectFeature).GetField("_runtimeParameter", BindingFlags.Static | BindingFlags.NonPublic)
                 .SetValue(null, previousRuntime);

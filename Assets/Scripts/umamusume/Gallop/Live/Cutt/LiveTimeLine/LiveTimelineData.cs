@@ -225,6 +225,9 @@ namespace Gallop.Live.Cutt
         public float maxForcalSize;
         public bool isUseMirrorScanMotionDictionary;
         public bool isUseGameSettingToParticle;
+        public bool IsChangedCharaLayerOnlyMirrorRendering;
+        public bool IsRenderMirrorObjectOnlyOnBaseCamera;
+        public bool UseDepthOnlyCube;
         public LiveTimelineStageObjectsSettings stageObjectsSettings;
         public LiveTimelineDebugSettings debugSettings;
     }

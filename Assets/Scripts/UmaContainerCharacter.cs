@@ -88,6 +88,110 @@ public class UmaContainerCharacter : UmaContainer
     private Material[] _faceMaterials;
     private bool _faceLightInitialized;
 
+    private readonly HashSet<Renderer> _mirrorHeadRenderers = new HashSet<Renderer>();
+    private GameObject[] _mirrorAllRendererObjects = Array.Empty<GameObject>();
+    private GameObject[] _mirrorBodyRendererObjects = Array.Empty<GameObject>();
+    private GameObject[] _mirrorChangedObjects = Array.Empty<GameObject>();
+    private int[] _mirrorOriginalLayers = Array.Empty<int>();
+    private int _mirrorChangedCount;
+    private bool _mirrorLayerCacheDirty = true;
+    private bool _mirrorLayerCacheReady;
+
+    private void RegisterMirrorHeadRenderers(GameObject source)
+    {
+        RestoreMirrorChangedLayers();
+        if (source != null)
+        {
+            var renderers = source.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                _mirrorHeadRenderers.Add(renderers[i]);
+        }
+        InvalidateMirrorLayerCache();
+    }
+
+    private void InvalidateMirrorLayerCache()
+    {
+        RestoreMirrorChangedLayers();
+        _mirrorLayerCacheDirty = true;
+        if (_mirrorLayerCacheReady)
+            PrepareMirrorLayerCache();
+    }
+
+    internal void PrepareMirrorLayerCache()
+    {
+        if (!_mirrorLayerCacheDirty)
+            return;
+
+        RestoreMirrorChangedLayers();
+        var renderers = GetComponentsInChildren<Renderer>(true);
+        var all = new List<GameObject>(renderers.Length);
+        var body = new List<GameObject>(renderers.Length);
+        var seen = new HashSet<GameObject>();
+        var headObjects = new HashSet<GameObject>();
+        for (int i = 0; i < renderers.Length; i++)
+            if (renderers[i] != null && _mirrorHeadRenderers.Contains(renderers[i]))
+                headObjects.Add(renderers[i].gameObject);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            var renderer = renderers[i];
+            if (renderer == null || !seen.Add(renderer.gameObject))
+                continue;
+            all.Add(renderer.gameObject);
+            if (!headObjects.Contains(renderer.gameObject))
+                body.Add(renderer.gameObject);
+        }
+        _mirrorAllRendererObjects = all.ToArray();
+        _mirrorBodyRendererObjects = body.ToArray();
+        if (_mirrorChangedObjects.Length < all.Count)
+        {
+            _mirrorChangedObjects = new GameObject[all.Count];
+            _mirrorOriginalLayers = new int[all.Count];
+        }
+        _mirrorLayerCacheDirty = false;
+        _mirrorLayerCacheReady = true;
+    }
+
+    internal void SetLayerBeforeMirrorCameraRendering(bool bodyBit, bool headBit, int layer)
+    {
+        if (!bodyBit || layer < 0)
+            return;
+
+        RestoreMirrorChangedLayers();
+        var objects = headBit ? _mirrorAllRendererObjects : _mirrorBodyRendererObjects;
+        for (int i = 0; i < objects.Length; i++)
+        {
+            var obj = objects[i];
+            if (obj == null)
+                continue;
+            _mirrorChangedObjects[_mirrorChangedCount] = obj;
+            _mirrorOriginalLayers[_mirrorChangedCount] = obj.layer;
+            _mirrorChangedCount++;
+            obj.layer = layer;
+        }
+    }
+
+    internal void RestoreMirrorChangedLayers()
+    {
+        while (_mirrorChangedCount > 0)
+        {
+            int index = --_mirrorChangedCount;
+            var obj = _mirrorChangedObjects[index];
+            _mirrorChangedObjects[index] = null;
+            if (obj != null)
+                obj.layer = _mirrorOriginalLayers[index];
+        }
+    }
+
+    private void OnDisable()
+    {
+        RestoreMirrorChangedLayers();
+    }
+
+    private void OnDestroy()
+    {
+        RestoreMirrorChangedLayers();
+    }
+
     private static readonly int ID_FaceCenterPos = Shader.PropertyToID("_FaceCenterPos");
     private static readonly int ID_FaceUp = Shader.PropertyToID("_FaceUp");
     private static readonly int ID_FaceForward = Shader.PropertyToID("_FaceForward");
@@ -184,6 +288,10 @@ public class UmaContainerCharacter : UmaContainer
     public void MergeModel()
     {
         if (!Body) return;
+        RestoreMirrorChangedLayers();
+        // Capture source identity before MergeModel reparents Head/Hair children.
+        RegisterMirrorHeadRenderers(Head);
+        RegisterMirrorHeadRenderers(Hair);
         var bodySkinnedMeshRenderer = Body.GetComponentInChildren<SkinnedMeshRenderer>();
         var bodyBones = bodySkinnedMeshRenderer.bones.ToDictionary(bone => bone.name, bone => bone.transform);
         List<Transform> emptyBones = new List<Transform>();
@@ -300,12 +408,16 @@ public class UmaContainerCharacter : UmaContainer
                 }
             }
         }
+        InvalidateMirrorLayerCache();
+        PrepareMirrorLayerCache();
 
     }
 
     public void MergeHairModel()
     {
         if (!Head || !Hair) return;
+        RestoreMirrorChangedLayers();
+        RegisterMirrorHeadRenderers(Hair);
 
         var bodyBones = Head.GetComponentInChildren<SkinnedMeshRenderer>().bones.ToDictionary(bone => bone.name, bone => bone.transform);
         List<Transform> emptyBones = new List<Transform>();
@@ -326,6 +438,7 @@ public class UmaContainerCharacter : UmaContainer
         Hair.gameObject.SetActive(false);
 
         emptyBones.ForEach(a => { if (a) Destroy(a.gameObject); });
+        InvalidateMirrorLayerCache();
     }
 
     public void SetHeight(int scale = 0)
@@ -1048,6 +1161,7 @@ public class UmaContainerCharacter : UmaContainer
                 BodyShaderEffectData.Initialize();
             }
         }
+        InvalidateMirrorLayerCache();
     }
 
     public void LoadHead(UmaDatabaseEntry entry)
@@ -1055,6 +1169,7 @@ public class UmaContainerCharacter : UmaContainer
         var textures = MobHeadTextures;
         GameObject head = InstantiateEntry(entry, transform);
         Head = head;
+        RegisterMirrorHeadRenderers(head);
 
         AssetTable table = null;
         if (!IsMini)
@@ -1229,6 +1344,7 @@ public class UmaContainerCharacter : UmaContainer
     {
         GameObject hair = InstantiateEntry(entry, transform);
         Hair = hair;
+        RegisterMirrorHeadRenderers(hair);
         var textures = MobHeadTextures;
         foreach (Renderer r in hair.GetComponentsInChildren<Renderer>())
         {
@@ -1282,6 +1398,7 @@ public class UmaContainerCharacter : UmaContainer
     {
         GameObject go = entry.Get<GameObject>();
         Tail = Instantiate(go, transform);
+        InvalidateMirrorLayerCache();
     }
 
 
@@ -1305,6 +1422,7 @@ public class UmaContainerCharacter : UmaContainer
                 }
             }
         }
+        InvalidateMirrorLayerCache();
     }
 
     public void LoadTear(UmaDatabaseEntry entry)
@@ -1897,6 +2015,8 @@ public class UmaContainerCharacter : UmaContainer
         emotionDriven.FaceDrivenKeyTarget = faceDriven;
         emotionDriven.FaceEmotionKey = UmaDatabaseController.Instance.FaceTypeData;
         emotionDriven.Initialize();
+        // Facial attachments are explicit head renderers, including inactive manga/tears.
+        RegisterMirrorHeadRenderers(headBone);
     }
 
     public void SetupBoneHandles()

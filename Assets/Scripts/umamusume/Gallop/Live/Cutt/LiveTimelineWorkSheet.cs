@@ -172,13 +172,11 @@ namespace Gallop.Live.Cutt
 
         public bool newBezierCalcMethod;
 
-        public CullingLayer cullingMask = defCameraCullingLayer;
 
         public float outlineZOffset = 1f;
 
         public CharacterLOD characterLODMask = (CharacterLOD)((uint)outlineLODMask + (uint)shaderLODMask);
 
-        protected const CullingLayer defCameraCullingLayer = (CullingLayer)0x7FE;
 
         protected const CharacterLOD outlineLODMask = (CharacterLOD)0x3FF;
 
@@ -186,92 +184,21 @@ namespace Gallop.Live.Cutt
 
         public int GetCullingMask()
         {
-            return GetCullingMask(cullingMask);
-        }
-
-        protected static int GetCullingMask(CullingLayer layer)
-        {
-            int num = 257;
-            if ((layer & CullingLayer.TransparentFX) != 0)
-            {
-                num |= 2;
-            }
-            if ((layer & CullingLayer.Background3D_NotReflect) != 0)
-            {
-                num |= 0x80000;
-            }
-            if ((layer & CullingLayer.Background3d) != 0)
-            {
-                num |= 0x100000;
-            }
-            if ((layer & CullingLayer.Character3d) != 0)
-            {
-                num |= 0x200000;
-            }
-            if ((layer & CullingLayer.Character3d_0) != 0)
-            {
-                num |= 0x400000;
-            }
-            if ((layer & CullingLayer.Character3d_1) != 0)
-            {
-                num |= 0x800000;
-            }
-            if ((layer & CullingLayer.Character3d_2) != 0)
-            {
-                num |= 0x1000000;
-            }
-            if ((layer & CullingLayer.Character3d_3) != 0)
-            {
-                num |= 0x2000000;
-            }
-            if ((layer & CullingLayer.Character3d_4) != 0)
-            {
-                num |= 0x4000000;
-            }
-            if ((layer & CullingLayer.Character3D_NotReflect) != 0)
-            {
-                num |= 0x8000000;
-            }
-            if ((layer & CullingLayer.Background3D_Other) != 0)
-            {
-                num |= 0x40000;
-            }
-            return num;
-
-            /*
-            uint bittest = (uint)layer;
-
-            uint result = (uint)LayerMask.GetMask("Default");
-
-            if ((bittest & (uint)CullingLayer.TransparentFX) > 0)
-                result |= (uint)LayerMask.GetMask("TransparentFX");
-            if ((bittest & (uint)CullingLayer.Background3D_NotReflect) > 0)
-                result |= (uint)LayerMask.GetMask("background_NotReflect");
-            if ((bittest & (uint)CullingLayer.Background3d) > 0)
-                result |= (uint)LayerMask.GetMask("background");
-            if ((bittest & (uint)CullingLayer.Character3d) > 0)
-                result |= (uint)LayerMask.GetMask("charas");
-            if ((bittest & (uint)CullingLayer.Character3d_0) > 0)
-                result |= (uint)LayerMask.GetMask("chara1");
-            if ((bittest & (uint)CullingLayer.Character3d_1) > 0)
-                result |= (uint)LayerMask.GetMask("chara2");
-            if ((bittest & (uint)CullingLayer.Character3d_2) > 0)
-                result |= (uint)LayerMask.GetMask("chara3");
-            if ((bittest & (uint)CullingLayer.Character3d_3) > 0)
-                result |= (uint)LayerMask.GetMask("chara4");
-            if ((bittest & (uint)CullingLayer.Character3d_4) > 0)
-                result |= (uint)LayerMask.GetMask("chara5");
-            if ((bittest & (uint)CullingLayer.Character3D_NotReflect) > 0)
-                result |= (uint)LayerMask.GetMask("otherChara");
-            if ((bittest & (uint)CullingLayer.Background3D_Other) > 0)
-                result |= (uint)LayerMask.GetMask("background_Other");
-            return (int)result;
-            */
-        }
-
-        public static int GetDefaultCullingMask()
-        {
-            return GetCullingMask(defCameraCullingLayer);
+            // Native GetCullingMask (0x1af50a0) reads cullingLayer, not the legacy CGSS mask.
+            int mask = 0;
+            if ((cullingLayer & LiveCameraCullingLayer.TransparentFX) != 0) mask |= 1 << 1;
+            if ((cullingLayer & LiveCameraCullingLayer.Effect) != 0) mask |= 1 << 11;
+            if ((cullingLayer & LiveCameraCullingLayer.Background3d_NotReflect) != 0) mask |= 1 << 25;
+            if ((cullingLayer & LiveCameraCullingLayer.Background3d) != 0) mask |= 1 << 12;
+            if ((cullingLayer & LiveCameraCullingLayer.Character3d) != 0) mask |= 1 << 13;
+            if ((cullingLayer & LiveCameraCullingLayer.Character3d_0) != 0) mask |= 1 << 27;
+            if ((cullingLayer & LiveCameraCullingLayer.Character3d_1) != 0) mask |= 1 << 28;
+            if ((cullingLayer & LiveCameraCullingLayer.Character3d_NotReflect) != 0) mask |= 1 << 26;
+            if ((cullingLayer & LiveCameraCullingLayer.NotLayerDefault) == 0)
+                mask |= GraphicSettings.GetCullingLayer(GraphicSettings.LayerIndex.LayerDefault);
+            if ((cullingLayer & LiveCameraCullingLayer.NotLayer3d) == 0)
+                mask |= GraphicSettings.GetCullingLayer(GraphicSettings.LayerIndex.Layer3D);
+            return mask;
         }
 
         public virtual Vector3 GetValue(LiveTimelineControl timelineControl)
@@ -498,8 +425,8 @@ namespace Gallop.Live.Cutt
 
         [SerializeField] public List<LiveTimelineTransformData> transformList;
         [SerializeField] public List<LiveTimelineObjectData> objectList;
-        [SerializeField] public List<LiveTimelineMobCyalumeControlData> mobControlList;
-        [SerializeField] public List<LiveTimelineMobCyalumeControlData> cyalumeControlList;
+        [SerializeField] public List<LiveTimelineMobCyalumeControlData> MobControlKeys;
+        [SerializeField] public List<LiveTimelineMobCyalumeControlData> CyalumeControlKeys;
 
         private void OnEnable()
         {

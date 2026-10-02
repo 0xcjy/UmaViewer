@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -79,6 +80,8 @@ public class MirrorReflection : MonoBehaviour
     private event Action<ScriptableRenderContext, Camera> _endCameraRenderingCallbacks;
 
     private bool _isRenderingNow;
+    private readonly Stack<int> _mirrorObjectLayers = new Stack<int>(4);
+    internal Live.StageController LifecycleOwner { get; set; }
 
     private readonly UniversalRenderPipeline.SingleCameraRequest _singleCameraRequest =
         new UniversalRenderPipeline.SingleCameraRequest();
@@ -194,6 +197,8 @@ public class MirrorReflection : MonoBehaviour
     private void OnDisable()
     {
         _isEnabled = false;
+        LifecycleOwner?.RestoreMirrorActorLayers(_mirrorCamera);
+        RestoreMirrorObjectLayers();
         ClearMirrorMaterialBindingOnDisable();
     }
 
@@ -222,6 +227,8 @@ public class MirrorReflection : MonoBehaviour
 
     private void OnDestroy()
     {
+        LifecycleOwner?.ReleaseMirrorReflection(this);
+        RestoreMirrorObjectLayers();
         ReleaseMirrorTexture();
 
         if (_mirrorCamera != null)
@@ -304,6 +311,9 @@ public class MirrorReflection : MonoBehaviour
 
     private void TryAutoInitializeIfPossible()
     {
+        // During live playback StageController is the sole initialization owner.
+        if (Live.Director.instance != null || GetComponentInParent<Live.StageController>() != null)
+            return;
         EnsureSelfReferences();
 
         if (!EnsureBaseCamera())
@@ -314,6 +324,8 @@ public class MirrorReflection : MonoBehaviour
 
     public void Initialize(Camera baseCamera, int mirrorIndex = -1, bool isUseBaseCameraTextureSize = false)
     {
+        LifecycleOwner?.PrepareMirrorReinitialization(this);
+        RestoreMirrorObjectLayers();
         _isInitialized = false;
 
         EnsureSelfReferences();
@@ -356,6 +368,7 @@ public class MirrorReflection : MonoBehaviour
         UpdateMirrorParams();
 
         _isInitialized = true;
+        LifecycleOwner?.CompleteMirrorReinitialization(this);
         Log($"Initialize success. mirrorIndex={_mirrorIndex}, useBaseCameraTextureSize={_isUseBaseCameraTextureSize}");
     }
 
@@ -430,13 +443,32 @@ public class MirrorReflection : MonoBehaviour
 
     public void SetMirrorObjectLayer(int layer)
     {
-        _objectLayer = layer;
-        gameObject.layer = layer;
+        if (!_isInitialized || layer < 0)
+            return;
+        _objectLayer = gameObject.layer;
+        _mirrorObjectLayers.Push(_objectLayer);
+        SetMirrorObjectLayerRecursively(transform, layer);
     }
 
     public void ResetMirrorObjectLayer()
     {
-        _objectLayer = gameObject.layer;
+        if (_mirrorObjectLayers.Count == 0)
+            return;
+        _objectLayer = _mirrorObjectLayers.Pop();
+        SetMirrorObjectLayerRecursively(transform, _objectLayer);
+    }
+
+    internal void RestoreMirrorObjectLayers()
+    {
+        while (_mirrorObjectLayers.Count > 0)
+            ResetMirrorObjectLayer();
+    }
+
+    private static void SetMirrorObjectLayerRecursively(Transform root, int layer)
+    {
+        root.gameObject.layer = layer;
+        for (int i = 0; i < root.childCount; i++)
+            SetMirrorObjectLayerRecursively(root.GetChild(i), layer);
     }
 
     public void SetActive(bool active)
@@ -448,8 +480,11 @@ public class MirrorReflection : MonoBehaviour
 
     public void SetLightMirrorShader(bool isEnable)
     {
-        // �ٷ����������Լҵ� _mirrorCameraData ��д���ء�
-        // �����ڲ��ùٷ����� RenderPipeline���������ﱣ�ֿ�ʵ�����ӿڼ��ݡ�
+        // Native RVA 0x19b7f90 writes CameraData.MirrorCasterQuality (0/1).
+        // GallopRenderer replaces both forward queues with SimpleMirrorCaster
+        // when quality is 1; renderer slot 1 is installed by LiveRenderSetup.
+        if (_mirrorCamera != null)
+            _mirrorCamera.GetUniversalAdditionalCameraData().SetRenderer(isEnable ? 1 : -1);
     }
 
     public void SetMirrorVisibleOfficialStyle(bool visible, bool pauseRenderWhenHidden = true)
@@ -911,6 +946,8 @@ public class MirrorReflection : MonoBehaviour
             return;
 
         _isRenderingNow = true;
+        bool oldInvert = GL.invertCulling;
+        int receiverLayerDepth = _mirrorObjectLayers.Count;
         try
         {
             UpdateRenderTexture();
@@ -924,25 +961,9 @@ public class MirrorReflection : MonoBehaviour
             OnPreDraw?.Invoke(this);
             _beginCameraRenderingCallbacks?.Invoke(default, _mirrorCamera);
 
-            bool oldInvert = GL.invertCulling;
-            try
-            {
-                GL.invertCulling = !oldInvert;
-
-                if (!TrySubmitSingleCameraRequest())
-                    _mirrorCamera.Render();
-            }
-            finally
-            {
-                GL.invertCulling = oldInvert;
-
-                if (_mirrorCamera != null)
-                {
-                    _mirrorCamera.ResetWorldToCameraMatrix();
-                    _mirrorCamera.ResetProjectionMatrix();
-                    _mirrorCamera.ResetCullingMatrix();
-                }
-            }
+            GL.invertCulling = !oldInvert;
+            if (!TrySubmitSingleCameraRequest())
+                _mirrorCamera.Render();
         }
         catch (Exception e)
         {
@@ -950,9 +971,57 @@ public class MirrorReflection : MonoBehaviour
         }
         finally
         {
-            OnPostDraw?.Invoke(this);
-            _endCameraRenderingCallbacks?.Invoke(default, _mirrorCamera);
-            _isRenderingNow = false;
+            try
+            {
+                GL.invertCulling = oldInvert;
+                if (_mirrorCamera != null)
+                {
+                    _mirrorCamera.ResetWorldToCameraMatrix();
+                    _mirrorCamera.ResetProjectionMatrix();
+                    _mirrorCamera.ResetCullingMatrix();
+                }
+            }
+            finally
+            {
+                try
+                {
+                    OnPostDraw?.Invoke(this);
+                }
+                finally
+                {
+                    try
+                    {
+                        _endCameraRenderingCallbacks?.Invoke(default, _mirrorCamera);
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            LifecycleOwner?.RestoreMirrorActorLayers(_mirrorCamera);
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                // Preserve a parent ordinary-camera scope during a nested mirror draw.
+                                while (_mirrorObjectLayers.Count > receiverLayerDepth)
+                                    ResetMirrorObjectLayer();
+                            }
+                            finally
+                            {
+                                try
+                                {
+                                    GL.invertCulling = oldInvert;
+                                }
+                                finally
+                                {
+                                    _isRenderingNow = false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

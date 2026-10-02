@@ -23,6 +23,9 @@ public class Config
     public string ABKeyTip = "Key to read asset bundles";
     public string ABKeyText;
 
+    public string AudioKeyTip = "Hexadecimal key to read game audio files (up to 16 hex digits, without 0x prefix)";
+    public string AudioKeyText = "";
+
     public string LanguageTip = "Affects Uma names on the list. Language options: 0 - En, 1 - Jp, 2 - Simplified Chinese";
     public Language Language = Language.En;
 
@@ -53,8 +56,14 @@ public class Config
     public string AntiAliasingTip = "Display, screenshot antialiasing level. 0 - no AA, 1 - 2x MSAA, 2 - 4x MSAA, 3 - 8x MSAA";
     public int AntiAliasing = 2;
 
-    public string TargetFrameRateTip = "Limits application frame rate. Available values: 60, 30";
+    public string TargetFrameRateTip = "Application frame rate: positive integer FPS, 0 = unlimited (desktop).";
     public int TargetFrameRate = 60;
+
+    public int RenderScalePercent = 100;
+    public int AnisotropicFiltering = 2;
+    public int TextureMipmapLimit = 0;
+    public float LodBias = 2f;
+    public float ShadowDistance = 50f;
 
     public bool RegionDetectionPassed = false;
 
@@ -223,9 +232,26 @@ public class Config
         }
     }
 
+    public ulong GetAudioKey()
+    {
+        if (string.IsNullOrWhiteSpace(AudioKeyText))
+        {
+            throw new InvalidOperationException("AudioKeyText is missing. Supply your authorized audio key in Config.json and restart the application.");
+        }
+
+        string keyText = AudioKeyText.Trim();
+        if (keyText.Length > 16 || !ulong.TryParse(keyText, System.Globalization.NumberStyles.AllowHexSpecifier,
+            System.Globalization.CultureInfo.InvariantCulture, out ulong key) || key == 0)
+        {
+            throw new InvalidOperationException("AudioKeyText must be a nonzero hexadecimal key of at most 16 digits, without a 0x prefix.");
+        }
+
+        return key;
+    }
+
     public int GetTargetFrameRate()
     {
-        return TargetFrameRate == 30 ? 30 : 60;
+        return TargetFrameRate <= 0 ? -1 : TargetFrameRate;
     }
 
     public bool TryGetNetworkProxyUri(out Uri proxyUri, out string error)

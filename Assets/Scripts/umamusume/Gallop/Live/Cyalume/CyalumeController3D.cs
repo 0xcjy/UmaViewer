@@ -303,6 +303,7 @@ namespace Gallop.Live.Cyalume
                 _mobShadowController = mobRoot.AddComponent<MobShadowController>();
 
             _mobShadowController.Initialize(mobRoot);
+            _mobShadowController.FlushGroupMatrix();
             _mobShadowController.SetMobColor(_mobColor);
             _mobShadowController.SetAmbientColor(_mobAmbientColor);
 
@@ -340,8 +341,8 @@ namespace Gallop.Live.Cyalume
             if ((uint)info.unk0 < 11u)
                 return info.unk0;
 
-            if (info.data != null && info.data.keys != null && (uint)info.data.keys.unk48 < 11u)
-                return info.data.keys.unk48;
+            if (info.data != null && (uint)info.data.GroupIndex < 11u)
+                return info.data.GroupIndex;
 
             return -1;
         }

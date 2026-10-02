@@ -26,8 +26,52 @@ public static class LiveRenderSetup
         renderer.SetDirty();
         EditorUtility.SetDirty(feature);
         EditorUtility.SetDirty(renderer);
+        InstallMirrorRenderer(renderer);
         AssetDatabase.SaveAssets();
         Debug.Log("[LiveRenderSetup] Installed recovered post effects: " + path);
+    }
+
+    private static void InstallMirrorRenderer(UniversalRendererData source)
+    {
+        const string path = "Assets/Resources/RenderPipeline/UMASimpleMirrorRenderer.asset";
+        var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(
+            "Assets/Resources/RenderPipeline/UMAUniversalRenderPipelineAsset.asset");
+        if (pipeline == null) throw new InvalidOperationException("Missing Live pipeline");
+        var simple = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path);
+        if (simple == null)
+        {
+            simple = UnityEngine.Object.Instantiate(source);
+            simple.name = "UMASimpleMirrorRenderer";
+            simple.rendererFeatures.Clear();
+            simple.opaqueLayerMask = 0;
+            simple.transparentLayerMask = 0;
+            AssetDatabase.CreateAsset(simple, path);
+            foreach (bool opaque in new[] { true, false })
+            {
+                var draw = ScriptableObject.CreateInstance<UnityEngine.Experimental.Rendering.Universal.RenderObjects>();
+                draw.name = opaque ? "SimpleMirrorOpaque" : "SimpleMirrorTransparent";
+                draw.settings.Event = opaque ? RenderPassEvent.BeforeRenderingOpaques : RenderPassEvent.BeforeRenderingTransparents;
+                draw.settings.filterSettings.LayerMask = -1;
+                draw.settings.filterSettings.RenderQueueType = opaque
+                    ? UnityEngine.Experimental.Rendering.Universal.RenderQueueType.Opaque
+                    : UnityEngine.Experimental.Rendering.Universal.RenderQueueType.Transparent;
+                draw.settings.filterSettings.PassNames = new[] { "SimpleMirrorCaster" };
+                AssetDatabase.AddObjectToAsset(draw, simple);
+                simple.rendererFeatures.Add(draw);
+                EditorUtility.SetDirty(draw);
+            }
+            simple.SetDirty();
+            EditorUtility.SetDirty(simple);
+        }
+        var serialized = new SerializedObject(pipeline);
+        var renderers = serialized.FindProperty("m_RendererDataList");
+        if (renderers.arraySize > 1 && renderers.GetArrayElementAtIndex(1).objectReferenceValue != null &&
+            renderers.GetArrayElementAtIndex(1).objectReferenceValue != simple)
+            throw new InvalidOperationException("Renderer slot 1 is already owned by another renderer");
+        if (renderers.arraySize < 2) renderers.arraySize = 2;
+        renderers.GetArrayElementAtIndex(1).objectReferenceValue = simple;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(pipeline);
     }
 
     // Batch-mode contract checks. These validate state routing, not rendered pixels.

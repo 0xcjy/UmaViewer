@@ -122,14 +122,12 @@ public class UISettingsCamera : MonoBehaviour
     /// <summary> Converts values 1-4 to valid AA values </summary>
     public void ChangeAntiAliasing(int value)
     {
-        int[] aaValues = { 0, 2, 4, 8 };
-
-        QualitySettings.antiAliasing = aaValues[value];
 
         if (Config.Instance.AntiAliasing != value)
         {
             Config.Instance.AntiAliasing = value;
             Config.Instance.UpdateConfig(false);
         }
+        RuntimeGraphicsSettings.Apply();
     }
 }

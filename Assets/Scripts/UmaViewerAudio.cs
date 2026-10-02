@@ -29,6 +29,7 @@ public class UmaViewerAudio
         {
             if (cur_active_source == index && !forceUpdate) return;
             cur_active_source = index;
+            activeSource = null;
             for(int i = 0; i < sourceList.Count; i++)
             {
                 if (i + 1 == index)
@@ -46,16 +47,14 @@ public class UmaViewerAudio
 
         public void SetVolume(float volume) 
         {
-            if (volume == this.volume || !activeSource) return;
             this.volume = volume;
-            activeSource.volume = volume;
+            if (activeSource) activeSource.volume = volume;
         }
 
         public void SetPanStereo(float pan)
         {
-            if (pan == this.pan || !activeSource) return;
             this.pan = pan;
-            activeSource.panStereo = pan;
+            if (activeSource) activeSource.panStereo = pan;
         }
     }
 
@@ -132,111 +131,70 @@ public class UmaViewerAudio
         right3 = 6,
     }
 
+    // Original .cctor 0x1b8ea00, GetVolume 0x1b8d670 and GetPartData 0x1b8d290.
+    static readonly float[] DefaultVolumes = { 0f, .79f, .89f, 1f, 1.12f, 1.26f };
+    static readonly float[] DefaultVolumeRates = { 0f, .79f, .79f, .56f, .53f, .47f, .42f, .37f };
+    static readonly int[][] DefaultVolumeIndices = {
+        new[] { 0 }, new[] { 5 }, new[] { 2, 2 }, new[] { 3, 5, 3 },
+        new[] { 3, 3, 3, 3 }, new[] { 1, 2, 4, 2, 1 },
+        new[] { 3, 3, 3, 3, 3, 3 }, new[] { 1, 1, 2, 4, 2, 1, 1 }
+    };
+    static readonly float[][] DefaultPans = {
+        new[] { 0f }, new[] { 0f }, new[] { -.15f, .15f }, new[] { -.3f, 0f, .3f },
+        new[] { -.3f, -.1f, .1f, .3f }, new[] { -.3f, -.15f, 0f, .15f, .3f },
+        new[] { -.3f, -.2f, -.1f, .1f, .2f, .3f }, new[] { -.3f, -.2f, -.1f, 0f, .1f, .2f, .3f }
+    };
+    static readonly string[] OrderedParts = { "left3", "left2", "left", "center", "right", "right2", "right3" };
+
     static public void AlterUpdate(float _liveCurrentTime, PartEntry partInfo, List<CuteAudioSource> liveVocal, bool forceUpdate = false)
     {
-
-        var timeLineData = partInfo.PartSettings["time"];
-
-        var targetIndex = 0;
-        for (int i = timeLineData.Count - 1; i >= 0; i--)
-        {
-            if (_liveCurrentTime >= (double)timeLineData[i] / 1000)
-            {
-                targetIndex = i;
-                break;
-            }
-        }
-
-        if (LastAudioPartIndex == targetIndex) return;
+        if (partInfo == null || liveVocal == null ||
+            !partInfo.PartSettings.TryGetValue("time", out var times)) return;
+        int targetIndex = times.Count - 1;
+        while (targetIndex >= 0 && _liveCurrentTime < times[targetIndex] / 1000.0) targetIndex--;
+        if (targetIndex < 0 || (!forceUpdate && LastAudioPartIndex == targetIndex)) return;
         LastAudioPartIndex = targetIndex;
 
-
-        float volume_rate = 1;
-        if (partInfo.PartSettings.ContainsKey("volume_rate"))
+        int activeCount = 0;
+        foreach (string part in OrderedParts)
         {
-            volume_rate = partInfo.PartSettings["volume_rate"][targetIndex];
+            var vocal = FindVocal(liveVocal, part);
+            if (vocal != null && PartValue(partInfo, part, targetIndex, 0f) > 0f) activeCount++;
         }
-        
-        if (volume_rate == 999) //chorus
+        // Original AlterUpdate 0x1b8c31d and 0x1b8c562: >=900 means default,
+        // not zero. An explicit zero remains authored silence.
+        float rate = PartValue(partInfo, "volume_rate", targetIndex, 901f);
+        if (rate >= 900f) rate = activeCount < DefaultVolumeRates.Length ? DefaultVolumeRates[activeCount] : 1f;
+        int rank = 0;
+        foreach (string part in OrderedParts)
         {
-            var activeVocal = new List<CuteAudioSource>();
-            for (int i = 0; i < liveVocal.Count; i++)
-            {
-                var vocal = liveVocal[i];
-                var partName = vocal.tag;
-                var active_index = (int)partInfo.PartSettings[partName][targetIndex];
-                vocal.SwitchActiveSource(active_index, forceUpdate);
-
-                if (partInfo.PartSettings.ContainsKey(partName + "_pan"))
-                {
-                    var part = partInfo.PartSettings[partName + "_pan"];
-                    var pan = part[targetIndex];
-                    vocal.SetPanStereo(pan == 999 ? 0 : pan);
-                }
-
-                if (active_index > 0)
-                {
-                    activeVocal.Add(vocal);
-                }
-            }
-
-            switch(activeVocal.Count)
-            {
-                case 1:
-                    activeVocal[0].SetVolume(0.9954f);
-                    break;
-                case 2:
-                    activeVocal[0].SetVolume(0.7031f);
-                    activeVocal[1].SetVolume(0.7031f);
-                    break;
-                case 3:
-                    activeVocal[0].SetVolume(0.7056f);
-                    activeVocal[1].SetVolume(0.56f);
-                    activeVocal[1].SetVolume(0.56f);
-                    break;
-                default:
-                    var per_vol = CalculateApproximateDBValues(0.9954f, activeVocal.Count);
-                    activeVocal.ForEach(v => v.SetVolume(per_vol));
-                    break;
-            }
+            var vocal = FindVocal(liveVocal, part);
+            if (vocal == null) continue;
+            int index = (int)PartValue(partInfo, part, targetIndex, 0f);
+            vocal.SwitchActiveSource(index, forceUpdate);
+            bool active = index > 0;
+            int row = activeCount < DefaultVolumeIndices.Length ? activeCount : 0;
+            int column = active && row > 0 ? rank++ : 0;
+            if (!active) row = 0;
+            float volume = PartValue(partInfo, part + "_vol", targetIndex, 901f);
+            float pan = PartValue(partInfo, part + "_pan", targetIndex, 901f);
+            if (volume >= 900f) volume = DefaultVolumes[DefaultVolumeIndices[row][column]];
+            if (pan >= 900f) pan = DefaultPans[row][column];
+            vocal.SetVolume(volume * rate);
+            vocal.SetPanStereo(pan);
         }
-        else
-        {
-            for (int i = 0; i < liveVocal.Count; i++)
-            {
-                var vocal = liveVocal[i];
-                var partName = vocal.tag;
-                var active_index = (int)partInfo.PartSettings[partName][targetIndex];
-                vocal.SwitchActiveSource(active_index, forceUpdate);
-
-                if (partInfo.PartSettings.ContainsKey(partName))
-                {
-
-                    if (partInfo.PartSettings.ContainsKey(partName + "_vol"))
-                    {
-                        var part = partInfo.PartSettings[partName + "_vol"];
-                        var volume = part[targetIndex];
-                        vocal.SetVolume(volume == 999 ? 0 : volume);
-                    }
-
-                    if (partInfo.PartSettings.ContainsKey(partName + "_pan"))
-                    {
-                        var part = partInfo.PartSettings[partName + "_pan"];
-                        var pan = part[targetIndex];
-                        vocal.SetPanStereo(pan == 999 ? 0 : pan);
-                    }
-                }
-            }
-        }
-
     }
 
-    static public float CalculateApproximateDBValues(float total_volume, int num_sounds)
+    static CuteAudioSource FindVocal(List<CuteAudioSource> vocals, string part)
     {
-        var total_db = 15f;
-        var P0 = total_volume * (Math.Pow(10, total_db / 10));
-        var P_per_sound = P0 / num_sounds;
-        var per_volume = 10 * Math.Log10(P_per_sound / total_volume);
-        return (float)(per_volume / total_db);
+        for (int i = 0; i < vocals.Count; i++)
+            if (vocals[i].tag == part) return vocals[i];
+        return null;
+    }
+
+    static float PartValue(PartEntry data, string column, int row, float fallback)
+    {
+        return data.PartSettings.TryGetValue(column, out var values) && row < values.Count
+            ? values[row] : fallback;
     }
 }

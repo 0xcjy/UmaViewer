@@ -59,8 +59,8 @@ namespace Gallop.RenderPipeline
             set => _enableRendering = value;
         }
 
-        // Shared live state. Director updates this object from the timeline;
-        // each camera's CameraData points at the same state before Setup runs.
+        // Active-camera publication alias, not storage shared by every camera.
+        // GallopImageEffect / MultiCamera retain their own CameraData parameters.
         private static Parameter _runtimeParameter = new Parameter();
 
         public static Parameter RuntimeParameter
@@ -71,6 +71,7 @@ namespace Gallop.RenderPipeline
                     _runtimeParameter = new Parameter();
                 return _runtimeParameter;
             }
+            internal set => _runtimeParameter = value;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -220,12 +221,14 @@ namespace Gallop.RenderPipeline
             if (!camera.TryGetComponent(out cameraData))
                 cameraData = camera.gameObject.AddComponent<CameraData>();
 
-            // The recovered feature expects CameraData.Parameter. Keep it
-            // bound to the timeline-owned object and refresh the active camera
-            // every frame because CameraSwitcher can replace it.
-            var cameraParameter = multiCamera != null ? multiCamera.PostEffectParameter : RuntimeParameter;
+            // Bind this camera's owned state before deciding draw type.
+            // Live auto-disable must never leak through the active-camera alias.
+            var imageEffect = camera.GetComponent<GallopImageEffect>();
+            var cameraParameter = multiCamera != null ? multiCamera.PostEffectParameter
+                : imageEffect != null ? imageEffect.RenderParameter : RuntimeParameter;
             cameraData.Parameter = cameraParameter;
             cameraParameter.TargetCamera = camera;
+            cameraData.UpdateImageEffectParameter();
 
             Parameter parameter = ResolveFeatureParameter(cameraData);
             if (parameter == null)

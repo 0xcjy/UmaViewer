@@ -19,10 +19,11 @@ namespace Gallop.Live
         [SerializeField]
         private GameObject[] _cameraNodes;
         private Camera[] _cameraObjects;
+        private GallopImageEffect[] _cameraImageEffects;
         private Transform[] _cameraTransforms;
         [SerializeField]
         private CameraLookAt _cameraLookAt;
-        private int _activeCameraIndex  = 1;
+        private int _activeCameraIndex = 1;
         private readonly int[] kTimelineCameraIndices = new int[3] { 1, 2, 3 };
         [SerializeField] private bool _enableMirrorReflection = true;
         [SerializeField] private List<MirrorReflection> _mirrorReflections = new List<MirrorReflection>();
@@ -280,9 +281,10 @@ namespace Gallop.Live
                     }
 
                     Builder.LoadAssetPath(stagePath, transform);
-                    
+
 
                     _liveTimelineControl.StageObjectMap = _stageController.StageObjectMap;
+                    _liveTimelineControl.StageObjectUnitMap = _stageController.StageObjectUnitMap;
                 }
 
 
@@ -308,7 +310,8 @@ namespace Gallop.Live
                         charaObjs.Add(newObj.transform);
                         counter++;
                     }
-                };
+                }
+                ;
 
 
                 //Get live parts info
@@ -397,20 +400,20 @@ namespace Gallop.Live
                             foreach (var renderer in container.Renderers)
                             {
                                 renderer.GetPropertyBlock(propertyBlock);
-                            propertyBlock.SetFloat("_RimShadowRate", updateInfo.globalRimShadowRate);
-                            propertyBlock.SetColor("_RimColor", updateInfo.rimColor);
-                            propertyBlock.SetFloat("_RimStep", updateInfo.rimStep);
-                            propertyBlock.SetFloat("_RimFeather", updateInfo.rimFeather);
-                            propertyBlock.SetFloat("_RimSpecRate", updateInfo.rimSpecRate);
-                            propertyBlock.SetFloat("_RimHorizonOffset", updateInfo.RimHorizonOffset);
-                            propertyBlock.SetFloat("_RimVerticalOffset", updateInfo.RimVerticalOffset);
-                            propertyBlock.SetFloat("_RimHorizonOffset2", updateInfo.RimHorizonOffset2);
-                            propertyBlock.SetFloat("_RimVerticalOffset2", updateInfo.RimVerticalOffset2);
-                            propertyBlock.SetColor("_RimColor2", updateInfo.rimColor2);
-                            propertyBlock.SetFloat("_RimStep2", updateInfo.rimStep2);
-                            propertyBlock.SetFloat("_RimFeather2", updateInfo.rimFeather2);
-                            propertyBlock.SetFloat("_RimSpecRate2", updateInfo.rimSpecRate2);
-                            propertyBlock.SetFloat("_RimShadowRate2", updateInfo.globalRimShadowRate2);
+                                propertyBlock.SetFloat("_RimShadowRate", updateInfo.globalRimShadowRate);
+                                propertyBlock.SetColor("_RimColor", updateInfo.rimColor);
+                                propertyBlock.SetFloat("_RimStep", updateInfo.rimStep);
+                                propertyBlock.SetFloat("_RimFeather", updateInfo.rimFeather);
+                                propertyBlock.SetFloat("_RimSpecRate", updateInfo.rimSpecRate);
+                                propertyBlock.SetFloat("_RimHorizonOffset", updateInfo.RimHorizonOffset);
+                                propertyBlock.SetFloat("_RimVerticalOffset", updateInfo.RimVerticalOffset);
+                                propertyBlock.SetFloat("_RimHorizonOffset2", updateInfo.RimHorizonOffset2);
+                                propertyBlock.SetFloat("_RimVerticalOffset2", updateInfo.RimVerticalOffset2);
+                                propertyBlock.SetColor("_RimColor2", updateInfo.rimColor2);
+                                propertyBlock.SetFloat("_RimStep2", updateInfo.rimStep2);
+                                propertyBlock.SetFloat("_RimFeather2", updateInfo.rimFeather2);
+                                propertyBlock.SetFloat("_RimSpecRate2", updateInfo.rimSpecRate2);
+                                propertyBlock.SetFloat("_RimShadowRate2", updateInfo.globalRimShadowRate2);
                                 propertyBlock.SetFloat("_UseOriginalDirectionalLight", 1f);
                                 propertyBlock.SetVector("_OriginalDirectionalLightDir", tmpPos);
                                 renderer.SetPropertyBlock(propertyBlock);
@@ -436,11 +439,11 @@ namespace Gallop.Live
                             foreach (var renderer in container.Renderers)
                             {
                                 renderer.GetPropertyBlock(propertyBlock);
-                            propertyBlock.SetColor("_CharaColor", updateInfo.color * updateInfo.colorPower);
-                            propertyBlock.SetColor("_ToonDarkColor", updateInfo.toonDarkColor);
-                            propertyBlock.SetColor("_ToonBrightColor", updateInfo.toonBrightColor);
-                            propertyBlock.SetColor("_OutlineColor", updateInfo.outlineColor);
-                            propertyBlock.SetFloat("_Saturation", updateInfo.Saturation);
+                                propertyBlock.SetColor("_CharaColor", updateInfo.color * updateInfo.colorPower);
+                                propertyBlock.SetColor("_ToonDarkColor", updateInfo.toonDarkColor);
+                                propertyBlock.SetColor("_ToonBrightColor", updateInfo.toonBrightColor);
+                                propertyBlock.SetColor("_OutlineColor", updateInfo.outlineColor);
+                                propertyBlock.SetFloat("_Saturation", updateInfo.Saturation);
                                 renderer.SetPropertyBlock(propertyBlock);
                             }
                         }
@@ -527,6 +530,7 @@ namespace Gallop.Live
                 _stageController != null ? _stageController.transform : null,
                 flareSetting != null ? flareSetting.lightStandard : 3f,
                 flareSetting != null ? flareSetting.underLimit : 0f);
+            _livePropsController.RegisterStageLighting(_stageController, _stageFlares);
             foreach (var sheet in _liveTimelineControl.data.worksheetList)
             {
                 if (sheet.bgColor1List != null)
@@ -573,7 +577,7 @@ namespace Gallop.Live
                 }
                 UpdateMainCamera();
             };
-            
+
         }
 
         public void InitializeCamera()
@@ -593,6 +597,21 @@ namespace Gallop.Live
                     //camera.cullingMask = num;
                     _cameraObjects[i] = camera;
                     _cameraTransforms[i] = camera.transform;
+                }
+            }
+            if (_cameraImageEffects == null)
+            {
+                _cameraImageEffects = new GallopImageEffect[_cameraObjects.Length];
+                for (int i = 0; i < _cameraObjects.Length; ++i)
+                {
+                    var camera = _cameraObjects[i];
+                    if (camera == null) continue;
+                    var effect = camera.GetComponent<GallopImageEffect>();
+                    if (effect == null) effect = camera.gameObject.AddComponent<LiveImageEffect>();
+                    // Actual Director.InitializeCamera dispatches Initialize slot5
+                    // before author enable/bloom state; do not rely on Awake.
+                    effect.InitializeVolume();
+                    _cameraImageEffects[i] = effect;
                 }
             }
         }
@@ -780,6 +799,7 @@ namespace Gallop.Live
                 parameter.SunShafts = _volumeLightController.SunShafts;
                 parameter.LightShafts = _volumeLightController.LightShafts;
             }
+            UpdateDofMaxFocalSize();
             _lateTimelineAppliedThisFrame = true;
         }
 
@@ -799,7 +819,7 @@ namespace Gallop.Live
 
                 if (_syncTime == false)
                 {
-                    if(liveMusic.sourceList.Count == 0)
+                    if (liveMusic.sourceList.Count == 0)
                     {
                         _syncTime = true;
                     }
@@ -899,7 +919,7 @@ namespace Gallop.Live
             {
                 ApplyTimelineLateUpdate();
             }
-            
+
             if (_enableMirrorReflection && _mirrorRenderInLateUpdate)
             {
                 UpdateMirrorReflections();
@@ -998,7 +1018,7 @@ namespace Gallop.Live
 
         public static List<UmaDatabaseEntry> GetLiveAllVoiceEntry(int songid, List<LiveCharacterLoadData> characters)
         {
-            List<UmaDatabaseEntry> entryList = new List <UmaDatabaseEntry>();
+            List<UmaDatabaseEntry> entryList = new List<UmaDatabaseEntry>();
             for (int i = 0; i < characters.Count; i++)
             {
                 if (characters[i].CharaEntry.Name != "")
@@ -1138,10 +1158,11 @@ namespace Gallop.Live
         }
         private void InitializeMirrorReflections()
         {
+            _stageController?.DestroyMirrorReflections();
+            _mirrorReflections.Clear();
             if (!_enableMirrorReflection)
                 return;
 
-            _mirrorReflections.Clear();
 
             AddMirrorReflections(_mirrorReflections, GetComponentsInChildren<MirrorReflection>(true));
 
@@ -1164,13 +1185,20 @@ namespace Gallop.Live
             if (mainCam == null)
                 mainCam = Camera.main;
 
-            for (int i = 0; i < _mirrorReflections.Count; i++)
+            if (_stageController != null)
             {
-                var mirror = _mirrorReflections[i];
-                if (mirror == null) continue;
-
-                mirror.Initialize(mainCam, i, false);
-                mirror.SetupBaseCamera(mainCam, GetMainCameraFovFactor);
+                _stageController.InitializeMirrorReflections(_mirrorReflections, mainCam,
+                    GetMainCameraFovFactor, _liveTimelineControl, CharaContainerScript);
+            }
+            else
+            {
+                for (int i = 0; i < _mirrorReflections.Count; i++)
+                {
+                    var mirror = _mirrorReflections[i];
+                    if (mirror == null) continue;
+                    mirror.Initialize(mainCam, i, false);
+                    mirror.SetupBaseCamera(mainCam, GetMainCameraFovFactor);
+                }
             }
 
             Debug.Log($"[Mirror] Initialized {_mirrorReflections.Count} mirrors.");
@@ -1198,6 +1226,7 @@ namespace Gallop.Live
 
         private void UpdateMirrorReflections()
         {
+            _stageController?.PrepareMirrorCharacters();
             if (_mirrorReflections == null || _mirrorReflections.Count == 0)
                 return;
 
@@ -1245,14 +1274,39 @@ namespace Gallop.Live
             {
                 _mainGallopImageEffect =
                     mainCamera.gameObject
-                        .AddComponent<GallopImageEffect>();
+                        .AddComponent<LiveImageEffect>();
             }
 
             return _mainGallopImageEffect;
         }
         private string _lastDofBypassReason;
 
-        private void OnUpdatePostEffect_Dof(LiveTimelineKeyPostEffectDOFData key)
+        private float GetMaxForcalSize()
+        {
+            // Actual game RVA 0x71439d0 / AlterLateUpdate 0x713ec50.
+            // 0x0da24260 is the native 1e-30 fallback; never accumulate sampled sizes.
+            var data = _liveTimelineControl != null ? _liveTimelineControl.data : null;
+            return Mathf.Max(1e-30f, data != null ? data.maxForcalSize : 0f);
+        }
+
+        private void UpdateDofMaxFocalSize()
+        {
+            float maximum = GetMaxForcalSize();
+            if (_cameraImageEffects != null)
+                for (int i = 0; i < _cameraImageEffects.Length; ++i)
+                    if (_cameraImageEffects[i] != null)
+                    {
+                        _cameraImageEffects[i].DofDiffusionBloomOverlayParam.DofMaxFocalSize = maximum;
+                        _cameraImageEffects[i].RenderParameter.DofDiffuionBloomOverlay.DofMaxFocalSize = maximum;
+                    }
+            if (_multiCameras != null)
+                for (int i = 0; i < _multiCameras.Length; ++i)
+                    if (_multiCameras[i] != null)
+                        _multiCameras[i].PostEffectParameter.DofDiffuionBloomOverlay.DofMaxFocalSize = maximum;
+            GetActivePostEffect()?.ApplyBloomParameter();
+        }
+
+        private void OnUpdatePostEffect_Dof(LiveTimelineKeyPostEffectDOFData key, Vector3? worldFocus)
         {
             var effect = GetActivePostEffect();
             if (effect == null) return;
@@ -1271,60 +1325,28 @@ namespace Gallop.Live
                 bypassReason = "no render camera available for DOF evaluation";
             if (key != null && bypassReason == null)
             {
-                // master5's screenshot-tested inference; official flag names remain unknown.
+                // Actual game SetupDOFUpdateInfo RVA 0x726a610: bit18 enables DOF;
+                // bit16 selects camera look-at, bit17 a metric focal point.
                 bool metric = ((int)key.attribute & (1 << 17)) != 0;
-                bool cameraTarget = ((int)key.attribute & (1 << 16)) != 0;
-                Vector3 focus = Vector3.zero;
-                bool valid = metric;
-                if (!metric && cameraTarget)
-                {
-                    valid = _liveTimelineControl.HasDofCameraLookAt &&
-                        _liveTimelineControl.DofLookAtCamera == renderCamera;
-                    focus = _liveTimelineControl.DofCameraLookAt;
-                }
-                else if (!metric)
-                {
-                    int count = 0;
-                    var locators = _liveTimelineControl.liveCharactorLocators;
-                    for (int i = 0; i < locators.Length && i < 18; ++i)
-                        if ((key.charactor & (1 << i)) != 0 && locators[i] != null)
-                        { focus += locators[i].liveCharaHeadPosition; ++count; }
-                    valid = count > 0;
-                    if (valid) focus /= count;
-                }
-                // Validate before the backend normalizes depth. In particular, do
-                // not clamp a behind-camera target to zero and render a full-frame blur.
-                // [REPORT §10.3-B3/§4.4] 原生 PrepareDofParam 只做 focal01<0→0 的下限夹紧
-                // （§4.4：只夹下限，无 Clamp01、无 farClipPlane 上限判定）。master7 曾把
-                // metric 焦距再减 nearClipPlane 且要求 focusDepth<farClipPlane，使
-                // 0<d<near 的近距焦点与超远焦点被二次关闭 DOF。对齐后只要求焦点在相机
-                // 前方（>0）；相机背后目标仍按下述原注释保持关闭（不还原 focal01=0 全屏模糊）。
+                Vector3 focus = worldFocus.GetValueOrDefault();
+                bool valid = metric || worldFocus.HasValue;
+                // Native PrepareDofParam clamps normalized negative depth, not the
+                // authored focal point. Missing targets remain a DOF-only bypass.
                 float focusDepth = metric ? key.dofFocalPoint
                     : renderCamera.WorldToViewportPoint(focus).z;
-                valid = valid && !float.IsNaN(focusDepth) && !float.IsInfinity(focusDepth) &&
-                    focusDepth > 0.0001f;
+                valid = valid && !float.IsNaN(focusDepth) && !float.IsInfinity(focusDepth);
                 if (!valid) bypassReason = "missing or invalid focus depth";
-                param.IsEnableDof = valid;
-                param.DofFocalPosition = focus;
-                param.DofFocalTransfrom = null;
-                // [REPORT §10.3-B4/§4.4] 原生 PrepareDofParam(RVA 0x1a20030) 不钳制
-                // DofFocalPoint 本身，只在后端对归一化 focalDistance01<0 夹 0
-                // （DofDiffusionBloomOverlayPass.cs:433-434）。删除 master7 自加的
-                // Max(0.01f)——它把 0~0.01m 的合法近距焦点系统性抬高到 0.01m，
-                // 近距离特写 DOF 焦点被推远；setter 无隐藏钳制（直接存值）。
-                param.DofFocalPoint = key.dofFocalPoint;
-                // Unlike master5's render Parameter, these source-property setters
-                // select Position/Transform/Point as a side effect. Restore the
-                // resolved mode LAST, or the default 1m point overwrites look-at
-                // and character focus before GallopImageEffect copies the state.
-                param.DofFocalType = metric ? DepthBlurAndBloom.DofFocalType.Point : DepthBlurAndBloom.DofFocalType.Position;
-                param.DofQualityType = key.dofQuality == 5 ? DepthBlurAndBloom.DofQuality.BackgroundAndForeground : DepthBlurAndBloom.DofQuality.OnlyBackground;
-                param.DofFocalSize = Mathf.Max(0f, key.forcalSize);
-                param.DofMaxFocalSize = Mathf.Max(param.DofMaxFocalSize, param.DofFocalSize);
-                param.DofMaxBlurSpread = Mathf.Max(0f, key.blurSpread);
-                param.DofForegroundSize = Mathf.Max(0f, key.dofForegroundSize);
-                param.DofSmoothness = Mathf.Max(0.1f, key.dofSmoothness);
-                param.DofBlurType = (DepthBlurAndBloom.DofBlur)Mathf.Clamp(key.dofBlurType, 0, 3);
+                param.IsEnableDof = valid && ((int)key.attribute & (1 << 18)) != 0;
+                // Source setters select the mode; write only the selected coordinate.
+                if (metric) param.DofFocalPoint = key.dofFocalPoint;
+                else param.DofFocalPosition = focus;
+                param.DofQualityType = (DepthBlurAndBloom.DofQuality)key.dofQuality;
+                param.DofFocalSize = key.forcalSize;
+                param.DofMaxFocalSize = GetMaxForcalSize();
+                param.DofMaxBlurSpread = key.blurSpread;
+                param.DofForegroundSize = key.dofForegroundSize;
+                param.DofSmoothness = key.dofSmoothness;
+                param.DofBlurType = (DepthBlurAndBloom.DofBlur)key.dofBlurType;
                 param.BallBlurPowerFactor = key.BallBlurPowerFactor;
                 param.BallBlurBrightnessThreshhold = key.BallBlurBrightnessThreshhold;
                 param.BallBlurBrightnessIntensity = key.BallBlurBrightnessIntensity;
@@ -1386,18 +1408,18 @@ namespace Gallop.Live
             // Distance fog: apply via RenderSettings when isDistance is true.
             // Either branch enables scene fog; both false disables it.
             bool applyDistanceFog = key.isDistance && !key.isHeight;
-            bool applyHeightFog   = key.isHeight;
+            bool applyHeightFog = key.isHeight;
 
-            RenderSettings.fog      = applyDistanceFog || applyHeightFog;
+            RenderSettings.fog = applyDistanceFog || applyHeightFog;
             RenderSettings.fogColor = key.color;
 
             if (applyHeightFog)
             {
-                RenderSettings.fogMode    = FogMode.ExponentialSquared;
+                RenderSettings.fogMode = FogMode.ExponentialSquared;
                 RenderSettings.fogDensity = key.heightDensity;
                 // Forward height and fog length as globals so stage shaders can consume them.
                 float fogLength = Mathf.Max(0.001f, key.end - key.start);
-                Shader.SetGlobalFloat("_Global_FogHeight",       key.height);
+                Shader.SetGlobalFloat("_Global_FogHeight", key.height);
                 Shader.SetGlobalFloat("_Global_FogHeightDensity", key.heightDensity);
                 Shader.SetGlobalVector("_Global_FogLength",
                     new Vector4(fogLength, fogLength, fogLength, fogLength));
@@ -1408,16 +1430,16 @@ namespace Gallop.Live
                 switch (key.fogMode)
                 {
                     case 1:
-                        RenderSettings.fogMode    = FogMode.Linear;
+                        RenderSettings.fogMode = FogMode.Linear;
                         RenderSettings.fogStartDistance = key.start + key.startDistance;
-                        RenderSettings.fogEndDistance   = key.end;
+                        RenderSettings.fogEndDistance = key.end;
                         break;
                     case 2:
-                        RenderSettings.fogMode    = FogMode.Exponential;
+                        RenderSettings.fogMode = FogMode.Exponential;
                         RenderSettings.fogDensity = key.expDensity;
                         break;
                     default:
-                        RenderSettings.fogMode    = FogMode.ExponentialSquared;
+                        RenderSettings.fogMode = FogMode.ExponentialSquared;
                         RenderSettings.fogDensity = key.expDensity;
                         break;
                 }
@@ -1439,7 +1461,7 @@ namespace Gallop.Live
         private void OnUpdatePostEffect_BloomDiffusion(PostEffectUpdateInfo_BloomDiffusion updateInfo)
         {
             GallopImageEffect imageEffect = GetActivePostEffect();
-            
+
 
             if (imageEffect == null) return;
 
@@ -1483,9 +1505,9 @@ namespace Gallop.Live
                 updateInfo.diffusionContrast;
 
             imageEffect.ApplyBloomParameter();
-    //         Debug.Log(
-    // $"[BloomDirector] activeCameraIndex={_activeCameraIndex}, " +
-    // $"imageEffect={(imageEffect != null ? imageEffect.name : "null")}");
+            //         Debug.Log(
+            // $"[BloomDirector] activeCameraIndex={_activeCameraIndex}, " +
+            // $"imageEffect={(imageEffect != null ? imageEffect.name : "null")}");
         }
         private void OnUpdateVolumeLight(LiveVolumeLightTimeline.VolumeUpdateInfo info)
         {
@@ -1499,6 +1521,7 @@ namespace Gallop.Live
 
         private void OnDestroy()
         {
+            _stageController?.DestroyMirrorReflections();
             UnbindTimelineEvents();
             _footLightRuntime?.Dispose();
             _footLightRuntime = null;

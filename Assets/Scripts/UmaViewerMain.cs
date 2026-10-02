@@ -85,17 +85,18 @@ public class UmaViewerMain : MonoBehaviour
 
 
 
-        // Online English names take priority. LocalizeEn remains the offline fallback.
+        // Reuse downloaded English names; only fetch when no usable cache exists.
+        bool downloadTranslations = false;
+        string cachePath = Path.Combine(Application.persistentDataPath, EnglishNamesCacheFileName);
+        if (Config.Instance.Language == Language.En)
+            downloadTranslations = !TryLoadEnglishNamesCache(cachePath);
+
         loadingUI.LoadingProgressChange(
             loadingStep++,
             loadingStepsTotal,
-            Config.Instance.Language == Language.En ? "Downloading Translations" : "Loading Translations");
-        if (Config.Instance.Language == Language.En)
+            downloadTranslations ? "Downloading Translations" : "Loading Translations");
+        if (downloadTranslations)
         {
-            string cachePath = Path.Combine(
-                Application.persistentDataPath,
-                EnglishNamesCacheFileName);
-            TryLoadEnglishNamesCache(cachePath);
 
             yield return UmaViewerDownload.DownloadText(LocalizeEn.TranslationUrl, json =>
             {
@@ -284,9 +285,9 @@ public class UmaViewerMain : MonoBehaviour
         }
     }
 
-    private static void TryLoadEnglishNamesCache(string cachePath)
+    private static bool TryLoadEnglishNamesCache(string cachePath)
     {
-        if (!File.Exists(cachePath)) return;
+        if (!File.Exists(cachePath)) return false;
 
         try
         {
@@ -301,13 +302,17 @@ public class UmaViewerMain : MonoBehaviour
 
                 Dictionary<int, string> charaNames = ReadEnglishNameTable(reader);
                 Dictionary<int, string> mobNames = ReadEnglishNameTable(reader);
+                if (charaNames.Count == 0 || mobNames.Count == 0)
+                    throw new InvalidDataException("English name cache is missing required name tables.");
                 ApplyEnglishNames(charaNames, mobNames);
                 Debug.Log($"Loaded cached English names: {charaNames.Count} characters, {mobNames.Count} mobs.");
             }
+            return true;
         }
         catch (Exception ex)
         {
             Debug.LogWarning($"Could not load the cached English names. Using LocalizeEn fallback: {ex.Message}");
+            return false;
         }
     }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -269,12 +269,16 @@ namespace Gallop.Live
         [SerializeField] private bool _lastLoadSucceeded;
         [SerializeField] private int _lastSyncedStageInstanceId;
         [SerializeField] private int _lastContextSlotHash;
+        private bool _hasResolvedContextSlots;
 
         public int LoadedMusicId => _loadedMusicId;
         public string LoadedRootPath => _loadedRootPath;
         public bool HasTriedLoad => _hasTriedLoad;
         public bool LastLoadSucceeded => _lastLoadSucceeded;
         public int ContextSlotCount => contextSlots != null ? contextSlots.Count : 0;
+        // A loaded table may legitimately contain no UVMovie rows. Completion
+        // is independent of slot availability, so that case is not retried each frame.
+        public bool HasResolvedContextSlots => _hasResolvedContextSlots;
 
         private void Start()
         {
@@ -432,10 +436,12 @@ namespace Gallop.Live
 
             _lastSyncedStageInstanceId = 0;
             _lastContextSlotHash = 0;
+            _hasResolvedContextSlots = false;
         }
 
         public bool RebuildContextSlotsFromLiveSettings(LiveTimelineControl timelineControl, int musicId, bool force = false)
         {
+            _hasResolvedContextSlots = false;
             string csvText = ResolveLiveSettingsCsvText(musicId);
             if (string.IsNullOrWhiteSpace(csvText))
             {
@@ -447,6 +453,7 @@ namespace Gallop.Live
             List<LiveSettingsUvMovieRow> sourceRows = ParseLiveSettingsUvMovieRows(csvText);
             if (sourceRows.Count == 0)
             {
+                _hasResolvedContextSlots = true;
                 if (verboseLog)
                     Debug.LogWarning("[MonitorUvMovieProvider] liveSettings csv contains no type=4 UVMovie rows.");
                 return false;
@@ -502,6 +509,7 @@ namespace Gallop.Live
             int slotHash = ComputeSlotHash(resolvedSlots);
             if (!force && _lastContextSlotHash == slotHash && contextSlots.Count == resolvedSlots.Count)
             {
+                _hasResolvedContextSlots = true;
                 if (verboseLog)
                     Debug.Log($"[MonitorUvMovieProvider] liveSettings slots unchanged: total={resolvedSlots.Count}, musicId={musicId}");
                 return false;
@@ -510,6 +518,7 @@ namespace Gallop.Live
             contextSlots = resolvedSlots;
             _lastSyncedStageInstanceId = musicId;
             _lastContextSlotHash = slotHash;
+            _hasResolvedContextSlots = true;
 
             if (verboseLog)
             {

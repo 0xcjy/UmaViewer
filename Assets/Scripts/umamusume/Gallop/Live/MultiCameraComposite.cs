@@ -192,6 +192,8 @@ namespace Gallop.Live
                 RenderCamera.nearClipPlane = current.nearClip;
                 RenderCamera.farClipPlane = current.farClip;
                 RenderCamera.fieldOfView = Mathf.LerpUnclamped(current.fov, next.fov, t);
+                if (((int)current.attribute & 0x40000) != 0)
+                    RenderCamera.backgroundColor = current.BgColor;
             }
             if (current.maskType == LiveTimelineKeyMultiCameraPositionData.MaskType.Single && transitioning)
             {

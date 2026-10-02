@@ -189,8 +189,9 @@ public class UmaViewerUI : MonoBehaviour
     public IEnumerator ApplyGraphicsSettings()
     {
         yield return 0;
-        CameraSettings.ChangeAntiAliasing(Config.Instance.AntiAliasing);
+        CameraSettings.AAModeDropdown.SetValueWithoutNotify(Config.Instance.AntiAliasing);
         GraphicsSettings.renderPipelineAsset = Config.Instance.Region == Region.Global ? null : UmaViewerMain.Instance.DefaultRenderPipeline;
+        RuntimeGraphicsSettings.Apply();
     }
 
     public void HighlightChildImage(Transform mainObject, UmaUIContainer child)
@@ -867,61 +868,60 @@ public class UmaViewerUI : MonoBehaviour
         }
     }
 
-    void ShowLiveSelectPanel(LiveEntry entry)
+    void ShowLiveSelectPanel(LiveEntry entry, bool loadPreview = true)
     {
         LiveSelectPannel.SetActive(true);
-        Builder.loadLivePreviewSound(entry.MusicId);
-        for (int i = LiveSelectList.content.childCount - 1; i >= 0; i--)
+        if (loadPreview) Builder.loadLivePreviewSound(entry.MusicId);
+        bool keepSelections = currentLive == entry;
+        CurrentSeletChara = null;
+        if (!keepSelections)
         {
-            Destroy(LiveSelectList.content.GetChild(i).gameObject);
+            for (int i = LiveSelectList.content.childCount - 1; i >= 0; i--)
+            {
+                var child = LiveSelectList.content.GetChild(i);
+                child.SetParent(null);
+                Destroy(child.gameObject);
+            }
         }
 
-        if(LiveMode == 1)
+        currentLive = entry;
+        LiveSelectImage.sprite = entry.Icon;
+        int memberCount = entry.MemberCount;
+        if (LiveMode == 0)
         {
-            currentLive = entry;
-            LiveSelectImage.sprite = entry.Icon;
-            LiveSelectInfoText.text = $"{entry.SongName}\nMembers Count: {entry.MemberCount}";
-            for (int i = 0; i < entry.MemberCount; i++)
+            memberCount = Main.AbMotions.Count(a => a.Name.StartsWith($"3d/motion/live/body/son{entry.MusicId}") && Path.GetFileName(a.Name).Split('_').Length == 4);
+            LiveSelectInfoText.text = $"{entry.SongName}\nMain Members Count: {memberCount}";
+        }
+        else
+        {
+            LiveSelectInfoText.text = $"{entry.SongName}\nMembers Count: {memberCount}";
+        }
+
+        var selections = new List<LiveCharacterSelect>(LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>());
+        for (int i = selections.Count - 1; i >= memberCount; i--)
+        {
+            selections[i].transform.SetParent(null);
+            Destroy(selections[i].gameObject);
+            selections.RemoveAt(i);
+        }
+        for (int i = selections.Count; i < memberCount; i++)
+        {
+            var chara = Instantiate(LiveSelectPrefab, LiveSelectList.content).GetComponent<LiveCharacterSelect>();
+            chara.IndexText.text = (i + 1).ToString();
+            chara.GetComponent<Button>().onClick.AddListener(() =>
             {
-                var chara = Instantiate(LiveSelectPrefab, LiveSelectList.content).GetComponent<LiveCharacterSelect>();
-                chara.IndexText.text = (i + 1).ToString();
-                chara.GetComponent<Button>().onClick.AddListener(() =>
+                chara.SelectChara(this);
+                foreach (var t in LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>())
                 {
-                    chara.SelectChara(this);
-                    foreach (var t in LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>())
-                    {
-                        t.GetComponentInChildren<Text>().color = (t == chara ? Color.green : Color.black);
-                    }
-                });
-            }
+                    t.GetComponentInChildren<Text>().color = (t == chara ? (LiveMode == 1 ? Color.green : Color.white) : Color.black);
+                }
+            });
+            selections.Add(chara);
         }
-        else if(LiveMode == 0)
-        {
-            currentLive = entry;
-            LiveSelectImage.sprite = entry.Icon;
-
-            int mainCount = 0;
-            foreach (var motion in Main.AbMotions.Where(a => a.Name.StartsWith($"3d/motion/live/body/son{entry.MusicId}") && Path.GetFileName(a.Name).Split('_').Length == 4))
-            {
-                mainCount += 1;
-            }
-
-            LiveSelectInfoText.text = $"{entry.SongName}\nMain Members Count: {mainCount}";
-            for (int i = 0; i < mainCount; i++)
-            {
-                var chara = Instantiate(LiveSelectPrefab, LiveSelectList.content).GetComponent<LiveCharacterSelect>();
-                chara.IndexText.text = (i + 1).ToString();
-                chara.GetComponent<Button>().onClick.AddListener(() =>
-                {
-                    chara.SelectChara(this);
-                    foreach (var t in LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>())
-                    {
-                        t.GetComponentInChildren<Text>().color = (t == chara ? Color.white : Color.black);
-                    }
-                });
-            }
-        }
-        
+        foreach (var selection in selections)
+            selection.GetComponentInChildren<Text>().color = Color.black;
+        if (!LiveAutoSelection.FillMissing(Main, entry, selections, CostumeIconDefault))
+            ShowMessage("Cannot fill the live selection: no available character-owned winning costume matches an empty slot.", UIMessageType.Warning);
     }
 
     void ListCostumes(CharaEntry chara, bool mini)
@@ -1390,60 +1390,7 @@ public class UmaViewerUI : MonoBehaviour
     {
         LiveMode = val;
         if (LiveSelectPannel.activeSelf && currentLive != null)
-        {
-            foreach (var select in LiveSelectList.content.GetComponentsInChildren<Transform>())
-            {
-                if (select != LiveSelectList.content.transform)
-                {
-                    Destroy(select.gameObject);
-                }
-            }
-
-            switch (LiveMode)
-            {
-                case 0:
-                    LiveSelectImage.sprite = currentLive.Icon;
-                    int mainCount = 0;
-                    foreach (var motion in Main.AbMotions.Where(a => a.Name.StartsWith($"3d/motion/live/body/son{currentLive.MusicId}") && Path.GetFileName(a.Name).Split('_').Length == 4))
-                    {
-                        mainCount += 1;
-                    }
-
-                    LiveSelectInfoText.text = $"{currentLive.SongName}\nMain Members Count: {mainCount}";
-                    for (int i = 0; i < mainCount; i++)
-                    {
-                        var chara = Instantiate(LiveSelectPrefab, LiveSelectList.content).GetComponent<LiveCharacterSelect>();
-                        chara.IndexText.text = (i + 1).ToString();
-                        chara.GetComponent<Button>().onClick.AddListener(() =>
-                        {
-                            chara.SelectChara(this);
-                            foreach (var t in LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>())
-                            {
-                                t.GetComponentInChildren<Text>().color = (t == chara ? Color.white : Color.black);
-                            }
-                        });
-                    }
-                    break;
-
-                case 1:
-                    LiveSelectImage.sprite = currentLive.Icon;
-                    LiveSelectInfoText.text = $"{currentLive.SongName}\nMembers Count: {currentLive.MemberCount}";
-                    for (int i = 0; i < currentLive.MemberCount; i++)
-                    {
-                        var chara = Instantiate(LiveSelectPrefab, LiveSelectList.content).GetComponent<LiveCharacterSelect>();
-                        chara.IndexText.text = (i + 1).ToString();
-                        chara.GetComponent<Button>().onClick.AddListener(() =>
-                        {
-                            chara.SelectChara(this);
-                            foreach (var t in LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>())
-                            {
-                                t.GetComponentInChildren<Text>().color = (t == chara ? Color.white : Color.black);
-                            }
-                        });
-                    }
-                    break;
-            }
-        }
+            ShowLiveSelectPanel(currentLive, false);
     }
 
     public void SetLiveRecordMode(bool val) { isRecordVMD = val; }

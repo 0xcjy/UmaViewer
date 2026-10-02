@@ -34,17 +34,11 @@ namespace Gallop.Live.Cutt
         /// </summary>
         public LiveCharaPositionFlag FocusCharacters => (LiveCharaPositionFlag)charactor;
 
-        // High `attribute` bits are per-track flags (same convention as
-        // LiveTimelineMonitorData). Across the 4427 authored keys only bits 16..19
-        // appear, in the combinations 0x50000 (3117), 0x70000 (923), 0x60000 (108),
-        // 0x10000 (106), 0x40000 (77), 0x30000 (72), 0x20000 (22), 0x00000 (1) and
-        // 0xF0000 (1). Bit 17 covaries with an authored dofFocalPoint: 95.1% of the
-        // 3301 bit17-clear keys leave it at the 1.0 default, while 88.1% of the 1126
-        // bit17-set keys carry a real distance. Bit 16 covaries the other way with
-        // `charactor`: only 1.4% of the 4219 bit16-set keys move it off Center,
-        // against 56.7% of the 208 bit16-clear keys. The flag names are still
-        // unknown. Timeline mode tests the inferred bit17=metric / bit16=camera
-        // target mapping; see docs/LIVE_DOF_TIMELINE_2026-09-06.md for pixel evidence.
+        // Actual game metadata and SetupDOFUpdateInfo RVA 0x726a610 confirm:
+        // bit16 ATTR_USE_LOOKAT; bit17 ATTR_USE_FOCAL_POINT;
+        // bit18 ATTR_ENABLE_DOF; bit19 ATTR_IS_POINT_BALL_BLUR.
+        // Current-key flags select the mode; both endpoints resolve world focus
+        // independently before the next key's unclamped interpolation is applied.
     }
 
     [Serializable]

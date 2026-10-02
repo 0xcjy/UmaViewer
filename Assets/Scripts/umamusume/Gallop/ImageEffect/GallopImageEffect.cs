@@ -1,4 +1,4 @@
-﻿using Gallop.ImageEffect;
+using Gallop.ImageEffect;
 using Gallop.RenderPipeline;
 using UnityEngine;
 
@@ -14,6 +14,15 @@ namespace Gallop
 
         public DofDiffusionBloomOverlayParam DofDiffusionBloomOverlayParam => _dofDiffusionBloomOverlayParam;
         public bool IsInitialized { get; private set; }
+        private CameraData _cameraData;
+        public PostImageEffectFeature.Parameter RenderParameter
+        {
+            get
+            {
+                if (!IsInitialized) InitializeVolume();
+                return _cameraData.Parameter;
+            }
+        }
 
         // 子系统 A7b：原生 GallopImageEffect.get_ExposureParam(RVA=0x19a97b0) /
         // get_ToneCurveParam(RVA=0x19a9930) 的 master7 等价属性。原生 getter 返回
@@ -39,10 +48,16 @@ namespace Gallop
             if (adapter != null) adapter.ApplyBloomParameter();
         }
 
-        private void Awake() { InitializeVolume(); }
+        protected void Awake() { InitializeVolume(); }
 
         // Retained for existing callers; no spatial Volume is created.
-        public void InitializeVolume() { IsInitialized = true; }
+        public virtual void InitializeVolume()
+        {
+            if (IsInitialized) return;
+            if (!TryGetComponent(out _cameraData))
+                _cameraData = gameObject.AddComponent<CameraData>();
+            IsInitialized = true;
+        }
 
         public void ApplyBloomParameter()
         {
@@ -50,24 +65,18 @@ namespace Gallop
             if (director == null || director.MainRenderCamera == null ||
                 director.MainRenderCamera.gameObject != gameObject) return;
 
-            var parameter = PostImageEffectFeature.RuntimeParameter;
+            var parameter = RenderParameter;
+            PostImageEffectFeature.RuntimeParameter = parameter;
             parameter.DofDiffuionBloomOverlay.Setup(_dofDiffusionBloomOverlayParam);
             if (!UserDofEnabled)
             {
                 parameter.DofDiffuionBloomOverlay.IsEnableDof = false;
                 parameter.DofDiffuionBloomOverlay.IsEnableOldDof = false;
             }
-            parameter.DofDiffuionBloomOverlay.DecideDrawType(
-                UserDofEnabled && _dofDiffusionBloomOverlayParam.IsEnableDof);
+            _cameraData.UpdateImageEffectParameter();
             parameter.TargetCamera = director.MainRenderCamera;
 
-            // 子系统 A7b：原生 CameraData.UpdateImageEffectParameter(RVA=0x1a0da30)
-            // 末尾 jmp Parameter.DecideDrawType，把 GallopImageEffect 的参数块
-            //（DOF + Exposure + ToneCurve…）统一交给渲染侧。master7 的
-            // PostImageEffectFeature.Parameter 还没有 Exposure/ToneCurve 的
-            // pass 消费字段，因此先挂在运行时参数对象上供后续
-            // ExposurePass/ToneCurvePass（原生 RVA=0x1a22e10/0x1a527d0）接入，
-            // 数据已随时间轴逐帧刷新，不会比原生缺帧。
+            // Exposure and tone curves publish into the same camera-owned render state.
             parameter.ExposureParam.Setup(ExposureParam);
             parameter.ToneCurveParam.Setup(ToneCurveParam);
         }

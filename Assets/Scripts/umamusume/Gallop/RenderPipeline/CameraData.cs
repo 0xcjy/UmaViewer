@@ -30,6 +30,16 @@ namespace Gallop.RenderPipeline
                 _parameter = new PostImageEffectFeature.Parameter();
         }
 
+        public void UpdateImageEffectParameter()
+        {
+            // Native RVA 0x1a0da30; recomputed again before each render.
+            ref var dof = ref Parameter.DofDiffuionBloomOverlay;
+            dof.IsDisableDofTemporary = dof.IsEnableDofAutoDisable &&
+                dof.DofFocalSize >= dof.DofMaxFocalSize;
+            dof.DecideDrawType(dof.IsEnableDof && !dof.IsDisableDofTemporary &&
+                GallopImageEffect.UserDofEnabled);
+        }
+
         private void Awake()
         {
             Initialize(false);

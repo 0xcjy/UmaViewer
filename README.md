@@ -40,7 +40,7 @@ Currently only the default work mode is supported - you need to download assets 
        - 2A\\...
        - 2B\\...
        - ...\\...
-3. Download the most recent UmaViewer.zip file from [Releases](https://github.com/zuoy865-stack/UmaViewer/releases) tab.
+3. Download the most recent UmaViewer.zip file from [Releases](https://github.com/0xcjy/UmaViewer/releases) tab.
 4. Extract the archive anywhere, can be extracted over previous version.
 5. Run the UmaViewer.exe. 
 6. UmaViewer will try to automatically detect the game data folder.  
@@ -57,7 +57,9 @@ Currently only the default work mode is supported - you need to download assets 
 
 PMX exporter maintainers should also read [PMX Export Standard and Postmortem](docs/pmx-export-standard-and-postmortem.md).
 
-Live restoration maintainers should read [2026-10-01 improvement summary and publication boundaries](docs/IMPROVEMENTS_20261001.md). This source snapshot does not establish full visual parity and excludes local keys, extracted game assets, authorization audio payloads, and the native CySpring plugin; these dependencies must be supplied separately.
+Live restoration maintainers should read [2026-10-01 improvement summary and publication boundaries](docs/IMPROVEMENTS_20261001.md). This source snapshot does not establish full visual parity and excludes local keys, extracted game assets, authorization audio payloads, and the native CySpring plugin. Current runtime prerequisites are listed below.
+
+The current source includes runtime graphics settings and live-selection updates; it is not a claim of complete rendering parity. Running the viewer requires your own full game data and authorized keys. Supply `DBBaseKeyText`, `DBKeyText`, `GlobalDBKeyText`, `ABKeyText`, and `AudioKeyText` in the local `Config.json` next to the player, then restart. Key fields contain hexadecimal text without a `0x` prefix; `AudioKeyText` is a nonzero key of at most 16 hex digits. Native physics requires your own authorized matching `CySpringPlugin.dll` (for Windows x64 players, in `UmaViewer_Data/Plugins/x86_64`); it is not distributed here. Excluded `cri_auth` and `sound_proj.acf` payloads are not required by the current source's audio decoder. No keys or local configuration are distributed. See [current publication manifest](docs/PUBLICATION_MANIFEST_20261002.json) for exact source hashes and exclusions.
 
    
 
