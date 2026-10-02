@@ -23,8 +23,10 @@ public class Config
     public string ABKeyTip = "Key to read asset bundles";
     public string ABKeyText;
 
+    private const string DefaultAudioKeyText = "450D608C479F";
+
     public string AudioKeyTip = "Hexadecimal key to read game audio files (up to 16 hex digits, without 0x prefix)";
-    public string AudioKeyText = "";
+    public string AudioKeyText = DefaultAudioKeyText;
 
     public string LanguageTip = "Affects Uma names on the list. Language options: 0 - En, 1 - Jp, 2 - Simplified Chinese";
     public Language Language = Language.En;
@@ -131,19 +133,38 @@ public class Config
 
     [NonSerialized]
     public byte[] DBBaseKey = new byte[]
-    { };
+    {
+        0xF1, 0x70, 0xCE, 0xA4, 0xDF, 0xCE, 0xA3, 0xE1,
+        0xA5, 0xD8, 0xC7, 0x0B, 0xD1, 0x00, 0x00, 0x00
+    };
 
     [NonSerialized]
     public byte[] DBKey = new byte[]
-    { };
+    {
+        0x6D, 0x5B, 0x65, 0x33, 0x63, 0x36,
+        0x63, 0x25, 0x54, 0x71, 0x2D, 0x73,
+        0x50, 0x53, 0x63, 0x38, 0x6D, 0x34,
+        0x37, 0x7B, 0x35, 0x63, 0x70, 0x23,
+        0x37, 0x34, 0x53, 0x29, 0x73, 0x43,
+        0x36, 0x33
+    };
 
     [NonSerialized]
     public byte[] GlobalDBKey = new byte[]
-    { };
+    {
+        0x36, 0x23, 0x6b, 0x4c, 0x2a, 0x39,
+        0x21, 0x75, 0x52, 0x26, 0x32, 0x76,
+        0x25, 0x50, 0x3f, 0x35, 0x5d, 0x77,
+        0x58, 0x6d, 0x40, 0x71, 0x38, 0x5e,
+        0x4c, 0x31, 0x28, 0x74, 0x29, 0x59,
+        0x37, 0x24, 0x53
+    };
 
     [NonSerialized]
     public byte[] ABKey = new byte[]
-    { };
+    {
+        0x53, 0x2B, 0x46, 0x31, 0xE4, 0xA7, 0xB9, 0x47, 0x3E, 0x7C, 0xFB
+    };
 
 
     public Config()
@@ -165,6 +186,7 @@ public class Config
         {
             DBBaseKeyText = ByteArrayToHex(DBBaseKey);
             DBKeyText = ByteArrayToHex(DBKey);
+            GlobalDBKeyText = ByteArrayToHex(GlobalDBKey);
             ABKeyText = ByteArrayToHex(ABKey);
             File.WriteAllText(configPath, JsonUtility.ToJson(this, true));
         }
@@ -174,7 +196,7 @@ public class Config
             {
                 JsonUtility.FromJsonOverwrite(File.ReadAllText(configPath), this);
 
-                if (string.IsNullOrEmpty(DBBaseKeyText))
+                if (string.IsNullOrWhiteSpace(DBBaseKeyText))
                 {
                     DBBaseKeyText = ByteArrayToHex(DBBaseKey);
                 }
@@ -182,7 +204,7 @@ public class Config
                 {
                     DBBaseKey = HexToByteArray(DBBaseKeyText);
                 }
-                if (string.IsNullOrEmpty(DBKeyText))
+                if (string.IsNullOrWhiteSpace(DBKeyText))
                 {
                     DBKeyText = ByteArrayToHex(DBKey);
                 }
@@ -190,7 +212,7 @@ public class Config
                 {
                     DBKey = HexToByteArray(DBKeyText);
                 }
-                if (string.IsNullOrEmpty(ABKeyText))
+                if (string.IsNullOrWhiteSpace(ABKeyText))
                 {
                     ABKeyText = ByteArrayToHex(ABKey);
                 }
@@ -198,12 +220,16 @@ public class Config
                 {
                     ABKey = HexToByteArray(ABKeyText);
                 }
-                if (string.IsNullOrEmpty(GlobalDBKeyText))
+                if (string.IsNullOrWhiteSpace(GlobalDBKeyText))
                 {
                     GlobalDBKeyText = ByteArrayToHex(GlobalDBKey);
                 } else
                 {
                     GlobalDBKey = HexToByteArray(GlobalDBKeyText);
+                }
+                if (string.IsNullOrWhiteSpace(AudioKeyText))
+                {
+                    AudioKeyText = DefaultAudioKeyText;
                 }
                 File.WriteAllText(configPath, JsonUtility.ToJson(this, true));
             }
@@ -234,12 +260,7 @@ public class Config
 
     public ulong GetAudioKey()
     {
-        if (string.IsNullOrWhiteSpace(AudioKeyText))
-        {
-            throw new InvalidOperationException("AudioKeyText is missing. Supply your authorized audio key in Config.json and restart the application.");
-        }
-
-        string keyText = AudioKeyText.Trim();
+        string keyText = string.IsNullOrWhiteSpace(AudioKeyText) ? DefaultAudioKeyText : AudioKeyText.Trim();
         if (keyText.Length > 16 || !ulong.TryParse(keyText, System.Globalization.NumberStyles.AllowHexSpecifier,
             System.Globalization.CultureInfo.InvariantCulture, out ulong key) || key == 0)
         {

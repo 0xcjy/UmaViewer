@@ -10,116 +10,17 @@
   "remote_changes_preserved": [
     "737d34d README removal of outdated PMX viewer instructions"
   ],
-  "source_policy": "Overlay current Assets, Packages, ProjectSettings and tools; preserve existing remote-only unrelated source and documentation. No source-root modifications.",
-  "sanitization": [
-    {
-      "path": "Assets/Scripts/Config.cs",
-      "change": "Four built-in DBBaseKey/DBKey/GlobalDBKey/ABKey arrays cleared; current runtime, random-selection and graphics fields preserved. Existing external four key-text loading retained. AudioKeyText added with empty default and explicit non-secret-bearing hex validation."
-    },
-    {
-      "path": "Assets/Scripts/Audio/UmaWaveStream.cs",
-      "change": "Built-in umaMusumeKey removed. Decode obtains external Config AudioKeyText via GetAudioKey; original MixKey decoder contract unchanged."
-    }
-  ],
+  "source_policy": "Current fork source and upstream-retained runtime assets/defaults, based on explicit clone-ready delivery request; local configuration and investigation caches remain excluded. Configuration/ignore/documentation behavior mirrored to master7.",
+  "sanitization": [],
   "excluded_categories": [
     "Config.json and machine/user state",
     "Library, Temp, Logs, obj, UserSettings and build outputs",
     "tmp, captures, exports and backups",
-    "game-extracted texture resource patterns from .gitignore",
     "shader.a, shader_extracted.a, asset bundles, encrypted metadata and memory dumps",
-    "cri_auth, sound_proj.acf and CySpringPlugin.dll including their meta files",
     "credentials, private certificates and environment files",
     "internal agent instructions and handoff plan documents"
   ],
   "excluded_source_files": [
-    "Assets/Plugins/CySpringPlugin.dll",
-    "Assets/Plugins/CySpringPlugin.dll.meta",
-    "Assets/Resources/text2D/bg_0001_00120.png",
-    "Assets/Resources/text2D/bg_0001_00120.png.meta",
-    "Assets/Resources/text2D/still_020001041_01_00.png",
-    "Assets/Resources/text2D/still_020001041_01_00.png.meta",
-    "Assets/Resources/text2D/still_020002031_00_00.png",
-    "Assets/Resources/text2D/still_020002031_00_00.png.meta",
-    "Assets/Resources/text2D/still_020006134_00_00_base.png",
-    "Assets/Resources/text2D/still_020006134_00_00_base.png.meta",
-    "Assets/Resources/text2D/still_090003008_00_00_base.png",
-    "Assets/Resources/text2D/still_090003008_00_00_base.png.meta",
-    "Assets/Resources/text2D/tex_env_live_cmn_flare013.png",
-    "Assets/Resources/text2D/tex_env_live_cmn_flare013.png.meta",
-    "Assets/Resources/UI/Common/jukebox select square.png",
-    "Assets/Resources/UI/Common/jukebox select square.png.meta",
-    "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png",
-    "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_announce_close_00.png",
-    "Assets/Resources/UI/Common/utx_btn_announce_close_00.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png",
-    "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_circle_m_02.png",
-    "Assets/Resources/UI/Common/utx_btn_circle_m_02.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_menu_00.png",
-    "Assets/Resources/UI/Common/utx_btn_menu_00.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_menu_01.png",
-    "Assets/Resources/UI/Common/utx_btn_menu_01.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_sort_00.png",
-    "Assets/Resources/UI/Common/utx_btn_sort_00.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_square_00_sl.png",
-    "Assets/Resources/UI/Common/utx_btn_square_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_square_01.png",
-    "Assets/Resources/UI/Common/utx_btn_square_01.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_square_100.png",
-    "Assets/Resources/UI/Common/utx_btn_square_100.png.meta",
-    "Assets/Resources/UI/Common/utx_btn_square_99.png",
-    "Assets/Resources/UI/Common/utx_btn_square_99.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_icon_status_00.png",
-    "Assets/Resources/UI/Common/utx_frm_icon_status_00.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png",
-    "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_gau_l_00_sl.png",
-    "Assets/Resources/UI/Common/utx_gau_l_00_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png",
-    "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png.meta",
-    "Assets/Resources/UI/Common/utx_gau_l_01_sl.png",
-    "Assets/Resources/UI/Common/utx_gau_l_01_sl.png.meta",
-    "Assets/Resources/UI/Common/utx_ico_blank_00.png",
-    "Assets/Resources/UI/Common/utx_ico_blank_00.png.meta",
-    "Assets/Resources/UI/Common/utx_ico_movie_play_00.png",
-    "Assets/Resources/UI/Common/utx_ico_movie_play_00.png.meta",
-    "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png",
-    "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png.meta",
-    "Assets/Resources/UI/Screenshot 2026-02-06 020334.png",
-    "Assets/Resources/UI/Screenshot 2026-02-06 020334.png.meta",
-    "Assets/StreamingAssets/cri_auth",
-    "Assets/StreamingAssets/cri_auth.meta",
-    "Assets/StreamingAssets/sound_proj.acf",
-    "Assets/StreamingAssets/sound_proj.acf.meta",
     "tools/__pycache__/audit_live_bloom_source.cpython-313.pyc",
     "tools/__pycache__/inspect_live_native_calls.cpython-313.pyc",
     "tools/__pycache__/summarize_live_diagnostics.cpython-313.pyc",
@@ -160,23 +61,19 @@
     "docs/CLAUDE_LIVE_HANDOFF.md"
   ],
   "runtime_prerequisites": [
-    "Own full game data",
-    "Own authorized database, bundle and audio keys in external local Config.json",
-    "Own authorized matching CySpringPlugin.dll for native physics, not general player startup"
+    "Unity 2022.3.62f1 and initial UPM dependency resolution",
+    "Complete installed game data; select its data folder in Other settings when installation path is non-default"
   ],
   "not_required_by_current_audio_decoder": [
     "cri_auth",
     "sound_proj.acf"
   ],
-  "validation": "Publication-name audit, included-source byte comparison and exact embedded-key scan only. No Unity launches, builds, tests, lint, formatters or rendering-parity claims by publisher. Main owns Windows build and runtime verification.",
+  "validation": "PASS: upstream runtime inventory/byte/GUID and Git ignore checks; Unity 2022.3.62f1 Windows D3D11 source import from snapshot created without Library/Config; fresh and blank/whitespace defaults, explicit overrides; real database, shader bundle, Live1001 stage/cast, 4 playing audio sources and production HCA PCM decode, active DynamicBone simulation and rendered frame. Temporary harness failures corrected before final exit 0; no player build or full rendering-parity claim.",
   "comparison": {
-    "allowlisted_source_file_count": 2346,
-    "matching_current_source_files": 2344,
-    "publication_only_source_changes": [
-      "Assets/Scripts/Config.cs",
-      "Assets/Scripts/Audio/UmaWaveStream.cs"
-    ],
-    "excluded_allowlisted_file_count": 120
+    "upstream_tracked_count": 2243,
+    "restored_runtime_files": 88,
+    "guid_preserved_script_relocations": 34,
+    "unaccounted_upstream_assets": 0
   },
   "file_changes": [
     {
@@ -184,36 +81,340 @@
       "path": ".gitignore"
     },
     {
-      "change": "D",
-      "path": "AGENTS.md"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Editor/LiveDofFocusRegression.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Editor/LiveRenderCapture.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Editor/LiveRenderSetup.cs"
+      "change": "A",
+      "path": "Assets/Plugins/CySpringPlugin.dll"
     },
     {
       "change": "A",
-      "path": "Assets/Resources/RenderPipeline/UMASimpleMirrorRenderer.asset"
+      "path": "Assets/Plugins/CySpringPlugin.dll.meta"
     },
     {
       "change": "A",
-      "path": "Assets/Resources/RenderPipeline/UMASimpleMirrorRenderer.asset.meta"
+      "path": "Assets/Resources/UI/Common/jukebox select square.png"
     },
     {
-      "change": "M",
-      "path": "Assets/Resources/RenderPipeline/UMAUniversalRenderPipelineAsset.asset"
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/jukebox select square.png.meta"
     },
     {
-      "change": "M",
-      "path": "Assets/Scripts/Audio/UmaWaveStream.cs"
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_01.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_01.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_100.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_100.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_99.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_btn_square_99.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Screenshot 2026-02-06 020334.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/UI/Screenshot 2026-02-06 020334.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/bg_0001_00120.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/bg_0001_00120.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_020001041_01_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_020001041_01_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_020002031_00_00.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_020002031_00_00.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_020006134_00_00_base.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_020006134_00_00_base.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_090003008_00_00_base.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/still_090003008_00_00_base.png.meta"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/tex_env_live_cmn_flare013.png"
+    },
+    {
+      "change": "A",
+      "path": "Assets/Resources/text2D/tex_env_live_cmn_flare013.png.meta"
     },
     {
       "change": "M",
@@ -221,196 +422,39 @@
     },
     {
       "change": "A",
-      "path": "Assets/Scripts/LiveAutoSelection.cs"
+      "path": "Assets/StreamingAssets/cri_auth"
     },
     {
       "change": "A",
-      "path": "Assets/Scripts/LiveAutoSelection.cs.meta"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/LiveToolBox/LiveViewerUI.cs"
+      "path": "Assets/StreamingAssets/cri_auth.meta"
     },
     {
       "change": "A",
-      "path": "Assets/Scripts/Settings/RuntimeGraphicsSettings.cs"
+      "path": "Assets/StreamingAssets/sound_proj.acf"
     },
     {
       "change": "A",
-      "path": "Assets/Scripts/Settings/RuntimeGraphicsSettings.cs.meta"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/Settings/UISettingsCamera.cs"
-    },
-    {
-      "change": "A",
-      "path": "Assets/Scripts/Settings/UISettingsGraphics.cs"
-    },
-    {
-      "change": "A",
-      "path": "Assets/Scripts/Settings/UISettingsGraphics.cs.meta"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/Settings/UISettingsOther.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/UmaContainerCharacter.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/UmaDatabase/UmaDataTypes.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/UmaViewerAudio.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/UmaViewerBuilder.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/UmaViewerMain.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/UmaViewerUI.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/GallopImageEffect.cs"
-    },
-    {
-      "change": "A",
-      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/LiveImageEffect.cs"
-    },
-    {
-      "change": "A",
-      "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/LiveImageEffect.cs.meta"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineControl.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineData.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMobCyalumeControlData.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelinePostEffectDOFData.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineMotionSequence.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineWorkSheet.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeController3D.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Director.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/LivePropsController.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/MirrorReflection.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/MonitorUvMovieProvider.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorCameraDriver.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorDriver.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/MultiCameraComposite.cs"
-    },
-    {
-      "change": "A",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Props.cs"
-    },
-    {
-      "change": "A",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/Props.cs.meta"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/StageBlinkLightDriver.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/Live/StageController.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CameraData.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/PostImageEffectFeature.cs"
-    },
-    {
-      "change": "M",
-      "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RecoveredLensFlareController.cs"
-    },
-    {
-      "change": "D",
-      "path": "CLAUDE.md"
-    },
-    {
-      "change": "M",
-      "path": "ProjectSettings/ProjectSettings.asset"
-    },
-    {
-      "change": "M",
-      "path": "ProjectSettings/UnityConnectSettings.asset"
+      "path": "Assets/StreamingAssets/sound_proj.acf.meta"
     },
     {
       "change": "M",
       "path": "README.md"
     },
     {
-      "change": "D",
-      "path": "docs/CLAUDE_LIVE_HANDOFF.md"
+      "change": "M",
+      "path": "docs/IMPROVEMENTS_20261001.md"
     },
     {
-      "change": "D",
-      "path": "implementation_plan.md"
-    },
-    {
-      "change": "A",
+      "change": "M",
       "path": "docs/PUBLICATION_MANIFEST_20261002.json"
     }
   ],
   "file_change_counts": {
-    "A": 13,
-    "M": 39,
-    "D": 4
+    "A": 88,
+    "M": 5
   },
-  "snapshot_lf_sha256": "f81796f2390d2548d8f2b6970da8ac96aa8b3a2658261dc1b217cc1ac649a37b",
-  "snapshot_hash_scope": "All published tracked files excluding this self-referential manifest; lf_sha256 normalizes CRLF for Git/platform-independent identity. sha256 and bytes describe this frozen publication working tree.",
+  "snapshot_lf_sha256": "6f284efedc17b5de57c35c3d753b89b5c4758597a49f456677458c4cfba3cb35",
+  "snapshot_hash_scope": "Current deliverable files excluding this self-referential manifest; SHA256 accumulates sorted UTF-8 path + NUL + normalized file SHA256 + LF. Text CRLF normalized, binary bytes retained.",
   "files": [
     {
       "path": ".github/UNITY_LICENSE_SETUP.md",
@@ -432,9 +476,9 @@
     },
     {
       "path": ".gitignore",
-      "bytes": 2144,
-      "sha256": "fd910fcbd536cbe17b03f8063152315c1ca1f8163ca2da903f48eb0ef865fcfd",
-      "lf_sha256": "4c2a632bc146b7fe6f82e575471e24a6c9a10bb275375449e0126fa7932f236d"
+      "bytes": 1729,
+      "sha256": "5b1732e108711914b43e5e47f9820931d635f19f56a668b70728f39223a297b0",
+      "lf_sha256": "18e4732ff13655619ae721ee38fbedafdcde52331c1b8bdc52d9cdccdff209c4"
     },
     {
       "path": ".vsconfig",
@@ -1586,7 +1630,7 @@
       "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3.so",
       "bytes": 2519120,
       "sha256": "3fd199823c0967861844ebaa22d1458becd605300fdb00e09a1d5d8eb769278a",
-      "lf_sha256": "9a41e1e1990931966bad4901a491ca86c2d186a69ace3673d9466b55df56ca1d"
+      "lf_sha256": "3fd199823c0967861844ebaa22d1458becd605300fdb00e09a1d5d8eb769278a"
     },
     {
       "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3.so.meta",
@@ -1598,7 +1642,7 @@
       "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3mcandroid.so",
       "bytes": 2519120,
       "sha256": "3fd199823c0967861844ebaa22d1458becd605300fdb00e09a1d5d8eb769278a",
-      "lf_sha256": "9a41e1e1990931966bad4901a491ca86c2d186a69ace3673d9466b55df56ca1d"
+      "lf_sha256": "3fd199823c0967861844ebaa22d1458becd605300fdb00e09a1d5d8eb769278a"
     },
     {
       "path": "Assets/Plugins/Android/libs/arm64-v8a/libsqlite3mcandroid.so.meta",
@@ -1623,6 +1667,18 @@
       "bytes": 1360,
       "sha256": "5ee338730b3f93f02ab24ebdc37b9835465eabc07650512238666c66fd1e3db0",
       "lf_sha256": "95111595ef3aa94656e663b174674d68ed4e9d7444754cd88cc8f8510f482740"
+    },
+    {
+      "path": "Assets/Plugins/CySpringPlugin.dll",
+      "bytes": 3838976,
+      "sha256": "be84faf0cc3cccceda8bdbca23530e0beb2049bdcb9add0ff7e9ecaaaeeb135f",
+      "lf_sha256": "be84faf0cc3cccceda8bdbca23530e0beb2049bdcb9add0ff7e9ecaaaeeb135f"
+    },
+    {
+      "path": "Assets/Plugins/CySpringPlugin.dll.meta",
+      "bytes": 1451,
+      "sha256": "333f0363c93a97470f4c5985e0521fa29f278b9dc13a369c0f50225ac7392d22",
+      "lf_sha256": "7b33acb13b6f43783dc8ffaf3e748f9805cb6d76c690a4ed1358736bad6888b5"
     },
     {
       "path": "Assets/Plugins/Demigiant.meta",
@@ -1652,7 +1708,7 @@
       "path": "Assets/Plugins/Demigiant/DOTween/DOTween.dll",
       "bytes": 178176,
       "sha256": "5cee7f2b16fd3ba509ecac8bfc95efc9347682956fc4c1efde14618176e34491",
-      "lf_sha256": "ce28d532e5f8df81eff9b2a06a4861ac3eaeee48e0f381ebf819f63b74f4791e"
+      "lf_sha256": "5cee7f2b16fd3ba509ecac8bfc95efc9347682956fc4c1efde14618176e34491"
     },
     {
       "path": "Assets/Plugins/Demigiant/DOTween/DOTween.dll.meta",
@@ -1682,7 +1738,7 @@
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.dll",
       "bytes": 68608,
       "sha256": "3ad165ba35862d087dd85c7b15b5d9fd9ec29014574774a38228fc09f415f10b",
-      "lf_sha256": "42cf00b07083ef13f2e87e7d23c70a19bd15ffa12619cf6af02099290c86438e"
+      "lf_sha256": "3ad165ba35862d087dd85c7b15b5d9fd9ec29014574774a38228fc09f415f10b"
     },
     {
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/DOTweenEditor.dll.meta",
@@ -1700,7 +1756,7 @@
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenIcon.png",
       "bytes": 1565,
       "sha256": "6e6ca81af7b3fdbecc7069b8644047713af97c8e311cd3da97e75eff0b973faa",
-      "lf_sha256": "f837b9b051c534c93e83667ac6353c8a782ee7471be08cc6eb141610dc7a5048"
+      "lf_sha256": "6e6ca81af7b3fdbecc7069b8644047713af97c8e311cd3da97e75eff0b973faa"
     },
     {
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenIcon.png.meta",
@@ -1712,7 +1768,7 @@
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenMiniIcon.png",
       "bytes": 319,
       "sha256": "29cd2e4bf91e3fe91a2485ac1608d2ba6ae338d04c82fd8d343ae4336684e644",
-      "lf_sha256": "37479fa04ce2c62a4afef345c5b1548476c08d511db7f580b212e401002e7bd1"
+      "lf_sha256": "29cd2e4bf91e3fe91a2485ac1608d2ba6ae338d04c82fd8d343ae4336684e644"
     },
     {
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/DOTweenMiniIcon.png.meta",
@@ -1724,7 +1780,7 @@
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer.png",
       "bytes": 4409,
       "sha256": "b1bccfb25ef58988d123ade538e28637da988dfaf33272067b641f34582e7b89",
-      "lf_sha256": "14c819c356733bb2689964c620a6ebd67844d77c7fccc07c1ff40964d487bb03"
+      "lf_sha256": "b1bccfb25ef58988d123ade538e28637da988dfaf33272067b641f34582e7b89"
     },
     {
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer.png.meta",
@@ -1736,7 +1792,7 @@
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer_dark.png",
       "bytes": 4429,
       "sha256": "2bc04d9700e60b53aa4741c4580d61e490b1192d3ea4f98f4437a2e776057a5a",
-      "lf_sha256": "0a8d4011c1cd3f145d3ed64c7e92429535d68172b347672cd5fb551b31ac5c5b"
+      "lf_sha256": "2bc04d9700e60b53aa4741c4580d61e490b1192d3ea4f98f4437a2e776057a5a"
     },
     {
       "path": "Assets/Plugins/Demigiant/DOTween/Editor/Imgs/Footer_dark.png.meta",
@@ -2180,7 +2236,7 @@
       "path": "Assets/Plugins/I18N/I18N.CJK.dll",
       "bytes": 680448,
       "sha256": "d3c3d74518f847d2b97dad2880db561e8bcaaa5f0fc698bf9fcd599df0f6ac04",
-      "lf_sha256": "d183ad967cd3c99ed5c2adbaa6f64929c3518c248c93d01d200a8097559ef1af"
+      "lf_sha256": "d3c3d74518f847d2b97dad2880db561e8bcaaa5f0fc698bf9fcd599df0f6ac04"
     },
     {
       "path": "Assets/Plugins/I18N/I18N.CJK.dll.meta",
@@ -2192,7 +2248,7 @@
       "path": "Assets/Plugins/I18N/I18N.dll",
       "bytes": 38912,
       "sha256": "4a9a8f42163207c093900f474b39aaf2f4748aa4e52069f4f01ea80c2530b991",
-      "lf_sha256": "c4afa7b6b32989b3f1ddd511580a61d839065e008afcfa97280dc8c69a21a8f8"
+      "lf_sha256": "4a9a8f42163207c093900f474b39aaf2f4748aa4e52069f4f01ea80c2530b991"
     },
     {
       "path": "Assets/Plugins/I18N/I18N.dll.meta",
@@ -2240,7 +2296,7 @@
       "path": "Assets/Plugins/LZ4/K4os.Compression.LZ4.Streams.dll",
       "bytes": 33280,
       "sha256": "842cdfb5b03c39e062c79650af82e64bf9a0c53a6fb0fca2024625d1dc1ce571",
-      "lf_sha256": "c0c10c0f806bca07f6cceab565cdfa0216e6878d4309c6ea84fa516a43d6bdc9"
+      "lf_sha256": "842cdfb5b03c39e062c79650af82e64bf9a0c53a6fb0fca2024625d1dc1ce571"
     },
     {
       "path": "Assets/Plugins/LZ4/K4os.Compression.LZ4.Streams.dll.meta",
@@ -2252,7 +2308,7 @@
       "path": "Assets/Plugins/LZ4/K4os.Compression.LZ4.dll",
       "bytes": 65536,
       "sha256": "c5c518624e646867c35c98c30b74b6830eeae2bbe2ccc87ed36687030cadcfe3",
-      "lf_sha256": "a4d46237bf6d8326193f794246292b615397445e3facf50736d96c6f410578cb"
+      "lf_sha256": "c5c518624e646867c35c98c30b74b6830eeae2bbe2ccc87ed36687030cadcfe3"
     },
     {
       "path": "Assets/Plugins/LZ4/K4os.Compression.LZ4.dll.meta",
@@ -2264,7 +2320,7 @@
       "path": "Assets/Plugins/LZ4/K4os.Hash.xxHash.dll",
       "bytes": 13312,
       "sha256": "b213904cc22c78a94677c478c9c6b64590b30853b6f53154c48138f398c9d330",
-      "lf_sha256": "3311562f2ef665e7095c5ba8f469c55bdefb32882d702f3784fd2b0246e46863"
+      "lf_sha256": "b213904cc22c78a94677c478c9c6b64590b30853b6f53154c48138f398c9d330"
     },
     {
       "path": "Assets/Plugins/LZ4/K4os.Hash.xxHash.dll.meta",
@@ -2276,7 +2332,7 @@
       "path": "Assets/Plugins/LZ4/System.Buffers.dll",
       "bytes": 21376,
       "sha256": "c65fff603b283dc966d1a8b730c11d5e5e750e8021bd24640612f6cc3f2c6fb7",
-      "lf_sha256": "6810af62b6ace70a8f1f1b216d01a2d43c29da81754b74688099ca4b2a149a95"
+      "lf_sha256": "c65fff603b283dc966d1a8b730c11d5e5e750e8021bd24640612f6cc3f2c6fb7"
     },
     {
       "path": "Assets/Plugins/LZ4/System.Buffers.dll.meta",
@@ -2288,7 +2344,7 @@
       "path": "Assets/Plugins/LZ4/System.Memory.dll",
       "bytes": 142752,
       "sha256": "11590d8bb3b12f29f4202b3ef8593229a5cd6debb61e76cba9ac5493a82ee382",
-      "lf_sha256": "ad2a1647f51e94dcd68c550a68c99853992b9e2e4d0111bd773526d137d89223"
+      "lf_sha256": "11590d8bb3b12f29f4202b3ef8593229a5cd6debb61e76cba9ac5493a82ee382"
     },
     {
       "path": "Assets/Plugins/LZ4/System.Memory.dll.meta",
@@ -2300,7 +2356,7 @@
       "path": "Assets/Plugins/LZ4/System.Runtime.CompilerServices.Unsafe.dll",
       "bytes": 18024,
       "sha256": "01748200f2400c742aa689f1f5101bd6298efdfd92c00c18f4fa473847235ba9",
-      "lf_sha256": "ff70dd0f9eae971992fcec9b0d2e954d00ff7d1b53009aeae71530b9be5a4f4e"
+      "lf_sha256": "01748200f2400c742aa689f1f5101bd6298efdfd92c00c18f4fa473847235ba9"
     },
     {
       "path": "Assets/Plugins/LZ4/System.Runtime.CompilerServices.Unsafe.dll.meta",
@@ -2576,7 +2632,7 @@
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/Android/libs/arm64-v8a/libmp3lame.so",
       "bytes": 247248,
       "sha256": "2d63095a69b0d8051bd428c9cc7f0863b262ad088e6d4594791a3e77e0176f1d",
-      "lf_sha256": "618fe5b599a71013b95514a83637be819d86bfa6f372cad277c23005d01143e6"
+      "lf_sha256": "2d63095a69b0d8051bd428c9cc7f0863b262ad088e6d4594791a3e77e0176f1d"
     },
     {
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/Android/libs/arm64-v8a/libmp3lame.so.meta",
@@ -2594,7 +2650,7 @@
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/Android/libs/armeabi-v7a/libmp3lame.so",
       "bytes": 140524,
       "sha256": "553b956a5ce8c699139afac9ef07bb16001e3373847d8720b8b0b19048b74463",
-      "lf_sha256": "a40174139f536d7dab2b6c68fd5f8adcc87b7711f2799f27b7dafe2b87398c67"
+      "lf_sha256": "553b956a5ce8c699139afac9ef07bb16001e3373847d8720b8b0b19048b74463"
     },
     {
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/Android/libs/armeabi-v7a/libmp3lame.so.meta",
@@ -2612,7 +2668,7 @@
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/Android/libs/x86/libmp3lame.so",
       "bytes": 222536,
       "sha256": "28b390c2d8db41e43ee7c5ff9bfb8d82cf7b4bb2bf1099702fbe17f5af0ea06e",
-      "lf_sha256": "23247b37b6c76b3057bdcfd1ee74249f26f6a29144fa5e1cbd674adfdabdfde5"
+      "lf_sha256": "28b390c2d8db41e43ee7c5ff9bfb8d82cf7b4bb2bf1099702fbe17f5af0ea06e"
     },
     {
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/Android/libs/x86/libmp3lame.so.meta",
@@ -2630,7 +2686,7 @@
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/iOS/libmp3lame.a",
       "bytes": 2875496,
       "sha256": "5c50f6bb303ffd25ce500039ca9ae80c6018a25228b33bca9e41e2553e807613",
-      "lf_sha256": "0ebd8abffa6b9ae19670599a840d5b9ca6b0845b22516f4eb991a42c4dc2725c"
+      "lf_sha256": "5c50f6bb303ffd25ce500039ca9ae80c6018a25228b33bca9e41e2553e807613"
     },
     {
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/iOS/libmp3lame.a.meta",
@@ -2690,7 +2746,7 @@
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/lame.bundle/Contents/MacOS/lame",
       "bytes": 798240,
       "sha256": "300f36527162613f4a14c4a5ebcecee0a98baac239b213bba69b1bffb9612264",
-      "lf_sha256": "0444fdd32a2eeb4f74f94f01dd4b27834838695c6f3a79ab10114d3b1dc2ea44"
+      "lf_sha256": "300f36527162613f4a14c4a5ebcecee0a98baac239b213bba69b1bffb9612264"
     },
     {
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/lame.bundle/Contents/MacOS/lame.meta",
@@ -2744,7 +2800,7 @@
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/x86/libmp3lame.dll",
       "bytes": 721408,
       "sha256": "462a5978ec5a573d815b0253a90121f6d68b915ccec54a15f66e90c4cb5260e9",
-      "lf_sha256": "27e9d931867eef6c1300da507eb3b6fc0074dbd5bc45a59e6820e366f00f9113"
+      "lf_sha256": "462a5978ec5a573d815b0253a90121f6d68b915ccec54a15f66e90c4cb5260e9"
     },
     {
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/x86/libmp3lame.dll.meta",
@@ -2762,7 +2818,7 @@
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/x86_64/libmp3lame.dll",
       "bytes": 909824,
       "sha256": "4b8a9f37eae21a097f3cf189070111415d2656dcbef40926057cc0bea5c9588d",
-      "lf_sha256": "641f7c1fb7ed06ee5ef6cb8910ba40fad3979b7a9fd349bba44fe96a85b7e1ff"
+      "lf_sha256": "4b8a9f37eae21a097f3cf189070111415d2656dcbef40926057cc0bea5c9588d"
     },
     {
       "path": "Assets/Plugins/Lame-For-Unity/Plugins/x86_64/libmp3lame.dll.meta",
@@ -2792,7 +2848,7 @@
       "path": "Assets/Plugins/NAudio/NAudio.dll",
       "bytes": 479232,
       "sha256": "afe31e250907a6f6fb8d6aebd79c576ef4d73ad61bc403de29cab8f4621de1d2",
-      "lf_sha256": "c66f52622ff75cd3c917966fca6221322ce7b5dfd3c679af8ddbfc5671c5060b"
+      "lf_sha256": "afe31e250907a6f6fb8d6aebd79c576ef4d73ad61bc403de29cab8f4621de1d2"
     },
     {
       "path": "Assets/Plugins/NAudio/NAudio.dll.meta",
@@ -3020,7 +3076,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/FinalIK Change Log.pdf",
       "bytes": 217362,
       "sha256": "5f06c8c117a63bfd5e7a1591992810e00d2bfeaeb1f85745f64c0e115542f71c",
-      "lf_sha256": "1a043886f8f34efd5dd10ed7cfcbc5160eca38a9f189eb05cd689c062679e9d7"
+      "lf_sha256": "5f06c8c117a63bfd5e7a1591992810e00d2bfeaeb1f85745f64c0e115542f71c"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/FinalIK Change Log.pdf.meta",
@@ -3032,7 +3088,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/FinalIK ReadMe.rtf",
       "bytes": 1703,
       "sha256": "32413ecdfa48c7c7f7ed39141cd065f7d69d9c0277f4234b6c372717cd67d910",
-      "lf_sha256": "c5f649a60aab4c3b8f0c502383c06dc3a7c4efccef3535d0186a2c946ee82de0"
+      "lf_sha256": "32413ecdfa48c7c7f7ed39141cd065f7d69d9c0277f4234b6c372717cd67d910"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/FinalIK ReadMe.rtf.meta",
@@ -3044,7 +3100,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/FinalIK User Manual.pdf",
       "bytes": 35959,
       "sha256": "44f992a913545f9d39279191fd9ae01dab189f90f21cb1235ddc0c015879ea35",
-      "lf_sha256": "5a95baeaa7ea6e64add6749d81981bcbce0e8e0a31d3cf583712486e92dfbd0c"
+      "lf_sha256": "44f992a913545f9d39279191fd9ae01dab189f90f21cb1235ddc0c015879ea35"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/FinalIK User Manual.pdf.meta",
@@ -3080,7 +3136,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/AimIK Icon.png",
       "bytes": 4422,
       "sha256": "f1e097f8dcf29b124d3d7892fc225e342586a2add970cf3bbfd72c40c910edc1",
-      "lf_sha256": "2f57c70b5ac9526165f39b23298bab6f5291b2668e9361078d719edc32acfa34"
+      "lf_sha256": "f1e097f8dcf29b124d3d7892fc225e342586a2add970cf3bbfd72c40c910edc1"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/AimIK Icon.png.meta",
@@ -3092,7 +3148,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/BipedIK Icon.png",
       "bytes": 4832,
       "sha256": "40f42f4ae4afffa03f26d845a32fa02385407c6e3119a68f687b98aaba8ebe28",
-      "lf_sha256": "f823495535b6878034910488acdfe3f29b245a70a396e22d02c8cfefd6eed13b"
+      "lf_sha256": "40f42f4ae4afffa03f26d845a32fa02385407c6e3119a68f687b98aaba8ebe28"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/BipedIK Icon.png.meta",
@@ -3104,7 +3160,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/CCDIK Icon.png",
       "bytes": 5035,
       "sha256": "b57a05862724053017cd62ec7e49381ef59048e626cb254ff3b43c34ae22dc83",
-      "lf_sha256": "ac53f034badc8eef535356acca239f7f9aaaab1e309ba3225621fa3b58bbe759"
+      "lf_sha256": "b57a05862724053017cd62ec7e49381ef59048e626cb254ff3b43c34ae22dc83"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/CCDIK Icon.png.meta",
@@ -3116,7 +3172,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/Chain Icon.png",
       "bytes": 5866,
       "sha256": "328a52712d03ab385b02b78139009174c376f57334c356ac3c0e826c35a48421",
-      "lf_sha256": "2a9a6b67b85cecdd32f536e53d81865256a903651175c2b2223b972fb4e4823c"
+      "lf_sha256": "328a52712d03ab385b02b78139009174c376f57334c356ac3c0e826c35a48421"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/Chain Icon.png.meta",
@@ -3128,7 +3184,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/EndEffector Icon.png",
       "bytes": 4769,
       "sha256": "e06e578422e4b52ad97b345dfc7426f3888d17efc5a104ffd80fa65945e4d11e",
-      "lf_sha256": "770c0fa04b4f2b93e141ae28e56b39fb4fa6c01d38e2e4f4d8c467f2106bd95c"
+      "lf_sha256": "e06e578422e4b52ad97b345dfc7426f3888d17efc5a104ffd80fa65945e4d11e"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/EndEffector Icon.png.meta",
@@ -3140,7 +3196,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/FABRIK Icon.png",
       "bytes": 5275,
       "sha256": "eca399920e909c9e234497897fcaf2a52dacbd005405a92e895be3cb47941c5b",
-      "lf_sha256": "7aecc7eb6fe7cd69998148a9c2d22233c587a71837af77640b02e577633d4215"
+      "lf_sha256": "eca399920e909c9e234497897fcaf2a52dacbd005405a92e895be3cb47941c5b"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/FABRIK Icon.png.meta",
@@ -3152,7 +3208,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/FABRIKRoot Icon.png",
       "bytes": 5278,
       "sha256": "ed13809786cc9e07bad994a4cfbfcaa1067edad3f794cbdeb65d57e0140892a2",
-      "lf_sha256": "f32348a21a5e7c4bc1b519f5b4d5ec801aea4babe61223606632c8c4610f72d3"
+      "lf_sha256": "ed13809786cc9e07bad994a4cfbfcaa1067edad3f794cbdeb65d57e0140892a2"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/FABRIKRoot Icon.png.meta",
@@ -3164,7 +3220,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/FullBodyBipedIK Icon.png",
       "bytes": 4829,
       "sha256": "5b57111c9f07b0dd3931ec4e1f757ccd0b8f2c7054f5fb9da1fa9019bdff8da2",
-      "lf_sha256": "45480c1738b4e168d12cbad494ca41a9db5b884d0c5218018a51755e7b7b7da7"
+      "lf_sha256": "5b57111c9f07b0dd3931ec4e1f757ccd0b8f2c7054f5fb9da1fa9019bdff8da2"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/FullBodyBipedIK Icon.png.meta",
@@ -3176,7 +3232,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderBipedIK.png",
       "bytes": 3532,
       "sha256": "9c40e301912d8183ac27e762694ff34af12e2fc128b261b299ee7ba1089f9f19",
-      "lf_sha256": "dc829bd5068ca8197998223fcad338c209e49a9ac3a97770b672d1585a175eaf"
+      "lf_sha256": "9c40e301912d8183ac27e762694ff34af12e2fc128b261b299ee7ba1089f9f19"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderBipedIK.png.meta",
@@ -3188,7 +3244,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderFBBIK Icon.png",
       "bytes": 3621,
       "sha256": "c26843f276c3f16e4420e5b6e70f8ec169f842cfc896dc26f690ad265afb9f53",
-      "lf_sha256": "3ee5b6bf786b7e7e8723ee337246ae95115e4c3ed67a444a16ab31cd6f2d1660"
+      "lf_sha256": "c26843f276c3f16e4420e5b6e70f8ec169f842cfc896dc26f690ad265afb9f53"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderFBBIK Icon.png.meta",
@@ -3200,7 +3256,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderIK.png",
       "bytes": 3672,
       "sha256": "a891d2da324ef5ef5a1300db9c343b3642578f826ecee2c969062d151868767f",
-      "lf_sha256": "344cb28bf023034d7a1a8aa1124bc3df61398930d79f566b2dbce120a52f97df"
+      "lf_sha256": "a891d2da324ef5ef5a1300db9c343b3642578f826ecee2c969062d151868767f"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderIK.png.meta",
@@ -3212,7 +3268,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderQuadruped.png",
       "bytes": 5233,
       "sha256": "e59ef5190267978f0a8eccabb929767b18f561e3588307ce44564a8945dc630e",
-      "lf_sha256": "aac7a7d773476cfecfd48e6b1171023be8e6e342d431cfd39f7746649df0e706"
+      "lf_sha256": "e59ef5190267978f0a8eccabb929767b18f561e3588307ce44564a8945dc630e"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/GrounderQuadruped.png.meta",
@@ -3224,7 +3280,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionObject Icon.png",
       "bytes": 9873,
       "sha256": "26ffe0a050a8560e87e4083b6d188d38d07462ecd0fce2a3cf1ce2fb7b5ef198",
-      "lf_sha256": "6e44997ba64a8755bc55caf860373918140840fd4331fcc1c14b1063a6322387"
+      "lf_sha256": "26ffe0a050a8560e87e4083b6d188d38d07462ecd0fce2a3cf1ce2fb7b5ef198"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionObject Icon.png.meta",
@@ -3236,7 +3292,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionSystem Icon.png",
       "bytes": 10943,
       "sha256": "cb6382791045d17359b7d0b9e150202fee8ba89112a001c88a3e7e546d48cf18",
-      "lf_sha256": "445818301c662e3576b2027a614adc669e95d3a9c4c90c43ead3d5b34beb8742"
+      "lf_sha256": "cb6382791045d17359b7d0b9e150202fee8ba89112a001c88a3e7e546d48cf18"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionSystem Icon.png.meta",
@@ -3248,7 +3304,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionTarget Icon.png",
       "bytes": 5523,
       "sha256": "1be524313c5ca432dbe54001e60f4d87034b841cd9fe7c36e25c4d8d6655b7ac",
-      "lf_sha256": "2eab6cf9f486b576ee3620f28afd4c18e854ef7e377c8daa88ff63923b95890a"
+      "lf_sha256": "1be524313c5ca432dbe54001e60f4d87034b841cd9fe7c36e25c4d8d6655b7ac"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionTarget Icon.png.meta",
@@ -3260,7 +3316,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionTrigger Icon.png",
       "bytes": 6939,
       "sha256": "c0b2a0a2a61b832665dc0af819c378e7c565c58d136dc60b4733a8a8c37ea06d",
-      "lf_sha256": "d1a0376ef9897913ced6fa871f68e7db4fdc2f7f7e32f26f4af99ff0229fedf2"
+      "lf_sha256": "c0b2a0a2a61b832665dc0af819c378e7c565c58d136dc60b4733a8a8c37ea06d"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/InteractionTrigger Icon.png.meta",
@@ -3272,7 +3328,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/LimbIK Icon.png",
       "bytes": 4670,
       "sha256": "865520ffae689d64067b1687f5259f7836409bda473c08ac50ae968deb2f9307",
-      "lf_sha256": "f8efad0f9ab8807f7f8b71c110951b73ae7d68a981bf67c45595150995d9283a"
+      "lf_sha256": "865520ffae689d64067b1687f5259f7836409bda473c08ac50ae968deb2f9307"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/LimbIK Icon.png.meta",
@@ -3284,7 +3340,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/LookAtIK Icon.png",
       "bytes": 4795,
       "sha256": "f613f5b4ef549b9dfe756da20e98143a88b1281821a4d852669e1dae71428138",
-      "lf_sha256": "41a8120dbf762f5f1eb487fb4af6df9b2bd18d0be733eb8d1d5667309d87269e"
+      "lf_sha256": "f613f5b4ef549b9dfe756da20e98143a88b1281821a4d852669e1dae71428138"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/LookAtIK Icon.png.meta",
@@ -3296,7 +3352,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/Mapping Icon.png",
       "bytes": 6340,
       "sha256": "9e9dfb4622e14a0f0316b0148426c088c22e19e88082585495bb834158e8c3f1",
-      "lf_sha256": "cdc76a89d80eeee3f7dfd85e2a00d9c3cb8c0717a77994d5b98bf0034459140a"
+      "lf_sha256": "9e9dfb4622e14a0f0316b0148426c088c22e19e88082585495bb834158e8c3f1"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/Mapping Icon.png.meta",
@@ -3308,7 +3364,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/MidEffector Icon.png",
       "bytes": 8096,
       "sha256": "a962c628b60a450fe88030526ba46699ec7cdcde3c12ac7b4bcccd81301b4cb3",
-      "lf_sha256": "af04c04aa8f76ce8d01f3eedb722da11e0b59a929a70b12b5c60d8a8b74f8aba"
+      "lf_sha256": "a962c628b60a450fe88030526ba46699ec7cdcde3c12ac7b4bcccd81301b4cb3"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/MidEffector Icon.png.meta",
@@ -3320,7 +3376,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitAngle Icon.png",
       "bytes": 5087,
       "sha256": "49135a8624193b0a169c15fb375300bd24aa9213a52d42974efb18efd4e162ce",
-      "lf_sha256": "d0ab80e5a2919abff34788a2b3145c4bd0a718cc787eda1938d37a99eff74c7b"
+      "lf_sha256": "49135a8624193b0a169c15fb375300bd24aa9213a52d42974efb18efd4e162ce"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitAngle Icon.png.meta",
@@ -3332,7 +3388,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitHinge Icon.png",
       "bytes": 4641,
       "sha256": "f043bf35c5c96b3362f9b2ba0c272a154f1bad027f4a4e1dc16540dc5ff99def",
-      "lf_sha256": "0f4daadae95ad59c192515b96f7999eb920475589c14ea3cf82d0659ddd4996a"
+      "lf_sha256": "f043bf35c5c96b3362f9b2ba0c272a154f1bad027f4a4e1dc16540dc5ff99def"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitHinge Icon.png.meta",
@@ -3344,7 +3400,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitPolygonal Icon.png",
       "bytes": 5759,
       "sha256": "26b8a22acbef1d7cd3cf43d3152032b48137fb0c4687278db9d6e7ca7569d118",
-      "lf_sha256": "759754a870068d14aac4d7246dea95ca885f365e70153aaed65f99948c7ab991"
+      "lf_sha256": "26b8a22acbef1d7cd3cf43d3152032b48137fb0c4687278db9d6e7ca7569d118"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitPolygonal Icon.png.meta",
@@ -3356,7 +3412,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitSpline Icon.png",
       "bytes": 5254,
       "sha256": "d25dd983589b90dd6a49bb13821ee003ed6d199e14b4e5db8eb0820bd51c6f84",
-      "lf_sha256": "a0cc0dcdec09049d9456f89d579b3fe6696ba1b60c887bb664795c7849e93c2f"
+      "lf_sha256": "d25dd983589b90dd6a49bb13821ee003ed6d199e14b4e5db8eb0820bd51c6f84"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitSpline Icon.png.meta",
@@ -3368,7 +3424,7 @@
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/TrigonometricIK Icon.png",
       "bytes": 4373,
       "sha256": "aaec01233563094f0d187b09a062fcd7cffc8f8db19e1f0d8053fe6291c95bf5",
-      "lf_sha256": "d5e093a6418209ba28cc7617c9c425e26d09b0048c0b3e3a39d627ce1ffbfbea"
+      "lf_sha256": "aaec01233563094f0d187b09a062fcd7cffc8f8db19e1f0d8053fe6291c95bf5"
     },
     {
       "path": "Assets/Plugins/RootMotion/FinalIK/Gizmos/TrigonometricIK Icon.png.meta",
@@ -4502,7 +4558,7 @@
       "path": "Assets/Plugins/RootMotion/PuppetMaster/Gizmos/BehaviourFall Icon.png",
       "bytes": 84025,
       "sha256": "a9a2da36e7ad0ea8823a208aae99077a67b14daa9399bd1b941594ff62e83bb8",
-      "lf_sha256": "cd77a205d0eabd53caffc5bf67e664e52fecdc92ca99be8a966cb15ceac3f00e"
+      "lf_sha256": "a9a2da36e7ad0ea8823a208aae99077a67b14daa9399bd1b941594ff62e83bb8"
     },
     {
       "path": "Assets/Plugins/RootMotion/PuppetMaster/Gizmos/BehaviourFall Icon.png.meta",
@@ -4514,7 +4570,7 @@
       "path": "Assets/Plugins/RootMotion/PuppetMaster/Gizmos/BehaviourPuppet Icon.png",
       "bytes": 84025,
       "sha256": "be98014039c4561a617e090c00a588adc00a21354f00c3a97c1460598e909910",
-      "lf_sha256": "a9d1b56d20c875f20a3d239aff04e2ac8a032f51d054ab6f65010568af59e642"
+      "lf_sha256": "be98014039c4561a617e090c00a588adc00a21354f00c3a97c1460598e909910"
     },
     {
       "path": "Assets/Plugins/RootMotion/PuppetMaster/Gizmos/BehaviourPuppet Icon.png.meta",
@@ -4526,7 +4582,7 @@
       "path": "Assets/Plugins/RootMotion/PuppetMaster/Gizmos/PuppetMaster Icon.png",
       "bytes": 83825,
       "sha256": "dbba7216466990f6541e7ce63a9b06fcec78a4f7dc1abee9528344e061ae757a",
-      "lf_sha256": "3afbf3860f4c255895de203fa93d08645fd81643c5e033c98c13445e5c988906"
+      "lf_sha256": "dbba7216466990f6541e7ce63a9b06fcec78a4f7dc1abee9528344e061ae757a"
     },
     {
       "path": "Assets/Plugins/RootMotion/PuppetMaster/Gizmos/PuppetMaster Icon.png.meta",
@@ -4640,7 +4696,7 @@
       "path": "Assets/Plugins/RootMotion/PuppetMaster/PuppetMaster Change Log.pdf",
       "bytes": 139055,
       "sha256": "c26225ace23adc0770c4591a36b788291d3e71a0b7a8cb7331e013c90dadac90",
-      "lf_sha256": "5e5f7ea27b5ca9709b57588c39d757705ad72f7248aafdb3e01bd11ffb0b9532"
+      "lf_sha256": "c26225ace23adc0770c4591a36b788291d3e71a0b7a8cb7331e013c90dadac90"
     },
     {
       "path": "Assets/Plugins/RootMotion/PuppetMaster/PuppetMaster Change Log.pdf.meta",
@@ -4652,7 +4708,7 @@
       "path": "Assets/Plugins/RootMotion/PuppetMaster/PuppetMaster ReadMe.rtf",
       "bytes": 1987,
       "sha256": "a9a8e8f2a81abe5d7da195e0c8ba095e07f49380d07d8f611b8f03c7d9d67c71",
-      "lf_sha256": "bf032353b68e89e09cfb6a082d51443e36b5c80880234527e92cf5b8158ad6b2"
+      "lf_sha256": "a9a8e8f2a81abe5d7da195e0c8ba095e07f49380d07d8f611b8f03c7d9d67c71"
     },
     {
       "path": "Assets/Plugins/RootMotion/PuppetMaster/PuppetMaster ReadMe.rtf.meta",
@@ -4664,7 +4720,7 @@
       "path": "Assets/Plugins/RootMotion/PuppetMaster/PuppetMaster User Manual.pdf",
       "bytes": 30447,
       "sha256": "e32328584adc1298dc976a1370ba393d20dcce5ae4ddf0d9e5ec5c4cf3212119",
-      "lf_sha256": "0b286d7b29c965b096a5cb707ae03526233b248575df6e016625325c7f37e572"
+      "lf_sha256": "e32328584adc1298dc976a1370ba393d20dcce5ae4ddf0d9e5ec5c4cf3212119"
     },
     {
       "path": "Assets/Plugins/RootMotion/PuppetMaster/PuppetMaster User Manual.pdf.meta",
@@ -5132,7 +5188,7 @@
       "path": "Assets/Plugins/RootMotion/RagdollManager/Gizmos/BipedRagdollCreator Icon.png",
       "bytes": 83301,
       "sha256": "7e07e2e16af2b02c667e76659258163fd24448a41981f05b8081597633170156",
-      "lf_sha256": "cec6b4033d6938f3d3d07fbfc469446592efcd8251ba72facd3fb440a6981b46"
+      "lf_sha256": "7e07e2e16af2b02c667e76659258163fd24448a41981f05b8081597633170156"
     },
     {
       "path": "Assets/Plugins/RootMotion/RagdollManager/Gizmos/BipedRagdollCreator Icon.png.meta",
@@ -5144,7 +5200,7 @@
       "path": "Assets/Plugins/RootMotion/RagdollManager/Gizmos/RagdollEditor Icon.png",
       "bytes": 83315,
       "sha256": "3d32be643c906c6648e57add7fb41f076fceb959a0bb546895d12c1ddd8e28a4",
-      "lf_sha256": "607a0fc823f5a4734ad4289f96a5685b8bd9a30362d9b6678f2558c0932e8aa0"
+      "lf_sha256": "3d32be643c906c6648e57add7fb41f076fceb959a0bb546895d12c1ddd8e28a4"
     },
     {
       "path": "Assets/Plugins/RootMotion/RagdollManager/Gizmos/RagdollEditor Icon.png.meta",
@@ -5462,7 +5518,7 @@
       "path": "Assets/Plugins/Sqlite/Mono.Data.Sqlite.dll",
       "bytes": 169984,
       "sha256": "50ff2cedf8405bfcc59b74e7564a9c40e4d8b6cbde5621d858e314ac26b7ffb2",
-      "lf_sha256": "b763eca62b8d1508428ab36a2023027b6eea3595ddfbc3ff79b367adb8a2eca9"
+      "lf_sha256": "50ff2cedf8405bfcc59b74e7564a9c40e4d8b6cbde5621d858e314ac26b7ffb2"
     },
     {
       "path": "Assets/Plugins/Sqlite/Mono.Data.Sqlite.dll.meta",
@@ -5474,7 +5530,7 @@
       "path": "Assets/Plugins/Sqlite/Mono.Data.dll",
       "bytes": 20992,
       "sha256": "2be02c7e5e3d5602bc97335d76b0312f8f33f094b3f5dc138f8b3ffa083d747b",
-      "lf_sha256": "ef9f21a7e31ff6bf460dc985dd5d3cc6a18c233d830a4674a6ea28f28ec7cf8d"
+      "lf_sha256": "2be02c7e5e3d5602bc97335d76b0312f8f33f094b3f5dc138f8b3ffa083d747b"
     },
     {
       "path": "Assets/Plugins/Sqlite/Mono.Data.dll.meta",
@@ -5498,7 +5554,7 @@
       "path": "Assets/Plugins/Sqlite/sqlite3.dll",
       "bytes": 1731072,
       "sha256": "c1d50de691dbce10bc4824f2b274713a347651499febbb306367e20621671998",
-      "lf_sha256": "c8ec6bc58538196e791ca75cea328615f858deebbdd926c2d26ecdd37eeb6d26"
+      "lf_sha256": "c1d50de691dbce10bc4824f2b274713a347651499febbb306367e20621671998"
     },
     {
       "path": "Assets/Plugins/Sqlite/sqlite3.dll.meta",
@@ -5534,7 +5590,7 @@
       "path": "Assets/Plugins/StandaloneFileBrowser/Plugins/Ookii.Dialogs.dll",
       "bytes": 133632,
       "sha256": "5c8805ddf818a2c0a3a44a235e904a9896bd6aa8ede4d5ff386ccf945f808df7",
-      "lf_sha256": "70fb11d8b66c5a391193ce458bad46acae9793bb0475d7d068ab7fd78e3b463a"
+      "lf_sha256": "5c8805ddf818a2c0a3a44a235e904a9896bd6aa8ede4d5ff386ccf945f808df7"
     },
     {
       "path": "Assets/Plugins/StandaloneFileBrowser/Plugins/Ookii.Dialogs.dll.meta",
@@ -5600,7 +5656,7 @@
       "path": "Assets/Plugins/StandaloneFileBrowser/Plugins/System.Windows.Forms.dll",
       "bytes": 3053568,
       "sha256": "90b524d667b6d0b919801b80f11e64760480f8f68ac3d9abe797c26a57fc19a3",
-      "lf_sha256": "f19c87665734c1f5eb4c6a6647fbe234f9cf5edbd43beec380f69176704cbedc"
+      "lf_sha256": "90b524d667b6d0b919801b80f11e64760480f8f68ac3d9abe797c26a57fc19a3"
     },
     {
       "path": "Assets/Plugins/StandaloneFileBrowser/Plugins/System.Windows.Forms.dll.meta",
@@ -5660,7 +5716,7 @@
       "path": "Assets/Plugins/sqlite3mc_x64.dll",
       "bytes": 1955840,
       "sha256": "3f609c066a5840c75e6aaf05be857768c7327950b32940dcbc0660000050e1f9",
-      "lf_sha256": "35af069a7811f408032ae4cedc38a015baec689b100cc3c879cbb6b25ad68803"
+      "lf_sha256": "3f609c066a5840c75e6aaf05be857768c7327950b32940dcbc0660000050e1f9"
     },
     {
       "path": "Assets/Plugins/sqlite3mc_x64.dll.meta",
@@ -5990,7 +6046,7 @@
       "path": "Assets/Resources/Fonts/NotoSansCJKsc-Bold.otf",
       "bytes": 17002248,
       "sha256": "b5f0d1a190a7f9b43c310a8850630af12553df32c4c050543f9059732d9b4c0a",
-      "lf_sha256": "df3b2d74fb17b4447fa96be23ec21ea0fe544d7e1676588d66ace0ff9f4c0d0f"
+      "lf_sha256": "b5f0d1a190a7f9b43c310a8850630af12553df32c4c050543f9059732d9b4c0a"
     },
     {
       "path": "Assets/Resources/Fonts/NotoSansCJKsc-Bold.otf.meta",
@@ -6671,10 +6727,418 @@
       "lf_sha256": "60b4920b3ce9e999f28178335afee5f58082191ab050b04dfa1cdf879e9e5b22"
     },
     {
+      "path": "Assets/Resources/UI/Common/jukebox select square.png",
+      "bytes": 1377090,
+      "sha256": "9dff4c4e1ac112ece3598787a3a571acb84dc0094ac74194ff9c65c72b0369b7",
+      "lf_sha256": "9dff4c4e1ac112ece3598787a3a571acb84dc0094ac74194ff9c65c72b0369b7"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/jukebox select square.png.meta",
+      "bytes": 3476,
+      "sha256": "566f609d9245c4fee66de0d281688a1e25a128307c87264aeb49aa66441008da",
+      "lf_sha256": "e18294add7a36b9976261801a51215db1e6630c8c6bf8d1f24abf2867f011891"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png",
+      "bytes": 1010,
+      "sha256": "2f40d2d8a6e06cb4b546f744f3dd893eea8ff4081594c7c0485d32bde4dc7730",
+      "lf_sha256": "2f40d2d8a6e06cb4b546f744f3dd893eea8ff4081594c7c0485d32bde4dc7730"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png.meta",
+      "bytes": 2587,
+      "sha256": "0d698adee8c6477d3b9a41d6cf9a7098866cf32e5d68002c10d8c9d84e396f82",
+      "lf_sha256": "94c2c8bf4029174babc7f83716119423b36f0d32857dfcdbb98e6749d22ef14e"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png",
+      "bytes": 3877,
+      "sha256": "355c91dcc85ecd33fe7e48977193a1c21882dcf6b24c53269d89e91fe1c88bd3",
+      "lf_sha256": "355c91dcc85ecd33fe7e48977193a1c21882dcf6b24c53269d89e91fe1c88bd3"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png.meta",
+      "bytes": 2587,
+      "sha256": "60a1576e759c2d47f4cfb9626fe48a968449ee3fdb0ff22ca931d75a1a3ef93c",
+      "lf_sha256": "40aaa60946fddce1f85a20319db7de87607dad0d790d36fbdeb07a1da939b486"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png",
+      "bytes": 7530,
+      "sha256": "05452f50d0416049098ea9f3333a10908c3468696060502dbcb50f53f852da8f",
+      "lf_sha256": "05452f50d0416049098ea9f3333a10908c3468696060502dbcb50f53f852da8f"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png.meta",
+      "bytes": 2589,
+      "sha256": "22d073f9a07724b7e7774e46b08ec047dbb2a67ddf4e8b0a98fe89433d43d445",
+      "lf_sha256": "a85b0414d19fe5c8f49d625f7d2fbd31ad8e0981139bf1f4f03e76a53c16aadd"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png",
+      "bytes": 6984,
+      "sha256": "6900d1686af53f508b7e1e9a58971014155097edd3299d6145b013dc0f54f67b",
+      "lf_sha256": "6900d1686af53f508b7e1e9a58971014155097edd3299d6145b013dc0f54f67b"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png.meta",
+      "bytes": 2587,
+      "sha256": "92b67d40af977a7c17f00b5bd59f2c737c4b88c4caa253d3b3df0dc917477c64",
+      "lf_sha256": "46c5df95fd8390c429b87175308f620140b63cdd0e99d43a0ca5c367edcbb22d"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png",
+      "bytes": 5890,
+      "sha256": "ca4ab8dfab08140f241373154aab6b67d9b3629f18cf2502878325b116ebe60c",
+      "lf_sha256": "ca4ab8dfab08140f241373154aab6b67d9b3629f18cf2502878325b116ebe60c"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png.meta",
+      "bytes": 2589,
+      "sha256": "f6d44505760b3c9bcb4c388da795118c4d49cbd08b71e9ff01c08eefd1aa002f",
+      "lf_sha256": "805226cb90be55675764907f582d53553c3cdec238afc9ab4e650c9622e0c789"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png",
+      "bytes": 4294,
+      "sha256": "37a84a3619ac142d0aa417c823d12315172c0a83e33591495706e584a7a313d4",
+      "lf_sha256": "37a84a3619ac142d0aa417c823d12315172c0a83e33591495706e584a7a313d4"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png.meta",
+      "bytes": 2591,
+      "sha256": "62389c70be6be5bcd071db9c5c520250fd9b505aebcececac9c69f1d8d95e95f",
+      "lf_sha256": "a3765700dc6b264214f1ff99c1c8f6c43bdec41b9ccef32bc2fb8e293c6747a5"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png",
+      "bytes": 3805,
+      "sha256": "c5e1e4d81657ff4daa55cfe66d0dacd5dbf130d723dd4588f74a341067e4538e",
+      "lf_sha256": "c5e1e4d81657ff4daa55cfe66d0dacd5dbf130d723dd4588f74a341067e4538e"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png.meta",
+      "bytes": 2587,
+      "sha256": "aedcd4ddfaef486948a263eb7754d45fc8730c61138a8b844308097bce5ea205",
+      "lf_sha256": "939d0630a88048236fe55a0868a3835c8e414881b34a80f7b3ddcbf25498acae"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png",
+      "bytes": 3023,
+      "sha256": "c1eb3c051f37004d752377e1c9c1b1b6ce1dcec03cf90c2d501076956c7190d9",
+      "lf_sha256": "c1eb3c051f37004d752377e1c9c1b1b6ce1dcec03cf90c2d501076956c7190d9"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png.meta",
+      "bytes": 2591,
+      "sha256": "3280596e7e126140d9af1c465faf3c2ae4a0c0938d1ed0b10c705371e231c54f",
+      "lf_sha256": "f3ae2c1526f2bcddbc7635eb74038143cbe7ad160bb3fb70dfd19d0a74024400"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_01.png",
+      "bytes": 3843,
+      "sha256": "a92dbc8fd233aa20c0d6d12e5e5473c40110024b72149270850fb5f5383b750c",
+      "lf_sha256": "a92dbc8fd233aa20c0d6d12e5e5473c40110024b72149270850fb5f5383b750c"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_01.png.meta",
+      "bytes": 2591,
+      "sha256": "02a90c2338592bcba804ec26c34da5eabfa25706f85796452dfa71ae168023fb",
+      "lf_sha256": "0b2e13f5c8153f87c21f1ba350c4a12fec1ac0db0adc459d6e91e2d39afaf254"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_100.png",
+      "bytes": 4507,
+      "sha256": "098e61894cf2e3f68064fa388da164e191ed6cc962a3258040da1f8ee8016594",
+      "lf_sha256": "098e61894cf2e3f68064fa388da164e191ed6cc962a3258040da1f8ee8016594"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_100.png.meta",
+      "bytes": 2737,
+      "sha256": "bc783f6e6fecc967c059cf6729c7bad148610b7160b4d05cbf5537671eb21cd7",
+      "lf_sha256": "b72f407bacc0d915dc91954cd7ea4b493eb1c141c646929d51fc0bd1f8faf1c0"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_99.png",
+      "bytes": 6963,
+      "sha256": "239d70e91f10fca6e250e40edee8ca93ccbaa980d25c2b3a673e42a054fff616",
+      "lf_sha256": "239d70e91f10fca6e250e40edee8ca93ccbaa980d25c2b3a673e42a054fff616"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_btn_square_99.png.meta",
+      "bytes": 2750,
+      "sha256": "f4ad26b9e31e9f32f09eb4e7d77f8b010697766338f541a9fa51d84f439a3e0e",
+      "lf_sha256": "96e9a0395aa2559d232be50ef19f0a2fefa201162726304394b7ebefb7222858"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png",
+      "bytes": 634,
+      "sha256": "b4afeafb98359c6246bf6313522028e5013934a17b412a11aa622f0e8942dba4",
+      "lf_sha256": "b4afeafb98359c6246bf6313522028e5013934a17b412a11aa622f0e8942dba4"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "a8e9d4e084850987efd9bfb7c67ac8878e7925828a8df632dfc70e3531b430d9",
+      "lf_sha256": "051ea3c42dd834fc18c2c06ec26671253456bd3711a2ec54cde3f5f64b854f02"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png",
+      "bytes": 1177,
+      "sha256": "8201a8c3d48c0a199a08f16e685b73f97f95acb3b3446487431ebb21e25971c3",
+      "lf_sha256": "8201a8c3d48c0a199a08f16e685b73f97f95acb3b3446487431ebb21e25971c3"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "b3ebdde3ed764ed9df5c57ca8f6c4f0fb491b4790d963a951c13a1adb3b1484c",
+      "lf_sha256": "de991b0cbd92f0476d16f808b0a31230233de46741714c029e41a87f753a7f8e"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png",
+      "bytes": 1127,
+      "sha256": "23431eb3157879dbaf2b7a33e82359cc8dd4b074b6cf3578361c21433aa20c15",
+      "lf_sha256": "23431eb3157879dbaf2b7a33e82359cc8dd4b074b6cf3578361c21433aa20c15"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "f45b1f05422964c4f7010f0aa1ae9113a6fce5a6fd800770ddaa928997862643",
+      "lf_sha256": "373a2ff018b8abaf1ecf1a4448512de11d178ef672765e0e07c7c9b7d04b778c"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png",
+      "bytes": 1181,
+      "sha256": "64911b583f06851c7428ea439a6c21885034d9dd9c00ce1b2ba2c09f38782659",
+      "lf_sha256": "64911b583f06851c7428ea439a6c21885034d9dd9c00ce1b2ba2c09f38782659"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png.meta",
+      "bytes": 2589,
+      "sha256": "1c5ca6e94e01cee3c7508845da3c5d514d8060c4aeb04f18256648000116eadb",
+      "lf_sha256": "c18320f72b028934268c424d897134ae6902cfed73e583948041f6c71248a777"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png",
+      "bytes": 2948,
+      "sha256": "dff2da2708f70643e6f1376d9beb653e871d1fc2ca72ae5bc4539a1fa3da56cf",
+      "lf_sha256": "dff2da2708f70643e6f1376d9beb653e871d1fc2ca72ae5bc4539a1fa3da56cf"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png.meta",
+      "bytes": 2590,
+      "sha256": "719e6777a2f7bbe1fabfe8c9d5adae7601e3f8cb28747399e134d98a90bbbe01",
+      "lf_sha256": "8db6a64e006f5d4e4e56431a4080725b79e62612d34543f07931e8cbf19d4b8a"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png",
+      "bytes": 2046,
+      "sha256": "2c6400688032a53712391a4aa48533d796599183b52ac6fb7512f3922aae643e",
+      "lf_sha256": "2c6400688032a53712391a4aa48533d796599183b52ac6fb7512f3922aae643e"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png.meta",
+      "bytes": 2590,
+      "sha256": "8fa3a9a238dd9102564dc54bb77d951e8c7631992a77cc3a7f57af60baad3b41",
+      "lf_sha256": "951861b4500caaf1545391a8b773807c0c86b1206903df59845e2ac04883ab17"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png",
+      "bytes": 3012,
+      "sha256": "4d5eb9cd865452132728e3c8bfa25699bdc3a6b5aa1c770836113d5d5ec25d75",
+      "lf_sha256": "4d5eb9cd865452132728e3c8bfa25699bdc3a6b5aa1c770836113d5d5ec25d75"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png.meta",
+      "bytes": 2590,
+      "sha256": "7e9df9c6bca1adfdab9cfe058c909472f0dfcbfb9de2f37172d23a6694e9bc44",
+      "lf_sha256": "fb5c3b6cc67b410960351de84c5e10c88b8f820caefeacb5e474dca2afbdadc3"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png",
+      "bytes": 2468,
+      "sha256": "a7511452a3e2abfb7ef1350f91ca77f3ee59de2099473ee6ec998af99b9f1a54",
+      "lf_sha256": "a7511452a3e2abfb7ef1350f91ca77f3ee59de2099473ee6ec998af99b9f1a54"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "9889f4283d7e0b28f7a703d0a495166a92cf55f5a56a0ca9cf91c0b858b0443d",
+      "lf_sha256": "d2107cbdad9f3eca4921922d3282185f1a46dfdfdf7e6283a328b093f3a35517"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png",
+      "bytes": 423,
+      "sha256": "2f37e01b81443b8d0ea2c936579b9b2c62c4ba0de52ee88bc8fdec2fbb0e5d41",
+      "lf_sha256": "2f37e01b81443b8d0ea2c936579b9b2c62c4ba0de52ee88bc8fdec2fbb0e5d41"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png.meta",
+      "bytes": 2590,
+      "sha256": "319bd9f71fbd9b8551c3c132a2a5aedf44e5be94e7169891898935a267963924",
+      "lf_sha256": "c4acd9fbca29077368c7e92424d8b548d5908df1a6868a86ef278e2b459d1351"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png",
+      "bytes": 1754,
+      "sha256": "ac5beaca856b762ef50fa63eb87686792978c34fc61c99dd0c55f2358e417ce8",
+      "lf_sha256": "ac5beaca856b762ef50fa63eb87686792978c34fc61c99dd0c55f2358e417ce8"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "ac51bb71e313823621c1e101c082c0a8ff0031ec35064c28fda844767b1acbb1",
+      "lf_sha256": "82e636f287ce03091ace72b00881034cd6f6b59cb373df41966cbf93368d8e46"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png",
+      "bytes": 1879,
+      "sha256": "39063a54a9234a6fff1db18addecf1692bc5a3cafd652d3dbeb102b874ae3099",
+      "lf_sha256": "39063a54a9234a6fff1db18addecf1692bc5a3cafd652d3dbeb102b874ae3099"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "70f59a3f457e2420602e5acdfee606bbcce130d4c8e12449c403f724d4f35058",
+      "lf_sha256": "392e44a20efe4fbb235f5b04aedcdc18c0b253e84119d9e7d5f429f8b700bf64"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png",
+      "bytes": 1958,
+      "sha256": "64c747a74c7e03f9bbbc5bc19afd7d1323ea2645351b30563e3f5e07ebe49b85",
+      "lf_sha256": "64c747a74c7e03f9bbbc5bc19afd7d1323ea2645351b30563e3f5e07ebe49b85"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "41609ce6b0b3f121c6b635adff6f2ed1f31967c891c3d19033b09d520170583b",
+      "lf_sha256": "c0102ca2d9a2da2fc07610e58ab7ac306f86e45a89cd1bb3343cb5c96e50901f"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png",
+      "bytes": 617,
+      "sha256": "d173d703cca0182ee7a14455e7738cc883b1657a064f7d0121e7a01ef574b33b",
+      "lf_sha256": "d173d703cca0182ee7a14455e7738cc883b1657a064f7d0121e7a01ef574b33b"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "1853dc2a534a2c2ff131b42af22eab5ffb9da8bc1b9011a544ba08d26385c99a",
+      "lf_sha256": "fe858ce879959aa5464497c07aec182a1f35ea73ae1fe05ddb34f16a3ecfa68d"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png",
+      "bytes": 615,
+      "sha256": "80401361af57b513bf754de7ef21a937f4c7facab035f72f60654412cb32485d",
+      "lf_sha256": "80401361af57b513bf754de7ef21a937f4c7facab035f72f60654412cb32485d"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "acd8e8104ca70dd1e7eeccc8cc87756a713896e44e90b671e3e20ec414e2d9ce",
+      "lf_sha256": "e5e4532fcba81bbfe6d19a60c2d5a9107f1c9f4ab8f8648d9ce766419f1284d6"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png",
+      "bytes": 544,
+      "sha256": "0ceb30669d9899b509a0d1b62d7835a204a27cd622f6b33ac8fd60b4152084bb",
+      "lf_sha256": "0ceb30669d9899b509a0d1b62d7835a204a27cd622f6b33ac8fd60b4152084bb"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png.meta",
+      "bytes": 2587,
+      "sha256": "c2eac57f980d3ecfbe7b3dd50031fb7c614e95c97fd6d7835ed65833d428d833",
+      "lf_sha256": "ea4240510607766b083c8e59b132711e09adf4e849ffc4495d0791c80a6061fe"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png",
+      "bytes": 3439,
+      "sha256": "740c3b8f810e1d17bad3894a4358744a9247746169d642890fefae9e22af966f",
+      "lf_sha256": "740c3b8f810e1d17bad3894a4358744a9247746169d642890fefae9e22af966f"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "972fb05964c08cb59be6b95d921296cd45e3e6212bbdbefb8f41aad9a362acc9",
+      "lf_sha256": "641285cbc7a22de84c5887c350e6de883de605e992cd17487632fe3a880ddd00"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png",
+      "bytes": 610,
+      "sha256": "4ac54547868a0c28c7ed91ee69a91c5cfe0b5e33b5204aaae10b499ac0994999",
+      "lf_sha256": "4ac54547868a0c28c7ed91ee69a91c5cfe0b5e33b5204aaae10b499ac0994999"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "46b0588abe63582e1bfd1c1309854db1d9c1954316243bf80c0c2a7fab59fd57",
+      "lf_sha256": "988b60e3cb639209728a0058f52a03681ca260c46a1ca8a476d12808f703f7b7"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png",
+      "bytes": 544,
+      "sha256": "9ad948b95a3545ebe5166634915dcde1614c7d8e04e14247610f28e77dda81f1",
+      "lf_sha256": "9ad948b95a3545ebe5166634915dcde1614c7d8e04e14247610f28e77dda81f1"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png.meta",
+      "bytes": 2587,
+      "sha256": "f115b8dd9cf2dab8bd66dbb3e22ed612f7bcebff3e8be92fac2cc09db2adb992",
+      "lf_sha256": "a171a1be40efbaf6054789aa5a5ba179bd45ef989a4d627ad0b29b3f6567428c"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png",
+      "bytes": 544,
+      "sha256": "9ad948b95a3545ebe5166634915dcde1614c7d8e04e14247610f28e77dda81f1",
+      "lf_sha256": "9ad948b95a3545ebe5166634915dcde1614c7d8e04e14247610f28e77dda81f1"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png.meta",
+      "bytes": 2589,
+      "sha256": "007fad7403545a933eaa5a845e710ff862b6d5c6e1fbfe9fe1bd5da8a6c228df",
+      "lf_sha256": "7e4e9ca394805cae485715308e7690419514856368dacb4058595aab0c3f44b2"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png",
+      "bytes": 775,
+      "sha256": "7e19fdf56f686878b0f535a75461b89821abc04a6d9d165bafafd5403b1dfc88",
+      "lf_sha256": "7e19fdf56f686878b0f535a75461b89821abc04a6d9d165bafafd5403b1dfc88"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png.meta",
+      "bytes": 2591,
+      "sha256": "ad43c756e1f847af7f6d1eeaee62968b38820f244dfeb570655163303b361f78",
+      "lf_sha256": "5f13164cd0b9737758ee0fc8ff57c4c177d6f43d300fe045f592fffb328aa9e3"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png",
+      "bytes": 3961,
+      "sha256": "6ec0eb33275ef58d7d51e02d30e2e6c852e285c0f622d3fbdb507c2b3ca9ee71",
+      "lf_sha256": "6ec0eb33275ef58d7d51e02d30e2e6c852e285c0f622d3fbdb507c2b3ca9ee71"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png.meta",
+      "bytes": 2587,
+      "sha256": "e1e690167d06fedbd351a2431a3e912a3bd4c63721e34232fb767645a9130169",
+      "lf_sha256": "708a144dccb583b4a4b13e48809a30b21f958a23cc66e84fe15a9510a24f9e7e"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png",
+      "bytes": 2753,
+      "sha256": "6fc44eca48a2428960cd63d397bcdc317b90c237c061db32b52b7a5e99a755e2",
+      "lf_sha256": "6fc44eca48a2428960cd63d397bcdc317b90c237c061db32b52b7a5e99a755e2"
+    },
+    {
+      "path": "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png.meta",
+      "bytes": 3476,
+      "sha256": "9e162b1c8a4c3cd4e1e22124dfaf89f78c1581af2a228960f5de0a4afcfccbf9",
+      "lf_sha256": "b9aefd3d3c8aee5f610c29165035527796c4e75ac3575649bb8bd8c887fd43c5"
+    },
+    {
       "path": "Assets/Resources/UI/Illustration.png",
       "bytes": 100292,
       "sha256": "9ceb9a287ac3276745f5a8592b8a318ff967bbc305fa9a3d43d35d6610b1899c",
-      "lf_sha256": "da02344c4226cdbe243be6acd6b78845cbcdc1471c11d1f6a652367a5beda31b"
+      "lf_sha256": "9ceb9a287ac3276745f5a8592b8a318ff967bbc305fa9a3d43d35d6610b1899c"
     },
     {
       "path": "Assets/Resources/UI/Illustration.png.meta",
@@ -6683,10 +7147,22 @@
       "lf_sha256": "c8eec0b21e100056de346beeafa9a52e8b36981f62baeeb1e055d8f61dc1ac5d"
     },
     {
+      "path": "Assets/Resources/UI/Screenshot 2026-02-06 020334.png",
+      "bytes": 27395,
+      "sha256": "0fd2c7cc323ef341fa808ee9258bfb046507902d20b42d9d413adbf2bfccc204",
+      "lf_sha256": "0fd2c7cc323ef341fa808ee9258bfb046507902d20b42d9d413adbf2bfccc204"
+    },
+    {
+      "path": "Assets/Resources/UI/Screenshot 2026-02-06 020334.png.meta",
+      "bytes": 2705,
+      "sha256": "d1cda275beb82ed152faf0da03b3ce52f8b637f04f02ae952a3ab6d2530144f0",
+      "lf_sha256": "cf6f503ea381dd0a8948d1e1b4a0406bcb11d34f106b73c674e7ab9335d5999b"
+    },
+    {
       "path": "Assets/Resources/UI/chara_icon_defalut.png",
       "bytes": 26290,
       "sha256": "934b445ff9d763cb34a5752c02a23b7bc127c7ce1fb22bb3512a4f997dacbc7d",
-      "lf_sha256": "298baf02a782f30328e2d76144c6bbc8fc54f85504c29ae15a1b54af38facfbd"
+      "lf_sha256": "934b445ff9d763cb34a5752c02a23b7bc127c7ce1fb22bb3512a4f997dacbc7d"
     },
     {
       "path": "Assets/Resources/UI/chara_icon_defalut.png.meta",
@@ -6698,7 +7174,7 @@
       "path": "Assets/Resources/UI/d_stepok@2x.png",
       "bytes": 1501,
       "sha256": "13200f2c5111b3f3e0454b359ab9a9d74c1592ab80ba3831d23b75564bf8e29f",
-      "lf_sha256": "6f6f4d288dd7a73d24cca97294d363f761ec2b0d4fe208ce119e77e299d9afea"
+      "lf_sha256": "13200f2c5111b3f3e0454b359ab9a9d74c1592ab80ba3831d23b75564bf8e29f"
     },
     {
       "path": "Assets/Resources/UI/d_stepok@2x.png.meta",
@@ -6710,7 +7186,7 @@
       "path": "Assets/Resources/UI/discord-icon.png",
       "bytes": 95964,
       "sha256": "debe1da1e3868719cf1f27fe8a91f9e84a3dab26715fa4233990eaa9431546ca",
-      "lf_sha256": "d27c4257537c2974ac9fcd2fcf15ba1e7505ac698130193eb04e91d55b94c7c9"
+      "lf_sha256": "debe1da1e3868719cf1f27fe8a91f9e84a3dab26715fa4233990eaa9431546ca"
     },
     {
       "path": "Assets/Resources/UI/discord-icon.png.meta",
@@ -6722,7 +7198,7 @@
       "path": "Assets/Resources/UI/dress_icon_default.png",
       "bytes": 24664,
       "sha256": "1d8a47247f7e371823acc364782997ce620051531a3027314ddb079e3af4eb8a",
-      "lf_sha256": "294a7c85003825f22ea11f164f72fa2ead6568c1cb38b232fba9ccd726f9b236"
+      "lf_sha256": "1d8a47247f7e371823acc364782997ce620051531a3027314ddb079e3af4eb8a"
     },
     {
       "path": "Assets/Resources/UI/dress_icon_default.png.meta",
@@ -6734,7 +7210,7 @@
       "path": "Assets/Resources/UI/refresh.png",
       "bytes": 380,
       "sha256": "59cf2e1059bf583845b09d33e5bb3956ba5e13f9bedd33a4b8673f791b2bd397",
-      "lf_sha256": "e03b0d3c3f9d8e7a284bab3218e7b3355bba4d0533ac146689fc056303b51c8e"
+      "lf_sha256": "59cf2e1059bf583845b09d33e5bb3956ba5e13f9bedd33a4b8673f791b2bd397"
     },
     {
       "path": "Assets/Resources/UI/refresh.png.meta",
@@ -6752,7 +7228,7 @@
       "path": "Assets/Resources/text2D/appUI.png",
       "bytes": 44868,
       "sha256": "58d7799b6bda6aa44ffa33dd0fc4ae5c7197bbae702b344c270d431832463809",
-      "lf_sha256": "5f23c32d1791e261f980363f81c6264a9f9c7f2764a6188d55f8ebf4e064644a"
+      "lf_sha256": "58d7799b6bda6aa44ffa33dd0fc4ae5c7197bbae702b344c270d431832463809"
     },
     {
       "path": "Assets/Resources/text2D/appUI.png.meta",
@@ -6761,16 +7237,88 @@
       "lf_sha256": "99e13dc0c80682d5dd3e6f115fdeac215c6ab96e429d423e2d9319d079b17cf6"
     },
     {
+      "path": "Assets/Resources/text2D/bg_0001_00120.png",
+      "bytes": 1353582,
+      "sha256": "f605cecaa9735b6b858a83e1b8b0d9f6ccdf550fdd791b81319b6ad50cf7c8ca",
+      "lf_sha256": "f605cecaa9735b6b858a83e1b8b0d9f6ccdf550fdd791b81319b6ad50cf7c8ca"
+    },
+    {
+      "path": "Assets/Resources/text2D/bg_0001_00120.png.meta",
+      "bytes": 2737,
+      "sha256": "cc2d7618e6dc32e4536b84e4bf25871309ffe93440eab8bc7e75ecb43e5d29b4",
+      "lf_sha256": "f86a9dc99dcf09943133895125a986ec974341077ab8f1b0ad252f5aa33e0053"
+    },
+    {
       "path": "Assets/Resources/text2D/game cursor.png",
       "bytes": 6072,
       "sha256": "85f7941d60c9759d0395a835ffda3c5f01cd81518224097093c571b5c6d268fb",
-      "lf_sha256": "66e22a1b2eb578aa359a9a36aec86362c2d1e1ffd9cba0758849d0ede9009f21"
+      "lf_sha256": "85f7941d60c9759d0395a835ffda3c5f01cd81518224097093c571b5c6d268fb"
     },
     {
       "path": "Assets/Resources/text2D/game cursor.png.meta",
       "bytes": 2705,
       "sha256": "48bfeee567dd1ef91e8aebe5c5c957d213bc366fd284c3de27b6fc24ade28159",
       "lf_sha256": "2dcb45f3c89de2ce1d8c1b7ae976559bc2e4f77a6478f541b04c0117966de55a"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_020001041_01_00.png",
+      "bytes": 2215474,
+      "sha256": "cf1b7bfc7dc2d79dfb6f01f1ee22262e34827baabe4935bbab16da20e3cf3005",
+      "lf_sha256": "cf1b7bfc7dc2d79dfb6f01f1ee22262e34827baabe4935bbab16da20e3cf3005"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_020001041_01_00.png.meta",
+      "bytes": 2737,
+      "sha256": "a6f227b4229dd607af6c8031a93fab06d7213fcfe3bfceadc60a58a6b3380c6c",
+      "lf_sha256": "be3fff1276538aafdff724eeb216b230f3cb61b8fa62ea0260c4838324549bc5"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_020002031_00_00.png",
+      "bytes": 2230577,
+      "sha256": "0b2ab1b3bfe1bf9505919dd8d8bfea97593788461037d8f71ac6f4b5494c3817",
+      "lf_sha256": "0b2ab1b3bfe1bf9505919dd8d8bfea97593788461037d8f71ac6f4b5494c3817"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_020002031_00_00.png.meta",
+      "bytes": 3444,
+      "sha256": "11fb1501e3f5d2625635145ecad8a114a192e54210d41fb8124385aad24eea33",
+      "lf_sha256": "33277d1e1c2ee6c1d971016539091685a164e51ddb6166cd69c9dd72801f802d"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_020006134_00_00_base.png",
+      "bytes": 2261560,
+      "sha256": "136740e8dcbf8c66a3c2a107ab13439c8c0a9df4efed049746cf22a391622042",
+      "lf_sha256": "136740e8dcbf8c66a3c2a107ab13439c8c0a9df4efed049746cf22a391622042"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_020006134_00_00_base.png.meta",
+      "bytes": 3444,
+      "sha256": "2e8b50bb53d8712a23d9597a73db14113978559d106e707b1293bc86e683c315",
+      "lf_sha256": "1a6a3cbf1075e9d286b0035b40b62dd866f174089f0dd8e1c93fe3acb83a5c0b"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_090003008_00_00_base.png",
+      "bytes": 1929667,
+      "sha256": "756f6c851ce4ae051a6249072fe5ef8ce529833958afa9723cd4b7ed4938f063",
+      "lf_sha256": "756f6c851ce4ae051a6249072fe5ef8ce529833958afa9723cd4b7ed4938f063"
+    },
+    {
+      "path": "Assets/Resources/text2D/still_090003008_00_00_base.png.meta",
+      "bytes": 3476,
+      "sha256": "64433d61e3d5e3b042d675345530b15316b465b6599cc96e29cb6d1e8b73cd9b",
+      "lf_sha256": "0c800314a6198d2e1b704cc92d4ec07917b2d276fbd7cd2e32c4fde530c1512b"
+    },
+    {
+      "path": "Assets/Resources/text2D/tex_env_live_cmn_flare013.png",
+      "bytes": 39293,
+      "sha256": "04194cca5352b9c7e2d13c8f4b250d14d58ef742ee9d0fde70e271dfe16b532b",
+      "lf_sha256": "04194cca5352b9c7e2d13c8f4b250d14d58ef742ee9d0fde70e271dfe16b532b"
+    },
+    {
+      "path": "Assets/Resources/text2D/tex_env_live_cmn_flare013.png.meta",
+      "bytes": 3444,
+      "sha256": "4a747063989191187ad75c42567755cb6f180a0d066bf62e8e90080d45b7197b",
+      "lf_sha256": "667e16ef5588c1c77e5cca97f425b8f613d50d25b1cc652abd497863fc03367a"
     },
     {
       "path": "Assets/Scenes.meta",
@@ -7236,9 +7784,9 @@
     },
     {
       "path": "Assets/Scripts/Config.cs",
-      "bytes": 14213,
-      "sha256": "0e91189154068ca621d6a5b68a51557afa04d07b572c73277becd9fa1fbfcce8",
-      "lf_sha256": "0e91189154068ca621d6a5b68a51557afa04d07b572c73277becd9fa1fbfcce8"
+      "bytes": 15046,
+      "sha256": "3d544bd9cf18577a7f6584b0dace4afc6259b80efa6e317c4b439bf54682b992",
+      "lf_sha256": "3d544bd9cf18577a7f6584b0dace4afc6259b80efa6e317c4b439bf54682b992"
     },
     {
       "path": "Assets/Scripts/Config.cs.meta",
@@ -7298,7 +7846,7 @@
       "path": "Assets/Scripts/DynamicBone/Demo/c1.fbx",
       "bytes": 3122816,
       "sha256": "13f026a524fe1a7a6f88dd428c9abcfc9817aa4b85667fc869aefbb84882cdae",
-      "lf_sha256": "6b21e97a4974e2e4e00d2619036aa0f0f8411a3588f87b573da468a6e8dd73ae"
+      "lf_sha256": "13f026a524fe1a7a6f88dd428c9abcfc9817aa4b85667fc869aefbb84882cdae"
     },
     {
       "path": "Assets/Scripts/DynamicBone/Demo/c1.fbx.meta",
@@ -13382,7 +13930,7 @@
       "path": "Assets/StandaloneFileBrowser/Plugins/Mono.Posix.dll",
       "bytes": 214528,
       "sha256": "02c6578e7191ac6eba83b9f5e1eefc031d7cba072c1d6e85de4c78778f6407a2",
-      "lf_sha256": "1b65f29d8f19143d6990e71fb24e2d3475e62136ce46b9aaab198d0d302c43fe"
+      "lf_sha256": "02c6578e7191ac6eba83b9f5e1eefc031d7cba072c1d6e85de4c78778f6407a2"
     },
     {
       "path": "Assets/StandaloneFileBrowser/Plugins/Mono.Posix.dll.meta",
@@ -13394,7 +13942,7 @@
       "path": "Assets/StandaloneFileBrowser/Plugins/Ookii.Dialogs.WinForms.dll",
       "bytes": 129024,
       "sha256": "9fa0c3c0b7231a75a2a89aba44badfce84c109babc054941b7a3de41ed5bca3a",
-      "lf_sha256": "0ad857a6ee38353c8401440a12d32830496a446125c9d8c024d9b3db7f047a43"
+      "lf_sha256": "9fa0c3c0b7231a75a2a89aba44badfce84c109babc054941b7a3de41ed5bca3a"
     },
     {
       "path": "Assets/StandaloneFileBrowser/Plugins/Ookii.Dialogs.WinForms.dll.meta",
@@ -13436,7 +13984,7 @@
       "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents/MacOS/StandaloneFileBrowser",
       "bytes": 156736,
       "sha256": "be0ccbbfe34ec1a740953751bbd43abaaf7ca3b678c1af7e8a752b6adeea12b4",
-      "lf_sha256": "33cd70f83117920ccf04ac32ef5ed3b53e36b6d683ba5c9764fb70917439229d"
+      "lf_sha256": "be0ccbbfe34ec1a740953751bbd43abaaf7ca3b678c1af7e8a752b6adeea12b4"
     },
     {
       "path": "Assets/StandaloneFileBrowser/Plugins/StandaloneFileBrowser.bundle/Contents/MacOS/StandaloneFileBrowser.meta",
@@ -13460,7 +14008,7 @@
       "path": "Assets/StandaloneFileBrowser/Plugins/System.Windows.Forms.dll",
       "bytes": 2898432,
       "sha256": "3bc3489719e81f8dcdc940cedebce8b0596871572903c5647d847f5f16c43745",
-      "lf_sha256": "e46ed61a9fec09f1982735004592a5f18e17ad13e8591cec4469a2492a2633f4"
+      "lf_sha256": "3bc3489719e81f8dcdc940cedebce8b0596871572903c5647d847f5f16c43745"
     },
     {
       "path": "Assets/StandaloneFileBrowser/Plugins/System.Windows.Forms.dll.meta",
@@ -13649,6 +14197,30 @@
       "lf_sha256": "2ef314d53ee679b4619e6c8d0d7359eda684f2bb51ba85cd8322b24ab412856c"
     },
     {
+      "path": "Assets/StreamingAssets/cri_auth",
+      "bytes": 256,
+      "sha256": "aa400bd14224728fe1202ebca3c32bae3b3c2a491ba8deea305a943003218b3a",
+      "lf_sha256": "aa400bd14224728fe1202ebca3c32bae3b3c2a491ba8deea305a943003218b3a"
+    },
+    {
+      "path": "Assets/StreamingAssets/cri_auth.meta",
+      "bytes": 162,
+      "sha256": "fa56bb3580ab60542833e2cd71f11234ab0e09d0a0ecffab781feace84559681",
+      "lf_sha256": "2a36007af121165f0acd1d59b53683a27604222e402099bacadf92c232e6993b"
+    },
+    {
+      "path": "Assets/StreamingAssets/sound_proj.acf",
+      "bytes": 10944,
+      "sha256": "94dad3ad9c2ebdf7130fd565114ea660403a67889ed6530fa5ce4bed1e405ede",
+      "lf_sha256": "94dad3ad9c2ebdf7130fd565114ea660403a67889ed6530fa5ce4bed1e405ede"
+    },
+    {
+      "path": "Assets/StreamingAssets/sound_proj.acf.meta",
+      "bytes": 162,
+      "sha256": "84d67b0dfa115a69e2d810b845adb5f70e5dffd10d1d505dfaf20a51a6f591fd",
+      "lf_sha256": "98b49c5709033a9ccca0f55d7c2d19ad166771f1c8ba45b426021af45ddaa6b5"
+    },
+    {
       "path": "Assets/TestLegacyAnim.cs",
       "bytes": 6068,
       "sha256": "e3fb45a2fdf90cae2e9e487b9ccb6b897e9ae60e9aec670c7ebd53e6c6dc70f7",
@@ -13676,7 +14248,7 @@
       "path": "Assets/TextMesh Pro/Documentation/TextMesh Pro User Guide 2016.pdf",
       "bytes": 694398,
       "sha256": "93d6d3ca8a7d8423b01faacd00fa3921fe055fb2187873653a925e4cc1af85c0",
-      "lf_sha256": "687881980fab88e75814dff2141546140f27e7b641ac80e2dc3befc158bfd178"
+      "lf_sha256": "93d6d3ca8a7d8423b01faacd00fa3921fe055fb2187873653a925e4cc1af85c0"
     },
     {
       "path": "Assets/TextMesh Pro/Documentation/TextMesh Pro User Guide 2016.pdf.meta",
@@ -13706,7 +14278,7 @@
       "path": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
       "bytes": 350200,
       "sha256": "e5b0af421ea2bfbc1ac8d251d647268087ae82786234c57f757d1f0b90fa8b49",
-      "lf_sha256": "f3163dfa44219778b8f3b18dd6cbf916f036dd6d0d6284c5db176f5b5ada8cb1"
+      "lf_sha256": "e5b0af421ea2bfbc1ac8d251d647268087ae82786234c57f757d1f0b90fa8b49"
     },
     {
       "path": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf.meta",
@@ -13730,7 +14302,7 @@
       "path": "Assets/TextMesh Pro/Fonts/dynamic01 - Copy.otf",
       "bytes": 3909876,
       "sha256": "bc858152a949bac6f429f21fc59351a9773aaec529d4736aa045a30b33f73782",
-      "lf_sha256": "5bc7739d4b5afc5a16b4bb2f4b572d6be3db03e27b7122b11b005a1157f1efdc"
+      "lf_sha256": "bc858152a949bac6f429f21fc59351a9773aaec529d4736aa045a30b33f73782"
     },
     {
       "path": "Assets/TextMesh Pro/Fonts/dynamic01 - Copy.otf.meta",
@@ -13742,7 +14314,7 @@
       "path": "Assets/TextMesh Pro/Fonts/dynamic01.otf",
       "bytes": 3909876,
       "sha256": "bc858152a949bac6f429f21fc59351a9773aaec529d4736aa045a30b33f73782",
-      "lf_sha256": "5bc7739d4b5afc5a16b4bb2f4b572d6be3db03e27b7122b11b005a1157f1efdc"
+      "lf_sha256": "bc858152a949bac6f429f21fc59351a9773aaec529d4736aa045a30b33f73782"
     },
     {
       "path": "Assets/TextMesh Pro/Fonts/dynamic01.otf.meta",
@@ -13754,7 +14326,7 @@
       "path": "Assets/TextMesh Pro/Fonts/鍗庢枃浠垮畫.ttf",
       "bytes": 11356004,
       "sha256": "3d1a9e97fb610cd495350d2257094e2a9403a3d8fd96f84a38c3c1cddf24b4ba",
-      "lf_sha256": "c9e8c27321587490ed1a5f85446f527524dd9ffd5e00f87a43ebc33ce2a85409"
+      "lf_sha256": "3d1a9e97fb610cd495350d2257094e2a9403a3d8fd96f84a38c3c1cddf24b4ba"
     },
     {
       "path": "Assets/TextMesh Pro/Fonts/鍗庢枃浠垮畫.ttf.meta",
@@ -13850,7 +14422,7 @@
       "path": "Assets/TextMesh Pro/Resources/Fonts & Materials/dynamic01.otf",
       "bytes": 3909876,
       "sha256": "bc858152a949bac6f429f21fc59351a9773aaec529d4736aa045a30b33f73782",
-      "lf_sha256": "5bc7739d4b5afc5a16b4bb2f4b572d6be3db03e27b7122b11b005a1157f1efdc"
+      "lf_sha256": "bc858152a949bac6f429f21fc59351a9773aaec529d4736aa045a30b33f73782"
     },
     {
       "path": "Assets/TextMesh Pro/Resources/Fonts & Materials/dynamic01.otf.meta",
@@ -14186,7 +14758,7 @@
       "path": "Assets/TextMesh Pro/Sprites/EmojiOne.png",
       "bytes": 112319,
       "sha256": "a87b965a701de3dc31d7401e542b1fc946587f912c51d7a26e46ade9f098bd1a",
-      "lf_sha256": "1e1482e5f671f9b62bdd14e37d5278eec3ba59de0ea19953b5469aed4774be56"
+      "lf_sha256": "a87b965a701de3dc31d7401e542b1fc946587f912c51d7a26e46ade9f098bd1a"
     },
     {
       "path": "Assets/TextMesh Pro/Sprites/EmojiOne.png.meta",
@@ -14466,9 +15038,9 @@
     },
     {
       "path": "README.md",
-      "bytes": 5932,
-      "sha256": "f5208dfb43592bf41096774e4a7f8591488852de78bd5988aadc52a823fa57c3",
-      "lf_sha256": "c9ffa33e984c56ad44a54b7acf914177f36e59fd13b4258c4f1da38833ed8a57"
+      "bytes": 7116,
+      "sha256": "6540c16fd781ca2139754080149e1dd5a5897f016731cf87c144bf2da209dc89",
+      "lf_sha256": "2ba5e757cb902ef1db1068629c7dc64380c1d767367c8c64cc830f900a91bc99"
     },
     {
       "path": "app.config",
@@ -14478,9 +15050,9 @@
     },
     {
       "path": "docs/IMPROVEMENTS_20261001.md",
-      "bytes": 17511,
-      "sha256": "99e7f4605cdbd6e1414015f8b0285ede20c3c519e7be2a7a76d0bacf49b71fb7",
-      "lf_sha256": "75c1354c6834009279d2a70ba30274a035a0c9587acaaf468596f051d1e9e913"
+      "bytes": 19693,
+      "sha256": "132819df0cfd58d353974d9efef81c0f0e207377416acb6109599effd9afe3b3",
+      "lf_sha256": "6c96b9c126564cc8d32d7d261fcee36edb262487f4a80c127efe60ec2a2a8f79"
     },
     {
       "path": "docs/LIVE_AUDIT_2026-08-05.md",
@@ -14650,5 +15222,1010 @@
       "sha256": "793356329cbff953b459d0dbd610fd0bdb165e11aa706f7ddad883325e2e3546",
       "lf_sha256": "9f1b2dbeda3888cd4b4b01a464c9f64c4a041c6ddc59f0d35c33a8b0596c1e66"
     }
-  ]
+  ],
+  "historical_sanitized_snapshot": {
+    "source_policy": "Overlay current Assets, Packages, ProjectSettings and tools; preserve existing remote-only unrelated source and documentation. No source-root modifications.",
+    "sanitization": [
+      {
+        "path": "Assets/Scripts/Config.cs",
+        "change": "Four built-in DBBaseKey/DBKey/GlobalDBKey/ABKey arrays cleared; current runtime, random-selection and graphics fields preserved. Existing external four key-text loading retained. AudioKeyText added with empty default and explicit non-secret-bearing hex validation."
+      },
+      {
+        "path": "Assets/Scripts/Audio/UmaWaveStream.cs",
+        "change": "Built-in umaMusumeKey removed. Decode obtains external Config AudioKeyText via GetAudioKey; original MixKey decoder contract unchanged."
+      }
+    ],
+    "excluded_categories": [
+      "Config.json and machine/user state",
+      "Library, Temp, Logs, obj, UserSettings and build outputs",
+      "tmp, captures, exports and backups",
+      "game-extracted texture resource patterns from .gitignore",
+      "shader.a, shader_extracted.a, asset bundles, encrypted metadata and memory dumps",
+      "cri_auth, sound_proj.acf and CySpringPlugin.dll including their meta files",
+      "credentials, private certificates and environment files",
+      "internal agent instructions and handoff plan documents"
+    ],
+    "excluded_source_files": [
+      "Assets/Plugins/CySpringPlugin.dll",
+      "Assets/Plugins/CySpringPlugin.dll.meta",
+      "Assets/Resources/text2D/bg_0001_00120.png",
+      "Assets/Resources/text2D/bg_0001_00120.png.meta",
+      "Assets/Resources/text2D/still_020001041_01_00.png",
+      "Assets/Resources/text2D/still_020001041_01_00.png.meta",
+      "Assets/Resources/text2D/still_020002031_00_00.png",
+      "Assets/Resources/text2D/still_020002031_00_00.png.meta",
+      "Assets/Resources/text2D/still_020006134_00_00_base.png",
+      "Assets/Resources/text2D/still_020006134_00_00_base.png.meta",
+      "Assets/Resources/text2D/still_090003008_00_00_base.png",
+      "Assets/Resources/text2D/still_090003008_00_00_base.png.meta",
+      "Assets/Resources/text2D/tex_env_live_cmn_flare013.png",
+      "Assets/Resources/text2D/tex_env_live_cmn_flare013.png.meta",
+      "Assets/Resources/UI/Common/jukebox select square.png",
+      "Assets/Resources/UI/Common/jukebox select square.png.meta",
+      "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png",
+      "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_announce_close_00.png",
+      "Assets/Resources/UI/Common/utx_btn_announce_close_00.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png",
+      "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_circle_m_02.png",
+      "Assets/Resources/UI/Common/utx_btn_circle_m_02.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_menu_00.png",
+      "Assets/Resources/UI/Common/utx_btn_menu_00.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_menu_01.png",
+      "Assets/Resources/UI/Common/utx_btn_menu_01.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_sort_00.png",
+      "Assets/Resources/UI/Common/utx_btn_sort_00.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_square_00_sl.png",
+      "Assets/Resources/UI/Common/utx_btn_square_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_square_01.png",
+      "Assets/Resources/UI/Common/utx_btn_square_01.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_square_100.png",
+      "Assets/Resources/UI/Common/utx_btn_square_100.png.meta",
+      "Assets/Resources/UI/Common/utx_btn_square_99.png",
+      "Assets/Resources/UI/Common/utx_btn_square_99.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_icon_status_00.png",
+      "Assets/Resources/UI/Common/utx_frm_icon_status_00.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png",
+      "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_gau_l_00_sl.png",
+      "Assets/Resources/UI/Common/utx_gau_l_00_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png",
+      "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png.meta",
+      "Assets/Resources/UI/Common/utx_gau_l_01_sl.png",
+      "Assets/Resources/UI/Common/utx_gau_l_01_sl.png.meta",
+      "Assets/Resources/UI/Common/utx_ico_blank_00.png",
+      "Assets/Resources/UI/Common/utx_ico_blank_00.png.meta",
+      "Assets/Resources/UI/Common/utx_ico_movie_play_00.png",
+      "Assets/Resources/UI/Common/utx_ico_movie_play_00.png.meta",
+      "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png",
+      "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png.meta",
+      "Assets/Resources/UI/Screenshot 2026-02-06 020334.png",
+      "Assets/Resources/UI/Screenshot 2026-02-06 020334.png.meta",
+      "Assets/StreamingAssets/cri_auth",
+      "Assets/StreamingAssets/cri_auth.meta",
+      "Assets/StreamingAssets/sound_proj.acf",
+      "Assets/StreamingAssets/sound_proj.acf.meta",
+      "tools/__pycache__/audit_live_bloom_source.cpython-313.pyc",
+      "tools/__pycache__/inspect_live_native_calls.cpython-313.pyc",
+      "tools/__pycache__/summarize_live_diagnostics.cpython-313.pyc",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/AssetRipper.Primitives.dll",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/AssetRipper.Primitives.xml",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/LibCpp2IL.dll",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/TargetMethodLookup.deps.json",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/TargetMethodLookup.dll",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/TargetMethodLookup.exe",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/TargetMethodLookup.pdb",
+      "tools/TargetMethodLookup/bin/Debug/net10.0/TargetMethodLookup.runtimeconfig.json",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/apphost.exe",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/ref/TargetMethodLookup.dll",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/refint/TargetMethodLookup.dll",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMe.1D5729CC.Up2Date",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.AssemblyInfo.cs",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.AssemblyInfoInputs.cache",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.assets.cache",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.csproj.AssemblyReference.cache",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.csproj.CoreCompileInputs.cache",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.csproj.FileListAbsolute.txt",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.dll",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.GeneratedMSBuildEditorConfig.editorconfig",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.genruntimeconfig.cache",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.GlobalUsings.g.cs",
+      "tools/TargetMethodLookup/obj/Debug/net10.0/TargetMethodLookup.pdb",
+      "tools/TargetMethodLookup/obj/project.assets.json",
+      "tools/TargetMethodLookup/obj/project.nuget.cache",
+      "tools/TargetMethodLookup/obj/TargetMethodLookup.csproj.nuget.dgspec.json",
+      "tools/TargetMethodLookup/obj/TargetMethodLookup.csproj.nuget.g.props",
+      "tools/TargetMethodLookup/obj/TargetMethodLookup.csproj.nuget.g.targets"
+    ],
+    "runtime_prerequisites": [
+      "Own full game data",
+      "Own authorized database, bundle and audio keys in external local Config.json",
+      "Own authorized matching CySpringPlugin.dll for native physics, not general player startup"
+    ],
+    "validation": "Publication-name audit, included-source byte comparison and exact embedded-key scan only. No Unity launches, builds, tests, lint, formatters or rendering-parity claims by publisher. Main owns Windows build and runtime verification.",
+    "comparison": {
+      "allowlisted_source_file_count": 2346,
+      "matching_current_source_files": 2344,
+      "publication_only_source_changes": [
+        "Assets/Scripts/Config.cs",
+        "Assets/Scripts/Audio/UmaWaveStream.cs"
+      ],
+      "excluded_allowlisted_file_count": 120
+    },
+    "file_changes": [
+      {
+        "change": "M",
+        "path": ".gitignore"
+      },
+      {
+        "change": "D",
+        "path": "AGENTS.md"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Editor/LiveDofFocusRegression.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Editor/LiveRenderCapture.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Editor/LiveRenderSetup.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Resources/RenderPipeline/UMASimpleMirrorRenderer.asset"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Resources/RenderPipeline/UMASimpleMirrorRenderer.asset.meta"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Resources/RenderPipeline/UMAUniversalRenderPipelineAsset.asset"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/Audio/UmaWaveStream.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/Config.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/LiveAutoSelection.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/LiveAutoSelection.cs.meta"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/LiveToolBox/LiveViewerUI.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/Settings/RuntimeGraphicsSettings.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/Settings/RuntimeGraphicsSettings.cs.meta"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/Settings/UISettingsCamera.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/Settings/UISettingsGraphics.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/Settings/UISettingsGraphics.cs.meta"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/Settings/UISettingsOther.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/UmaContainerCharacter.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/UmaDatabase/UmaDataTypes.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/UmaViewerAudio.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/UmaViewerBuilder.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/UmaViewerMain.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/UmaViewerUI.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/GallopImageEffect.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/LiveImageEffect.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/umamusume/Gallop/ImageEffect/LiveImageEffect.cs.meta"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineControl.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineData.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineMobCyalumeControlData.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelinePostEffectDOFData.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineMotionSequence.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineWorkSheet.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeController3D.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Director.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/LivePropsController.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/MirrorReflection.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/MonitorUvMovieProvider.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorCameraDriver.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Monitor/StageMonitorDriver.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/MultiCameraComposite.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Props.cs"
+      },
+      {
+        "change": "A",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/Props.cs.meta"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/StageBlinkLightDriver.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/Live/StageController.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/CameraData.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/PostImageEffectFeature.cs"
+      },
+      {
+        "change": "M",
+        "path": "Assets/Scripts/umamusume/Gallop/RenderPipeline/RecoveredLensFlareController.cs"
+      },
+      {
+        "change": "D",
+        "path": "CLAUDE.md"
+      },
+      {
+        "change": "M",
+        "path": "ProjectSettings/ProjectSettings.asset"
+      },
+      {
+        "change": "M",
+        "path": "ProjectSettings/UnityConnectSettings.asset"
+      },
+      {
+        "change": "M",
+        "path": "README.md"
+      },
+      {
+        "change": "D",
+        "path": "docs/CLAUDE_LIVE_HANDOFF.md"
+      },
+      {
+        "change": "D",
+        "path": "implementation_plan.md"
+      },
+      {
+        "change": "A",
+        "path": "docs/PUBLICATION_MANIFEST_20261002.json"
+      }
+    ],
+    "file_change_counts": {
+      "A": 13,
+      "M": 39,
+      "D": 4
+    },
+    "snapshot_lf_sha256": "f81796f2390d2548d8f2b6970da8ac96aa8b3a2658261dc1b217cc1ac649a37b"
+  },
+  "upstream_runtime_baseline": {
+    "repository": "https://github.com/katboi01/UmaViewer",
+    "commit": "07f82e9fa08f23c1cda3a9be3045a09372eae8bb",
+    "restored_files": [
+      {
+        "path": "Assets/Plugins/CySpringPlugin.dll",
+        "bytes": 3838976,
+        "sha256": "be84faf0cc3cccceda8bdbca23530e0beb2049bdcb9add0ff7e9ecaaaeeb135f"
+      },
+      {
+        "path": "Assets/Plugins/CySpringPlugin.dll.meta",
+        "bytes": 1451,
+        "sha256": "333f0363c93a97470f4c5985e0521fa29f278b9dc13a369c0f50225ac7392d22"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/jukebox select square.png",
+        "bytes": 1377090,
+        "sha256": "9dff4c4e1ac112ece3598787a3a571acb84dc0094ac74194ff9c65c72b0369b7"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/jukebox select square.png.meta",
+        "bytes": 3476,
+        "sha256": "566f609d9245c4fee66de0d281688a1e25a128307c87264aeb49aa66441008da"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png",
+        "bytes": 1010,
+        "sha256": "2f40d2d8a6e06cb4b546f744f3dd893eea8ff4081594c7c0485d32bde4dc7730"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_bg_rotation_00_sl.png.meta",
+        "bytes": 2587,
+        "sha256": "0d698adee8c6477d3b9a41d6cf9a7098866cf32e5d68002c10d8c9d84e396f82"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png",
+        "bytes": 3877,
+        "sha256": "355c91dcc85ecd33fe7e48977193a1c21882dcf6b24c53269d89e91fe1c88bd3"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_announce_close_00.png.meta",
+        "bytes": 2587,
+        "sha256": "60a1576e759c2d47f4cfb9626fe48a968449ee3fdb0ff22ca931d75a1a3ef93c"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png",
+        "bytes": 7530,
+        "sha256": "05452f50d0416049098ea9f3333a10908c3468696060502dbcb50f53f852da8f"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_circle_m_00_sl #29.png.meta",
+        "bytes": 2589,
+        "sha256": "22d073f9a07724b7e7774e46b08ec047dbb2a67ddf4e8b0a98fe89433d43d445"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png",
+        "bytes": 6984,
+        "sha256": "6900d1686af53f508b7e1e9a58971014155097edd3299d6145b013dc0f54f67b"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_circle_m_02.png.meta",
+        "bytes": 2587,
+        "sha256": "92b67d40af977a7c17f00b5bd59f2c737c4b88c4caa253d3b3df0dc917477c64"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png",
+        "bytes": 5890,
+        "sha256": "ca4ab8dfab08140f241373154aab6b67d9b3629f18cf2502878325b116ebe60c"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_menu_00.png.meta",
+        "bytes": 2589,
+        "sha256": "f6d44505760b3c9bcb4c388da795118c4d49cbd08b71e9ff01c08eefd1aa002f"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png",
+        "bytes": 4294,
+        "sha256": "37a84a3619ac142d0aa417c823d12315172c0a83e33591495706e584a7a313d4"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_menu_01.png.meta",
+        "bytes": 2591,
+        "sha256": "62389c70be6be5bcd071db9c5c520250fd9b505aebcececac9c69f1d8d95e95f"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png",
+        "bytes": 3805,
+        "sha256": "c5e1e4d81657ff4daa55cfe66d0dacd5dbf130d723dd4588f74a341067e4538e"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_sort_00.png.meta",
+        "bytes": 2587,
+        "sha256": "aedcd4ddfaef486948a263eb7754d45fc8730c61138a8b844308097bce5ea205"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png",
+        "bytes": 3023,
+        "sha256": "c1eb3c051f37004d752377e1c9c1b1b6ce1dcec03cf90c2d501076956c7190d9"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_00_sl.png.meta",
+        "bytes": 2591,
+        "sha256": "3280596e7e126140d9af1c465faf3c2ae4a0c0938d1ed0b10c705371e231c54f"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_01.png",
+        "bytes": 3843,
+        "sha256": "a92dbc8fd233aa20c0d6d12e5e5473c40110024b72149270850fb5f5383b750c"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_01.png.meta",
+        "bytes": 2591,
+        "sha256": "02a90c2338592bcba804ec26c34da5eabfa25706f85796452dfa71ae168023fb"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_100.png",
+        "bytes": 4507,
+        "sha256": "098e61894cf2e3f68064fa388da164e191ed6cc962a3258040da1f8ee8016594"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_100.png.meta",
+        "bytes": 2737,
+        "sha256": "bc783f6e6fecc967c059cf6729c7bad148610b7160b4d05cbf5537671eb21cd7"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_99.png",
+        "bytes": 6963,
+        "sha256": "239d70e91f10fca6e250e40edee8ca93ccbaa980d25c2b3a673e42a054fff616"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_btn_square_99.png.meta",
+        "bytes": 2750,
+        "sha256": "f4ad26b9e31e9f32f09eb4e7d77f8b010697766338f541a9fa51d84f439a3e0e"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png",
+        "bytes": 634,
+        "sha256": "b4afeafb98359c6246bf6313522028e5013934a17b412a11aa622f0e8942dba4"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_emptybase_00_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "a8e9d4e084850987efd9bfb7c67ac8878e7925828a8df632dfc70e3531b430d9"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png",
+        "bytes": 1177,
+        "sha256": "8201a8c3d48c0a199a08f16e685b73f97f95acb3b3446487431ebb21e25971c3"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_00_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "b3ebdde3ed764ed9df5c57ca8f6c4f0fb491b4790d963a951c13a1adb3b1484c"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png",
+        "bytes": 1127,
+        "sha256": "23431eb3157879dbaf2b7a33e82359cc8dd4b074b6cf3578361c21433aa20c15"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_eventbonusbase_01_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "f45b1f05422964c4f7010f0aa1ae9113a6fce5a6fd800770ddaa928997862643"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png",
+        "bytes": 1181,
+        "sha256": "64911b583f06851c7428ea439a6c21885034d9dd9c00ce1b2ba2c09f38782659"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_icon_status_00.png.meta",
+        "bytes": 2589,
+        "sha256": "1c5ca6e94e01cee3c7508845da3c5d514d8060c4aeb04f18256648000116eadb"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png",
+        "bytes": 2948,
+        "sha256": "dff2da2708f70643e6f1376d9beb653e871d1fc2ca72ae5bc4539a1fa3da56cf"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_00_sl.png.meta",
+        "bytes": 2590,
+        "sha256": "719e6777a2f7bbe1fabfe8c9d5adae7601e3f8cb28747399e134d98a90bbbe01"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png",
+        "bytes": 2046,
+        "sha256": "2c6400688032a53712391a4aa48533d796599183b52ac6fb7512f3922aae643e"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_01_sl.png.meta",
+        "bytes": 2590,
+        "sha256": "8fa3a9a238dd9102564dc54bb77d951e8c7631992a77cc3a7f57af60baad3b41"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png",
+        "bytes": 3012,
+        "sha256": "4d5eb9cd865452132728e3c8bfa25699bdc3a6b5aa1c770836113d5d5ec25d75"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_02_sl.png.meta",
+        "bytes": 2590,
+        "sha256": "7e9df9c6bca1adfdab9cfe058c909472f0dfcbfb9de2f37172d23a6694e9bc44"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png",
+        "bytes": 2468,
+        "sha256": "a7511452a3e2abfb7ef1350f91ca77f3ee59de2099473ee6ec998af99b9f1a54"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_listlabel_target_03_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "9889f4283d7e0b28f7a703d0a495166a92cf55f5a56a0ca9cf91c0b858b0443d"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png",
+        "bytes": 423,
+        "sha256": "2f37e01b81443b8d0ea2c936579b9b2c62c4ba0de52ee88bc8fdec2fbb0e5d41"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_lock_00_sl.png.meta",
+        "bytes": 2590,
+        "sha256": "319bd9f71fbd9b8551c3c132a2a5aedf44e5be94e7169891898935a267963924"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png",
+        "bytes": 1754,
+        "sha256": "ac5beaca856b762ef50fa63eb87686792978c34fc61c99dd0c55f2358e417ce8"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_nickname_00_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "ac51bb71e313823621c1e101c082c0a8ff0031ec35064c28fda844767b1acbb1"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png",
+        "bytes": 1879,
+        "sha256": "39063a54a9234a6fff1db18addecf1692bc5a3cafd652d3dbeb102b874ae3099"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_nickname_01_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "70f59a3f457e2420602e5acdfee606bbcce130d4c8e12449c403f724d4f35058"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png",
+        "bytes": 1958,
+        "sha256": "64c747a74c7e03f9bbbc5bc19afd7d1323ea2645351b30563e3f5e07ebe49b85"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_nickname_02_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "41609ce6b0b3f121c6b635adff6f2ed1f31967c891c3d19033b09d520170583b"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png",
+        "bytes": 617,
+        "sha256": "d173d703cca0182ee7a14455e7738cc883b1657a064f7d0121e7a01ef574b33b"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_numbase_00_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "1853dc2a534a2c2ff131b42af22eab5ffb9da8bc1b9011a544ba08d26385c99a"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png",
+        "bytes": 615,
+        "sha256": "80401361af57b513bf754de7ef21a937f4c7facab035f72f60654412cb32485d"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_representbase_00_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "acd8e8104ca70dd1e7eeccc8cc87756a713896e44e90b671e3e20ec414e2d9ce"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png",
+        "bytes": 544,
+        "sha256": "0ceb30669d9899b509a0d1b62d7835a204a27cd622f6b33ac8fd60b4152084bb"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_resourcebase_00_sl.png.meta",
+        "bytes": 2587,
+        "sha256": "c2eac57f980d3ecfbe7b3dd50031fb7c614e95c97fd6d7835ed65833d428d833"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png",
+        "bytes": 3439,
+        "sha256": "740c3b8f810e1d17bad3894a4358744a9247746169d642890fefae9e22af966f"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_frm_thumb_video_00_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "972fb05964c08cb59be6b95d921296cd45e3e6212bbdbefb8f41aad9a362acc9"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png",
+        "bytes": 610,
+        "sha256": "4ac54547868a0c28c7ed91ee69a91c5cfe0b5e33b5204aaae10b499ac0994999"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_gau_l_00_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "46b0588abe63582e1bfd1c1309854db1d9c1954316243bf80c0c2a7fab59fd57"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png",
+        "bytes": 544,
+        "sha256": "9ad948b95a3545ebe5166634915dcde1614c7d8e04e14247610f28e77dda81f1"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl 1.png.meta",
+        "bytes": 2587,
+        "sha256": "f115b8dd9cf2dab8bd66dbb3e22ed612f7bcebff3e8be92fac2cc09db2adb992"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png",
+        "bytes": 544,
+        "sha256": "9ad948b95a3545ebe5166634915dcde1614c7d8e04e14247610f28e77dda81f1"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_gau_l_01_sl.png.meta",
+        "bytes": 2589,
+        "sha256": "007fad7403545a933eaa5a845e710ff862b6d5c6e1fbfe9fe1bd5da8a6c228df"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png",
+        "bytes": 775,
+        "sha256": "7e19fdf56f686878b0f535a75461b89821abc04a6d9d165bafafd5403b1dfc88"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_ico_blank_00.png.meta",
+        "bytes": 2591,
+        "sha256": "ad43c756e1f847af7f6d1eeaee62968b38820f244dfeb570655163303b361f78"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png",
+        "bytes": 3961,
+        "sha256": "6ec0eb33275ef58d7d51e02d30e2e6c852e285c0f622d3fbdb507c2b3ca9ee71"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_ico_movie_play_00.png.meta",
+        "bytes": 2587,
+        "sha256": "e1e690167d06fedbd351a2431a3e912a3bd4c63721e34232fb767645a9130169"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png",
+        "bytes": 2753,
+        "sha256": "6fc44eca48a2428960cd63d397bcdc317b90c237c061db32b52b7a5e99a755e2"
+      },
+      {
+        "path": "Assets/Resources/UI/Common/utx_ico_movie_stop_00.png.meta",
+        "bytes": 3476,
+        "sha256": "9e162b1c8a4c3cd4e1e22124dfaf89f78c1581af2a228960f5de0a4afcfccbf9"
+      },
+      {
+        "path": "Assets/Resources/UI/Screenshot 2026-02-06 020334.png",
+        "bytes": 27395,
+        "sha256": "0fd2c7cc323ef341fa808ee9258bfb046507902d20b42d9d413adbf2bfccc204"
+      },
+      {
+        "path": "Assets/Resources/UI/Screenshot 2026-02-06 020334.png.meta",
+        "bytes": 2705,
+        "sha256": "d1cda275beb82ed152faf0da03b3ce52f8b637f04f02ae952a3ab6d2530144f0"
+      },
+      {
+        "path": "Assets/Resources/text2D/bg_0001_00120.png",
+        "bytes": 1353582,
+        "sha256": "f605cecaa9735b6b858a83e1b8b0d9f6ccdf550fdd791b81319b6ad50cf7c8ca"
+      },
+      {
+        "path": "Assets/Resources/text2D/bg_0001_00120.png.meta",
+        "bytes": 2737,
+        "sha256": "cc2d7618e6dc32e4536b84e4bf25871309ffe93440eab8bc7e75ecb43e5d29b4"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_020001041_01_00.png",
+        "bytes": 2215474,
+        "sha256": "cf1b7bfc7dc2d79dfb6f01f1ee22262e34827baabe4935bbab16da20e3cf3005"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_020001041_01_00.png.meta",
+        "bytes": 2737,
+        "sha256": "a6f227b4229dd607af6c8031a93fab06d7213fcfe3bfceadc60a58a6b3380c6c"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_020002031_00_00.png",
+        "bytes": 2230577,
+        "sha256": "0b2ab1b3bfe1bf9505919dd8d8bfea97593788461037d8f71ac6f4b5494c3817"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_020002031_00_00.png.meta",
+        "bytes": 3444,
+        "sha256": "11fb1501e3f5d2625635145ecad8a114a192e54210d41fb8124385aad24eea33"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_020006134_00_00_base.png",
+        "bytes": 2261560,
+        "sha256": "136740e8dcbf8c66a3c2a107ab13439c8c0a9df4efed049746cf22a391622042"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_020006134_00_00_base.png.meta",
+        "bytes": 3444,
+        "sha256": "2e8b50bb53d8712a23d9597a73db14113978559d106e707b1293bc86e683c315"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_090003008_00_00_base.png",
+        "bytes": 1929667,
+        "sha256": "756f6c851ce4ae051a6249072fe5ef8ce529833958afa9723cd4b7ed4938f063"
+      },
+      {
+        "path": "Assets/Resources/text2D/still_090003008_00_00_base.png.meta",
+        "bytes": 3476,
+        "sha256": "64433d61e3d5e3b042d675345530b15316b465b6599cc96e29cb6d1e8b73cd9b"
+      },
+      {
+        "path": "Assets/Resources/text2D/tex_env_live_cmn_flare013.png",
+        "bytes": 39293,
+        "sha256": "04194cca5352b9c7e2d13c8f4b250d14d58ef742ee9d0fde70e271dfe16b532b"
+      },
+      {
+        "path": "Assets/Resources/text2D/tex_env_live_cmn_flare013.png.meta",
+        "bytes": 3444,
+        "sha256": "4a747063989191187ad75c42567755cb6f180a0d066bf62e8e90080d45b7197b"
+      },
+      {
+        "path": "Assets/StreamingAssets/cri_auth",
+        "bytes": 256,
+        "sha256": "aa400bd14224728fe1202ebca3c32bae3b3c2a491ba8deea305a943003218b3a"
+      },
+      {
+        "path": "Assets/StreamingAssets/cri_auth.meta",
+        "bytes": 162,
+        "sha256": "fa56bb3580ab60542833e2cd71f11234ab0e09d0a0ecffab781feace84559681"
+      },
+      {
+        "path": "Assets/StreamingAssets/sound_proj.acf",
+        "bytes": 10944,
+        "sha256": "94dad3ad9c2ebdf7130fd565114ea660403a67889ed6530fa5ce4bed1e405ede"
+      },
+      {
+        "path": "Assets/StreamingAssets/sound_proj.acf.meta",
+        "bytes": 162,
+        "sha256": "84d67b0dfa115a69e2d810b845adb5f70e5dffd10d1d505dfaf20a51a6f591fd"
+      }
+    ],
+    "guid_preserved_script_relocations": [
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/CySpringDataContainer.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/CySpringDataContainer.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Cyalume/CyalumeControllerBase.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cyalume/CyalumeControllerBase.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CacheCamera.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/StageScript/CacheCamera.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/Character3DBase.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/StageScript/Character3DBase.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/ClothParameter.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/ClothParameter.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpring.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpring.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringBoneBase.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringBoneBase.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringCollisionComponent.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringCollisionComponent.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringNative.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringNative.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringParamDataAsset.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringParamDataAsset.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringPartsParamDataElement.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringPartsParamDataElement.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/CySpringRootBone.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/CySpringRootBone.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothCollision.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothCollision.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothParameter.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothParameter.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/CySpring/NativeClothWorking.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/DereScript/StageScript/CySpring/NativeClothWorking.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/LiveTimelineCamera.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/StageScript/LiveTimelineCamera.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/DereScript/StageScript/StageUtil.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/StageScript/StageUtil.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/FaceDrivenKeyTarget.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceDrivenKeyTarget.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/FaceEmotionKeyTarget.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceEmotionKeyTarget.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/FaceOverrideData.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FaceOverrideData.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/FacePartsSet.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FacePartsSet.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/FacialMorph.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/FacialMorph.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineCharactorLocator.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/ILiveTimelineCharactorLocator.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineKeyDataList.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDataList/LiveTimelineKeyDataList.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Live/Cutt/ILiveTimelineMSQTarget.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/ILiveTimelineMSQTarget.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineCharaLocator.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineCharaLocator.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineControl.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineControl.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineData.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineData.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimelineDefine.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/Cutt/LiveTimeLine/LiveTimelineDefine.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringCollisionData.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringCollisionData.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringParamDataChildElement.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringParamDataChildElement.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/StageScript/CySpring/CySpringParamDataElement.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/LegacyCompatibility/StageScript/CySpring/CySpringParamDataElement.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/StageScript/GameObjectUtility.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/StageScript/GameObjectUtility.cs"
+      },
+      {
+        "upstream": "Assets/Scripts/umamusume/Gallop/TearController.cs",
+        "fork": "Assets/Scripts/umamusume/Gallop/Live/TearController.cs"
+      }
+    ],
+    "user_settings_excluded": [
+      "UserSettings/Search.index",
+      "UserSettings/Search.settings"
+    ]
+  },
+  "runtime_default_policy": "DB/asset/audio defaults copied from the pinned public upstream source, not local Config.json. Fresh config writes all default keys; old blank overrides recover defaults; explicit valid overrides remain respected.",
+  "clone_ready_verification": {
+    "platform": "Windows x64",
+    "unity": "2022.3.62f1",
+    "cold_snapshot": true,
+    "copied_library": false,
+    "copied_local_config": false,
+    "manual_dependency_files": false,
+    "configuration_choices": "Installed non-default game data path and Japanese language selected in throwaway harness, equivalent to Other settings; all keys used repository defaults.",
+    "scenario": "Live1001 normal playback",
+    "exit_code": 0,
+    "characters": 173,
+    "lives": 62,
+    "playing_audio_sources": 4,
+    "active_dynamicbone_particles": 985,
+    "native_plugin": "Upstream DLL loaded; current Live physics uses DynamicBone, not native CySpringController solver.",
+    "render": "D3D11 actual 1280x720 Live frame visually inspected; no original-game parity claim.",
+    "result_sha256": "6576020a17aa404dcb46f9a0b9cd0f51640086d38afddbfde6c04d36f831380f",
+    "frame_sha256": "6fb01a52017deb8ffa282f6390b674c7c14d9c015ec1246e198095e52e55e34b",
+    "not_exercised": [
+      "Other game regions/install layouts",
+      "Standalone Windows player build",
+      "Original-game visual parity"
+    ]
+  }
 }

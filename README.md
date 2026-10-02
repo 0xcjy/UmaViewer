@@ -48,18 +48,22 @@ Currently only the default work mode is supported - you need to download assets 
 
 ------------
 
-- For Developers/Contributors
-1. [Unity Hub](https://unity3d.com/get-unity/download) with [Unity Engine Version 2022.3.62f1](https://unity.com/releases/editor/archive) is recommended. It should be possible to run it on newer 2022.3.X versions.
-1. Clone or download and extract this repository.
-1. Import and Open the project in Unity Hub, missing files should be automatically repaired.
-1. Open the Assets/Scenes/Version2 scene.
-   - note: If there are errors in the console, [JSON .NET For Unity](https://assetstore.unity.com/packages/tools/input-management/json-net-for-unity-11347) may be required
+### For Developers/Contributors (Windows x64)
+1. Install [Unity Hub](https://unity3d.com/get-unity/download) and [Unity Engine Version 2022.3.62f1](https://unity.com/releases/editor/archive), including Windows Build Support if you intend to build a player. This is the project version in `ProjectSettings/ProjectVersion.txt`.
+2. Clone or download and extract this repository.
+3. Add the project directory in Unity Hub and open it with Unity 2022.3.62f1. Allow Unity to import the supplied assets and resolve the dependencies in `Packages/manifest.json` (including JSON .NET); an initial package download requires internet access. Runtime files are retained in source control, not repaired by an unspecified missing-file download.
+4. Open `Assets/Scenes/Version2.unity` and enter Play mode, or build a Windows x64 player from this scene.
+5. Use your existing complete game data as described above. If detection selects the wrong location or your installation is non-default, choose **Settings → Other → Change DataPath** and select the folder containing `meta`, `master/master.mdb`, and `dat`.
 
 PMX exporter maintainers should also read [PMX Export Standard and Postmortem](docs/pmx-export-standard-and-postmortem.md).
 
-Live restoration maintainers should read [2026-10-01 improvement summary and publication boundaries](docs/IMPROVEMENTS_20261001.md). This source snapshot does not establish full visual parity and excludes local keys, extracted game assets, authorization audio payloads, and the native CySpring plugin. Current runtime prerequisites are listed below.
+Live restoration maintainers should read [2026-10-01 improvement summary and current source-delivery boundary](docs/IMPROVEMENTS_20261001.md). The historical rendering and physics limitations remain; supplying the runtime dependencies does not establish full visual parity.
 
-The current source includes runtime graphics settings and live-selection updates; it is not a claim of complete rendering parity. Running the viewer requires your own full game data and authorized keys. Supply `DBBaseKeyText`, `DBKeyText`, `GlobalDBKeyText`, `ABKeyText`, and `AudioKeyText` in the local `Config.json` next to the player, then restart. Key fields contain hexadecimal text without a `0x` prefix; `AudioKeyText` is a nonzero key of at most 16 hex digits. Native physics requires your own authorized matching `CySpringPlugin.dll` (for Windows x64 players, in `UmaViewer_Data/Plugins/x86_64`); it is not distributed here. Excluded `cri_auth` and `sound_proj.acf` payloads are not required by the current source's audio decoder. No keys or local configuration are distributed. See [current publication manifest](docs/PUBLICATION_MANIFEST_20261002.json) for exact source hashes and exclusions.
+### Supplied runtime files and local configuration
+
+This source retains the plugin, resources, and runtime defaults supplied by [katboi01/UmaViewer](https://github.com/katboi01/UmaViewer/tree/07f82e9fa08f23c1cda3a9be3045a09372eae8bb): `Assets/Plugins/CySpringPlugin.dll` and its Unity metadata, `Assets/StreamingAssets/cri_auth` and `sound_proj.acf`, and upstream UI/still/background/environment images. Upstream database, asset-bundle, and audio defaults are included. On Windows x64, you do **not** need to manually add keys, native plugins, or these resources for the upstream-supported setup. Full game data must still be obtained separately; it is not bundled with this repository.
+
+`Config.json` is generated locally when absent: at the project root in the Editor, or beside the built player. It stores your machine-specific data path and preferences and remains ignored by Git. Optional `DBBaseKeyText`, `DBKeyText`, `GlobalDBKeyText`, `ABKeyText`, and `AudioKeyText` overrides remain available for compatible alternate data; blank overrides use the supplied upstream defaults. Overrides use hexadecimal text without a `0x` prefix; an audio override must be nonzero and at most 16 hex digits. Restart after editing overrides. A pre-existing local config is not replaced, so review stale paths or custom overrides if you reuse one. No personal `Config.json`, private credentials, Unity caches, or generated game exports are published. See [current publication manifest](docs/PUBLICATION_MANIFEST_20261002.json) for source hashes and the delivery inventory. These source-delivery instructions are not a claim that all runtime or rendering checks have passed.
 
    
 

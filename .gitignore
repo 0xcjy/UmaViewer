@@ -82,17 +82,6 @@ Thumbs.db
 /tools/**/bin/
 /tools/**/obj/
 
-# Game authorization payloads, native plugin, and extracted images
-/Assets/StreamingAssets/cri_auth*
-/Assets/StreamingAssets/sound_proj.acf*
-/Assets/Plugins/CySpringPlugin.dll*
-/Assets/Resources/text2D/still_*
-/Assets/Resources/text2D/bg_*
-/Assets/Resources/text2D/tex_env_*
-/Assets/Resources/UI/Common/utx_*
-/Assets/Resources/UI/Common/jukebox select square.png*
-/Assets/Resources/UI/Screenshot *.png*
-
 # Shader bundles and encrypted/runtime extraction artifacts (not native .a libraries)
 shader.a
 shader_extracted.a

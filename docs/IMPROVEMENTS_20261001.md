@@ -98,14 +98,20 @@
 9. **完整姿态、高光曝光及原游戏视觉一致**：仍有残差，不写成全部还原。
 10. **1176性能研究暂停**：用户要求效果完整还原前暂停。既有正确性/分配/重复初始化修复保留；历史batch墙钟样本不等于用户实时FPS，不再开展成本/降质量实验。
 
-## 7. 安全发布清单与运行前提
+## 7. 安全发布清单与运行前提（2026-10-02 更新）
+
+**此前 2026-10-01 的发布边界已被当前源码交付策略取代。** 旧的“清空 Config.cs 缺省密钥、不分发 CySpring/StreamingAssets/UI 图片、由使用者补齐”说明不再适用于当前源码；上述历史渲染证据、角色物理与开放问题的验收范围不变。
 
 发布包含普通 Unity C#、自写 shader、asmdef/meta、必要普通材质/RT/场景/UI prefab、Packages、ProjectSettings、现有通用第三方插件、手写工具与本地网页查看器源码，以及项目文档。保留 Unity GUID，不广泛忽略全部 `.asset/.mat/.unity/.dll/.a`。
 
-排除：Config.json与本地密钥、Library/Temp/Logs/obj/UserSettings、build/IDE生成物、tmp隔离验证工程、captures/exports/PMX/VMD游戏导出、备份、内存dump/加密metadata/反汇编产物、shader.a及提取bundle、游戏still/bg/flare/UI提取图、cri_auth、sound_proj.acf、游戏原生CySpringPlugin.dll。
+当前保留 [katboi01/UmaViewer 固定上游版本](https://github.com/katboi01/UmaViewer/tree/07f82e9fa08f23c1cda3a9be3045a09372eae8bb) 已跟踪的运行文件：`Assets/Plugins/CySpringPlugin.dll` 及其 `.meta`、`Assets/StreamingAssets/cri_auth` 与 `sound_proj.acf` 及其 `.meta`、上游 UI/still/bg/tex_env/Screenshot 图片与对应元数据；保留上游数据库、AssetBundle 与音频缺省配置。Windows x64 的上游支持用法无需使用者手动补插件、这些图片/载荷或密钥。
 
-**发布副本的 Config.cs 四组本地游戏密钥数组已清空，保留现有配置API；原master7不改。** 不新增密钥、不复制本地Config.json，不声称存在可运行fallback。音频源码中的既有公共常量文件与远端完全相同，未新增或变更该常量；既有Git历史未重写。
+当前排除的是本机 `Config.json` 与个人凭据、Library/Temp/Logs/obj/UserSettings、build/IDE 生成物、tmp 隔离验证工程、captures/exports/PMX/VMD 游戏导出、备份、内存 dump/加密 metadata/反汇编产物、额外提取的 shader.a/bundle 及代理内部文件；这些本地调查产物不应与上游已分发的运行资源混为一谈。手写 `tools/TargetMethodLookup/TargetMethodLookup.csproj` 继续保留，不广泛忽略运行插件或资源。
 
-因此这不是开箱即用的二进制发行版。使用者必须自行合法取得所需游戏数据、授权音频资产与原生CySpring插件，并自行填写正确密钥/路径；缺省密钥不提供解密能力。排除的游戏UI纹理亦可能造成缺图，需要使用者自行提供。源工程所用Unity版本见 `ProjectSettings/ProjectVersion.txt`；本次不触发master/tag release工作流、不发布二进制、不声称新克隆无依赖即可构建运行。
+使用者仍需另行合法准备完整游戏数据（目标目录包含 `meta`、`master/master.mdb`、`dat`），仓库不打包完整游戏安装。使用 Unity **2022.3.62f1** 导入项目并等待 Packages 依赖解析，打开 `Assets/Scenes/Version2.unity`；非默认安装或自动检测失败时，可在 **Settings → Other → Change DataPath** 选择实际数据目录。项目不是免安装 Unity 或免准备游戏数据的二进制发行版，本次不触发 master/tag release 工作流、不发布二进制。
 
-远端已有历史保留；原本地项目无.git，本次Git集成在独立发布副本进行，避免覆盖正在调查的源码与用户状态。旧远端独有、与当前项目目录不兼容的源码以本冻结树为准迁移；旧提交仍可访问。历史文档可能描述较早状态，本页是本次冻结发布的状态入口。
+`Config.json` 不存在时自动生成于 Editor 项目根目录或 Windows player 可执行文件旁，保存本机路径与偏好，不随源码发布。既有配置不会被替换；空白密钥覆盖字段使用上游缺省值，非空覆盖字段继续沿用既有解析与错误处理，修改后需重启。可选覆盖为 `DBBaseKeyText`、`DBKeyText`、`GlobalDBKeyText`、`ABKeyText`、`AudioKeyText`；不是首次使用的必填项。复用旧配置时应检查过时路径或自定义覆盖。此次未复制或编辑个人 Config.json，也不在文档中展示应用常量值。
+
+本次 Windows x64 / Unity 2022.3.62f1 / D3D11 隔离验证已通过：源码副本未复制 `Library` 或个人 `Config.json`；首次配置、旧空白密钥配置恢复、显式覆盖保留均通过；仅选择已安装游戏的数据目录后，读取到 173 个角色、62 首 Live，官方 shader bundle 正常加载。Live1001 的舞台与角色加载、4 路音源播放、生产 HCA 解码器非零 PCM、985 个当前 DynamicBone 物理粒子更新与 1280×720 实际渲染帧均通过，无运行时错误。上游 DLL 已加载，但当前角色物理实际走 CySpring 数据驱动的 DynamicBone，不将它误称为原生 CySpringController 求解验收。未验证其他地区、全部曲目或 Windows player 构建，不声称与原游戏视觉完全一致。
+
+远端已有历史保留；原本地项目无 .git，Git 集成在独立发布副本进行，避免覆盖正在调查的源码与用户编辑器状态。旧远端独有、与当前项目目录不兼容的源码以当前发布树为准迁移；旧提交仍可访问。历史文档可能描述较早状态，当前源码使用步骤以 README 为准，精确交付清单与源码哈希见 `docs/PUBLICATION_MANIFEST_20261002.json`。
