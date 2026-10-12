@@ -17,6 +17,17 @@ namespace Gallop
         // off the leg instead of holding it away.
         private const float MaxSkirtLegColliderRadius = 0.04f;
 
+        // The thigh skirt volume is built as a stack of spheres along the thigh bone instead
+        // of the single authored capsule, so the cloth is held off the whole thigh rather than
+        // only near the hip. Every value is a fraction of the thigh->knee segment, so it scales
+        // with the character height (the Position BodyScale) and with each costume's leg length,
+        // with no per-character data.
+        private const int SkirtThighSphereCount = 6;
+        private const float SkirtThighSphereTopFraction = 0.05f;
+        private const float SkirtThighSphereBottomFraction = 0.98f;
+        private const float SkirtThighSphereTopRadiusFraction = 0.148f;
+        private const float SkirtThighSphereBottomRadiusFraction = 0.113f;
+
         public List<CySpringCollisionData> collisionParam = new List<CySpringCollisionData>();
         public List<CySpringParamDataElement> springParam = new List<CySpringParamDataElement>();
         public List<ConnectedBoneData> ConnectedBoneList = new List<ConnectedBoneData>();
@@ -61,6 +72,19 @@ namespace Gallop
                 bool authoredTransform = bones.TryGetValue(collider._collisionName, out child);
                 if (!authoredTransform && !bones.TryGetValue(collider._targetObjectName, out bone))
                     continue;
+
+                // Build the thigh skirt volume as a stack of spheres along the thigh instead
+                // of a single capsule, so the cloth is held off the whole thigh.
+                if (IsThighSkirtCollider(collider._collisionName))
+                {
+                    Transform thighBone = authoredTransform ? child.parent : bone;
+                    Transform kneeBone = thighBone != null ? FindKneeBone(bones, thighBone.name) : null;
+                    if (thighBone != null && kneeBone != null)
+                    {
+                        BuildThighSkirtSphereStack(colliders, thighBone, kneeBone, collider._collisionName);
+                        continue;
+                    }
+                }
 
                 if (!authoredTransform)
                 {
@@ -322,6 +346,53 @@ namespace Gallop
             return !string.IsNullOrEmpty(colliderName) &&
                 colliderName.IndexOf("Skirt", System.StringComparison.OrdinalIgnoreCase) >= 0 &&
                 colliderName.IndexOf("Thigh", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static Transform FindKneeBone(Dictionary<string, Transform> bones, string thighName)
+        {
+            if (string.IsNullOrEmpty(thighName) ||
+                thighName.IndexOf("Thigh", StringComparison.OrdinalIgnoreCase) < 0)
+                return null;
+
+            Transform knee;
+            return bones.TryGetValue(thighName.Replace("Thigh", "Knee"), out knee) ? knee : null;
+        }
+
+        // Places SkirtThighSphereCount sphere colliders evenly along thigh->knee, each with a
+        // radius proportional to the thigh length, and registers them as skirt thigh colliders
+        // so InitializePhysics (and the surface solver) pick them up.
+        private static void BuildThighSkirtSphereStack(
+            Dictionary<string, Transform> colliders, Transform thigh, Transform knee, string baseName)
+        {
+            Vector3 kneeLocal = thigh.InverseTransformPoint(knee.position);
+            float length = kneeLocal.magnitude;
+            if (length <= 0.000001f)
+                return;
+
+            if (colliders.ContainsKey(baseName + "_Sphere00"))
+                return;
+
+            for (int i = 0; i < SkirtThighSphereCount; ++i)
+            {
+                float a = SkirtThighSphereCount > 1 ? (float)i / (SkirtThighSphereCount - 1) : 0f;
+                float t = Mathf.Lerp(SkirtThighSphereTopFraction, SkirtThighSphereBottomFraction, a);
+
+                string name = baseName + "_Sphere" + i.ToString("00");
+                GameObject go = new GameObject(name);
+                go.transform.SetParent(thigh, false);
+                go.transform.localPosition = Vector3.Lerp(Vector3.zero, kneeLocal, t);
+                go.transform.localRotation = Quaternion.identity;
+                go.transform.localScale = Vector3.one;
+
+                DynamicBoneCollider sphere = go.AddComponent<DynamicBoneCollider>();
+                sphere.ColliderName = name;
+                sphere.m_Height = 0f;
+                sphere.m_Radius = Mathf.Lerp(SkirtThighSphereTopRadiusFraction, SkirtThighSphereBottomRadiusFraction, a) * length;
+                sphere.m_Bound = DynamicBoneColliderBase.Bound.Outside;
+
+                if (!colliders.ContainsKey(name))
+                    colliders.Add(name, go.transform);
+            }
         }
 
         private static bool IsSkirtLegOrHipCollider(string colliderName)

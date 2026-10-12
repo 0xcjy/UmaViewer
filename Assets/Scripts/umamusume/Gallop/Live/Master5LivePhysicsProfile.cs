@@ -86,6 +86,9 @@ namespace Gallop.Live
         public static float RadiusScale(string name)
         {
             if (string.IsNullOrEmpty(name)) return 1f;
+            // The viewer builds the thigh skirt volume as a stack of spheres; those radii are
+            // already tuned and must match the standalone viewer, so leave them unscaled.
+            if (name.IndexOf("Sphere", StringComparison.OrdinalIgnoreCase) >= 0) return 1f;
             if (name.IndexOf("Hip", StringComparison.OrdinalIgnoreCase) >= 0 &&
                 name.IndexOf("Skirt", StringComparison.OrdinalIgnoreCase) >= 0 &&
                 (name.EndsWith("_L", StringComparison.OrdinalIgnoreCase) ||
