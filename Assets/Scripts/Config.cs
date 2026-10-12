@@ -37,8 +37,8 @@ public class Config
     public string DownloadMissingResourcesTip = "true/false. automatically download missing files, which may require a VPN.";
     public bool DownloadMissingResources = true;
 
-    public string UseNetworkProxyTip = "true/false. Route download requests through the configured HTTP proxy.";
-    public bool UseNetworkProxy = true;
+    public string UseNetworkProxyTip = "true/false. Route download requests through the configured HTTP proxy. If the proxy is not reachable, a direct connection is used instead.";
+    public bool UseNetworkProxy = false;
 
     public string NetworkProxyHostTip = "HTTP proxy host or IP address. Do not include the protocol or port.";
     public string NetworkProxyHost = "127.0.0.1";

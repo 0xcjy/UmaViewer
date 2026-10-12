@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using UnityEngine;
 using static UmaViewerUI;
@@ -35,6 +36,10 @@ public class UmaViewerDownload : MonoBehaviour
     private static WaitUntil downloadWaitUntilComplete = new WaitUntil(() => CurrentCoroutinesCount == 0);
     private static List<Task> downloadTasks = new List<Task>();
     private const int downloadRetryCount = 3;
+    // A main-thread (synchronous) download must not hang the editor for long.
+    private const int syncDownloadTimeoutSeconds = 10;
+    // How long to wait for a TCP handshake when probing a configured proxy.
+    private const int proxyProbeTimeoutMilliseconds = 400;
     private const string unityPlayerUserAgent = "UnityPlayer/2019.4.21f1 (UnityWebRequest/1.0, libcurl/7.52.0-DEV)";
     private static readonly object httpClientLock = new object();
     private static HttpClient httpClient;
@@ -71,7 +76,9 @@ public class UmaViewerDownload : MonoBehaviour
     public static void DownloadAssetSync(UmaDatabaseEntry entry, Action<string , UIMessageType> callback = null)
     {
         string baseurl = entry.IsAssetBundle ? GetAssetRequestUrl(entry.Url) : GetGenericRequestUrl(entry.Url);
-        DownloadResponse response = DownloadBytesAsync(baseurl).GetAwaiter().GetResult();
+        // This runs on the main thread (UmaDatabaseEntry.FilePath). Do not retry or wait
+        // between attempts here: a dead host would freeze the editor for ~9s per file.
+        DownloadResponse response = DownloadBytesAsync(baseurl, syncMainThread: true).GetAwaiter().GetResult();
         if (!response.IsSuccess)
         {
             Debug.LogError(response.Error);
@@ -177,17 +184,22 @@ public class UmaViewerDownload : MonoBehaviour
         callback?.Invoke(response.Data, response.Error);
     }
 
-    private static async Task<DownloadResponse> DownloadBytesAsync(string url, int timeoutSeconds = 0)
+    private static async Task<DownloadResponse> DownloadBytesAsync(string url, int timeoutSeconds = 0, bool syncMainThread = false)
     {
+        // A synchronous (main-thread) request must fail fast: no retries and no waiting
+        // between attempts, otherwise a dead endpoint freezes the whole editor.
+        int attempts = syncMainThread ? 1 : downloadRetryCount + 1;
+        int effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : (syncMainThread ? syncDownloadTimeoutSeconds : 0);
+
         string lastError = null;
-        for (int attempt = 0; attempt <= downloadRetryCount; attempt++)
+        for (int attempt = 0; attempt < attempts; attempt++)
         {
             try
             {
                 HttpClient client = GetHttpClient();
                 using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
-                using var timeoutCancellation = timeoutSeconds > 0
-                    ? new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds))
+                using var timeoutCancellation = effectiveTimeout > 0
+                    ? new CancellationTokenSource(TimeSpan.FromSeconds(effectiveTimeout))
                     : null;
                 CancellationToken cancellationToken = timeoutCancellation?.Token ?? CancellationToken.None;
                 using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
@@ -205,13 +217,16 @@ public class UmaViewerDownload : MonoBehaviour
                 lastError = ex.Message;
             }
 
-            if (attempt < downloadRetryCount)
+            if (attempt < attempts - 1)
             {
                 await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
             }
         }
 
-        return new DownloadResponse { Error = $"{lastError} (after {downloadRetryCount} retries)" };
+        return new DownloadResponse
+        {
+            Error = attempts > 1 ? $"{lastError} (after {attempts - 1} retries)" : lastError
+        };
     }
 
     private static async Task<byte[]> ReadResponseBytesAsync(HttpResponseMessage response)
@@ -239,10 +254,13 @@ public class UmaViewerDownload : MonoBehaviour
         {
             if (!Config.Instance.TryGetNetworkProxyUri(out proxyUri, out string error))
             {
-                throw new InvalidOperationException(error);
+                Debug.LogWarning($"[UmaViewerDownload] Network proxy is enabled but invalid ({error}); using a direct connection.");
+                useProxy = false;
             }
-
-            configuration = proxyUri.AbsoluteUri;
+            else
+            {
+                configuration = proxyUri.AbsoluteUri;
+            }
         }
 
         lock (httpClientLock)
@@ -250,6 +268,21 @@ public class UmaViewerDownload : MonoBehaviour
             if (httpClient != null && httpClientConfiguration == configuration)
             {
                 return httpClient;
+            }
+
+            // A configured proxy that does not answer would make every single download
+            // fail (e.g. "Connection refused" on a local proxy that is not running).
+            // Probe it once when building the client and fall back to a direct request.
+            if (useProxy && !IsProxyReachable(proxyUri))
+            {
+                Debug.LogWarning($"[UmaViewerDownload] Network proxy {proxyUri} is not reachable; using a direct connection.");
+                useProxy = false;
+                configuration = "direct";
+
+                if (httpClient != null && httpClientConfiguration == configuration)
+                {
+                    return httpClient;
+                }
             }
 
             var handler = new HttpClientHandler
@@ -272,6 +305,28 @@ public class UmaViewerDownload : MonoBehaviour
             httpClientConfiguration = configuration;
             oldClient?.Dispose();
             return httpClient;
+        }
+    }
+
+    private static bool IsProxyReachable(Uri proxyUri)
+    {
+        if (proxyUri == null)
+            return false;
+
+        try
+        {
+            using var probe = new TcpClient();
+            IAsyncResult result = probe.BeginConnect(proxyUri.Host, proxyUri.Port, null, null);
+            bool connected = result.AsyncWaitHandle.WaitOne(proxyProbeTimeoutMilliseconds);
+            if (!connected)
+                return false;
+
+            probe.EndConnect(result);
+            return probe.Connected;
+        }
+        catch
+        {
+            return false;
         }
     }
 
