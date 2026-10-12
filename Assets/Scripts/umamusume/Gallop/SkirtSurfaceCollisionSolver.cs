@@ -29,6 +29,11 @@ public sealed class SkirtSurfaceCollisionSolver : MonoBehaviour
     public int LastContactCount { get; private set; }
     public float HorizontalStiffness { get; set; } = 0.25f;
 
+    // How far a span/panel correction may move one particle in a frame, as a
+    // fraction of the bone segment. 0.75 allowed a single frame to throw a panel
+    // most of a bone length away from the body; the skirt ballooned with it.
+    private const float PanelCorrectionRatio = 0.25f;
+
     public void Initialize(DynamicBone[] dynamics, Transform hip, IEnumerable<DynamicBoneColliderBase> colliders)
     {
         _hip = hip;
@@ -148,7 +153,7 @@ public sealed class SkirtSurfaceCollisionSolver : MonoBehaviour
                 float particleRadius = Mathf.Max(left.m_Radius, right.m_Radius) * objectScale;
                 float maxCorrection = Mathf.Max(
                     Vector3.Distance(leftChain.Particles[depth - 1].m_Position, left.m_Position),
-                    Vector3.Distance(rightChain.Particles[depth - 1].m_Position, right.m_Position)) * 0.75f;
+                    Vector3.Distance(rightChain.Particles[depth - 1].m_Position, right.m_Position)) * PanelCorrectionRatio;
                 maxCorrection = Mathf.Max(maxCorrection, 0.005f * objectScale);
                 contacts += ResolveSpan(left, right, colliders, particleRadius, maxCorrection);
                 contacts += ResolvePanel(

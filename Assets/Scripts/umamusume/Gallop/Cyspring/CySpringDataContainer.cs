@@ -9,6 +9,14 @@ namespace Gallop
     {
         public const int CATEGORY_NUM = 5;
 
+        // Largest radius a skirt leg (thigh) collider may keep when it becomes a DynamicBone
+        // capsule. The authored value is cloth clearance (0.085 on the school uniform), not
+        // the leg surface: DynamicBone pushes every panel that far from the leg axis and the
+        // hem ends up 2-4 cm wider than the game. The 160-scale leg measures ~0.05 and each
+        // panel adds its own particle radius (~0.028), so clamping here keeps the cloth just
+        // off the leg instead of holding it away.
+        private const float MaxSkirtLegColliderRadius = 0.04f;
+
         public List<CySpringCollisionData> collisionParam = new List<CySpringCollisionData>();
         public List<CySpringParamDataElement> springParam = new List<CySpringParamDataElement>();
         public List<ConnectedBoneData> ConnectedBoneList = new List<ConnectedBoneData>();
@@ -112,9 +120,12 @@ namespace Gallop
                             dynamic.m_Direction = authoredTransform
                                 ? DynamicBoneColliderBase.Direction.Y
                                 : DynamicBoneColliderBase.Direction.Z;
+                            float capsuleRadius = IsThighSkirtCollider(collider._collisionName)
+                                ? Mathf.Min(collider._radius, MaxSkirtLegColliderRadius)
+                                : collider._radius;
                             // DynamicBone stores full capsule height, including both hemispheres.
-                            dynamic.m_Height = capsuleAxis.magnitude + collider._radius * 2f;
-                            dynamic.m_Radius = collider._radius;
+                            dynamic.m_Height = capsuleAxis.magnitude + capsuleRadius * 2f;
+                            dynamic.m_Radius = capsuleRadius;
                             dynamic.m_Bound = collider._isInner ? DynamicBoneColliderBase.Bound.Inside : DynamicBoneColliderBase.Bound.Outside;
                             break;
                         case CySpringCollisionData.CollisionType.Sphere:
@@ -234,19 +245,12 @@ namespace Gallop
 
                 if (isSkirtChain)
                 {
-                    Transform hipBone;
-                    bones.TryGetValue("Hip", out hipBone);
+                    // Leg capsules only. Hip spheres are dropped here (see
+                    // ShouldUseAuthoredSkirtCollider): a DynamicBone chain can only be
+                    // pushed radially out of a collider, so a hip volume inflates the
+                    // whole skirt instead of tucking it around the pelvis.
                     foreach (DynamicBoneColliderBase collider in skirtColliders)
                         AddColliderToSkirtParticles(dynamic, collider);
-
-                    foreach (Transform transform in colliders.Values)
-                    {
-                        DynamicBoneColliderBase collider = transform.GetComponent<DynamicBoneColliderBase>();
-                        if (collider == null || !IsHipSkirtCollider(collider.ColliderName) ||
-                            !IsSameSkirtSide(dynamic.m_Root, collider, hipBone))
-                            continue;
-                        AddColliderToSkirtParticles(dynamic, collider);
-                    }
                 }
         
                 // 子参数设置
@@ -351,35 +355,23 @@ namespace Gallop
             if (IsThighSkirtCollider(collider.ColliderName))
                 return false;
 
-            bool isHipSkirt = collider.ColliderName.IndexOf(
-                "Hip", System.StringComparison.OrdinalIgnoreCase) >= 0 &&
-                collider.ColliderName.IndexOf(
-                    "Skirt", System.StringComparison.OrdinalIgnoreCase) >= 0;
-
-            // The original CySpring solver can use broad rear/center hip spheres,
-            // but they over-expand an independent DynamicBone skirt chain. This is
-            // true for both the old MSkirt names and newer Col_B_Hip_Skirt_B/BLR.
-            // Keep only an explicitly left/right localized hip pair.
-            return !isHipSkirt || IsHipSkirtCollider(collider.ColliderName);
+            // A DynamicBone chain can only be pushed radially *out* of a collider, and
+            // every panel of the skirt hangs at a different distance from the pelvis.
+            // A hip sphere (authored 0.2-0.4, centred on the hip) therefore inflates the
+            // whole chain until the hem sits on the sphere surface: the skirt opens like
+            // a lampshade and lifts. The original CySpring solver used those volumes as
+            // an angular correction instead, which DynamicBone cannot express, so keep
+            // only the leg capsules that stop the legs poking through the cloth. The
+            // skirt root is skinned to the hip bone and follows it rigidly, so no hip
+            // volume is needed to keep the cloth off the pelvis.
+            return !IsHipSkirtVolume(collider.ColliderName);
         }
 
-        private static bool IsHipSkirtCollider(string colliderName)
+        private static bool IsHipSkirtVolume(string colliderName)
         {
             return !string.IsNullOrEmpty(colliderName) &&
-                colliderName.IndexOf("Skirt", System.StringComparison.OrdinalIgnoreCase) >= 0 &&
                 colliderName.IndexOf("Hip", System.StringComparison.OrdinalIgnoreCase) >= 0 &&
-                (colliderName.EndsWith("_L", System.StringComparison.OrdinalIgnoreCase) ||
-                 colliderName.EndsWith("_R", System.StringComparison.OrdinalIgnoreCase));
-        }
-
-        private static bool IsSameSkirtSide(Transform skirtRoot, DynamicBoneColliderBase collider, Transform hip)
-        {
-            if (skirtRoot == null || collider == null || hip == null)
-                return true;
-
-            bool rootLeft = hip.InverseTransformPoint(skirtRoot.position).x < 0f;
-            bool colliderLeft = hip.InverseTransformPoint(collider.transform.position).x < 0f;
-            return rootLeft == colliderLeft;
+                colliderName.IndexOf("Skirt", System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public void EnablePhysics(bool isOn)

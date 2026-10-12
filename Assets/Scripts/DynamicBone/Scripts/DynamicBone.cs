@@ -6,6 +6,12 @@ public class DynamicBone : MonoBehaviour
 {
     private static readonly Unity.Profiling.ProfilerMarker LivePhysicsMarker =
         new Unity.Profiling.ProfilerMarker("Live.DynamicBone");
+
+    // A collider may only move one particle a fraction of the local bone per frame.
+    // Without this cap the segment/swept probes can fling a skirt panel far outside
+    // the leg volume in a single frame and the skirt visibly balloons.
+    private const float MaxCollisionStepRatio = 0.25f;
+    private const float MaxCollisionStepFloor = 0.004f;
 #if UNITY_5_3_OR_NEWER
 	[Tooltip("The root of the transform hierarchy to apply physics.")]
 #endif
@@ -731,10 +737,28 @@ public class DynamicBone : MonoBehaviour
         if (correction == Vector3.zero)
             return;
 
+        // The sample amplification above (divide by t) is exact for a straight segment,
+        // but a sample sitting deep inside a collider moves the particle several
+        // centimetres in one frame and the skirt balloons away from the leg. Bound the
+        // step to a fraction of the local bone so a collision only nudges the cloth.
+        correction = Vector3.ClampMagnitude(correction, MaxCollisionStep(parent, particle));
+
         particle.m_Position += correction;
         particle.m_PrevPosition += correction;
         particle.m_isCollide = true;
         ResolveParticleCollisions(particle, particleRadius);
+    }
+
+    /// <summary>Largest distance a single collider may push one particle in a frame.</summary>
+    private static float MaxCollisionStep(Particle parent, Particle particle)
+    {
+        float segment = parent != null
+            ? Vector3.Distance(parent.m_Position, particle.m_Position)
+            : 0f;
+        if (segment <= 0f)
+            segment = 0.1f;
+
+        return Mathf.Max(segment * MaxCollisionStepRatio, MaxCollisionStepFloor);
     }
 
     private void ResolveSweptCollisions(Particle particle, float particleRadius)
@@ -743,17 +767,18 @@ public class DynamicBone : MonoBehaviour
             return;
 
         Vector3 start = particle.m_PreviousFramePosition;
-        Vector3 end = particle.m_Position;
+        Vector3 current = particle.m_Position;
 
         // Catch a skirt particle that crossed a leg between rendered frames.
         // The final point may already be outside the collider, so checking it
         // alone cannot detect this case.
-        float travel = Vector3.Distance(start, end);
+        float travel = Vector3.Distance(start, current);
         int sampleCount = Mathf.Clamp(Mathf.CeilToInt(travel / Mathf.Max(particleRadius * 0.5f, 0.01f)), 4, 8);
+        Vector3 total = Vector3.zero;
         for (int sampleIndex = 1; sampleIndex <= sampleCount; ++sampleIndex)
         {
             float t = sampleIndex / (float)sampleCount;
-            Vector3 probe = Vector3.Lerp(start, end, t);
+            Vector3 probe = Vector3.Lerp(start, current, t);
             for (int i = 0; i < particle.m_Colliders.Count; ++i)
             {
                 DynamicBoneColliderBase collider = particle.m_Colliders[i];
@@ -765,11 +790,23 @@ public class DynamicBone : MonoBehaviour
                     continue;
 
                 Vector3 correction = projected - probe;
-                particle.m_Position += correction;
-                particle.m_PrevPosition += correction;
+                total += correction;
+                current += correction;
                 particle.m_isCollide = true;
-                end = particle.m_Position;
             }
+        }
+
+        // Every probe can push in the same direction, so the sum needs the same cap
+        // as a single segment correction; otherwise the swept pass is the one that
+        // flings the panel.
+        if (total != Vector3.zero)
+        {
+            Particle parent = particle.m_ParentIndex >= 0 && particle.m_ParentIndex < Particles.Count
+                ? Particles[particle.m_ParentIndex]
+                : null;
+            total = Vector3.ClampMagnitude(total, MaxCollisionStep(parent, particle));
+            particle.m_Position += total;
+            particle.m_PrevPosition += total;
         }
 
         ResolveParticleCollisions(particle, particleRadius);
