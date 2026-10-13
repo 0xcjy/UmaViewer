@@ -143,6 +143,144 @@ public class UmaViewerUI : MonoBehaviour
     private readonly bool[] vocalListaEspera = new bool[VocalMaxSlots];
     private readonly bool[] vocalListaSucia = new bool[VocalMaxSlots];
 
+    //==========================================================================
+    // (Selector Uniques/General/Extras/Other Characters del listado de trajes)
+    // Los desplegables los coloca el usuario en la escena ("ModelDropdown" y "OtherCharactersDropdown").
+    // Se resuelven por nombre en runtime y se repara su plantilla si falta. 'costumeListMode' decide
+    // qué rama del listado pinta ListCostumes.
+    //==========================================================================
+    private TMP_Dropdown ModelDropdown;
+    //Modo del listado de trajes del modelo normal. 'All' NO sale en el desplegable: es el
+    //comportamiento de siempre para mobs/mini (propios + comunes, con y sin nombre).
+    private enum CostumeListMode { Uniques = 0, General = 1, Extras = 2, OtherCharacters = 3, All = 4 }
+    private CostumeListMode costumeListMode = CostumeListMode.Uniques;
+    private CharaEntry currentCostumeChara;
+    private bool currentCostumeMini = false;
+
+    //(Modo "Other Characters"): desplegable con el resto de PJ y el elegido.
+    private TMP_Dropdown OtherCharactersDropdown;
+    private readonly List<CharaEntry> otherCharactersList = new List<CharaEntry>();
+    private CharaEntry selectedOtherChara;
+
+    //Búsqueda por teclado del desplegable "Other Characters": mismo comportamiento que la combobox
+    //de voz. Sin InputField; el teclado se lee en Update() con Input.inputString (Input Manager
+    //clásico). Al hacer clic dentro se abre la lista y se escucha; lo tecleado filtra por nombre y
+    //la lista se mantiene abierta cerrando+reabriendo (ver RefreshOtherOpenList).
+    private bool otherSearchActive = false;
+    private string otherSearchFilter = "";
+    private bool otherListQuiere = false;
+    private bool otherListEspera = false;
+    private bool otherListSucia = false;
+    //Opciones que se están viendo AHORA (filtradas o no); dd.value es un índice en ESTA lista.
+    private readonly List<CharaEntry> otherOptionsVisible = new List<CharaEntry>();
+
+    //==========================================================================
+    // (Buscador de personajes de "Canvas/UI/Panels/Characters/SearchCharacter")
+    //Se rellena con el listado que AHORA MISMO muestra el panel de personajes activo (Normal / Mini /
+    //Mob); al elegir una entrada se dispara el MISMO click que su item de la lista, y mientras se
+    //teclea las opciones se filtran por nombre.
+    //==========================================================================
+    private TMP_Dropdown SearchCharacterDropdown;
+    private GameObject SearchCharacterRow;
+    //Item de lista (Transform) y su nombre visible, en el MISMO orden que dd.options sin filtrar.
+    private readonly List<Transform> searchCharacterItems = new List<Transform>();
+    private readonly List<string> searchCharacterNames = new List<string>();
+    //Índices de searchCharacterItems que se están viendo AHORA (filtrados); dd.value indexa ESTA.
+    private readonly List<int> searchCharacterVisible = new List<int>();
+    //Firma barata del contenido activo (panel + nº de items + primero/último) para saber cuándo
+    //reconstruir sin recorrer la lista entera en cada frame.
+    private string searchCharacterSignature = "";
+    private string searchCharacterFilter = "";
+    private bool searchCharacterActive = false;
+    private bool searchCharacterListQuiere = false;
+    private bool searchCharacterListEspera = false;
+    private bool searchCharacterListSucia = false;
+    //Selección: el Dropdown NO dispara onValueChanged si el índice elegido coincide con el actual, así
+    //que también se detecta el CIERRE de la lista. Estos flags evitan el doble disparo.
+    private bool searchCharacterClickOnList = false;
+    private bool searchCharacterListWasOpen = false;
+    private bool searchCharacterValueHandled = false;
+    private bool searchCharacterNeedsRefresh = false;
+    private int searchCharacterSelectedItemIndex = -1;
+    //Los 3 paneles de tipo y el Content de su lista de personajes (se cachean al resolver el dropdown).
+    private GameObject searchPanelNormal, searchPanelMini, searchPanelMob;
+    private Transform searchContentNormal, searchContentMini, searchContentMob;
+
+    //==========================================================================
+    // (Buscador de shows de "Canvas/UI/Panels/Shows/SearchLive")
+    //Se rellena con el TEXTO de cada item de "Shows/Live List/Viewport/Content" (su hijo "Text"),
+    //filtra al teclear y al elegir un show dispara su click (abre el panel de selección del show).
+    //==========================================================================
+    private TMP_Dropdown SearchLiveDropdown;
+    private GameObject SearchLiveRow;
+    private readonly List<Transform> searchLiveItems = new List<Transform>();
+    private readonly List<string> searchLiveNames = new List<string>();
+    private readonly List<int> searchLiveVisible = new List<int>();
+    private string searchLiveSignature = "";
+    private string searchLiveFilter = "";
+    private bool searchLiveActive = false;
+    private bool searchLiveListQuiere = false;
+    private bool searchLiveListEspera = false;
+    private bool searchLiveListSucia = false;
+    private bool searchLiveClickOnList = false;
+    private bool searchLiveListWasOpen = false;
+    private bool searchLiveValueHandled = false;
+    private bool searchLiveNeedsRefresh = false;
+    private int searchLiveSelectedItemIndex = -1;
+
+    //==========================================================================
+    // (Buscador de canciones/sonidos de "Canvas/UI/Panels/Sounds/SearchSounds")
+    //Se adapta a la pestaña activa: en la pestaña Live busca las CANCIONES ("Sounds/LiveSound
+    //List/Viewport/Content") y en la Normal los sonidos ("Sounds/NormalSound List/NormalSound/
+    //Viewport/Content"). El nombre de cada item se lee de su hijo "Text".
+    //==========================================================================
+    private TMP_Dropdown SearchSoundsDropdown;
+    private GameObject SearchSoundsRow;
+    private readonly List<Transform> searchSoundsItems = new List<Transform>();
+    private readonly List<string> searchSoundsNames = new List<string>();
+    private readonly List<int> searchSoundsVisible = new List<int>();
+    private string searchSoundsSignature = "";
+    private string searchSoundsFilter = "";
+    private bool searchSoundsActive = false;
+    private bool searchSoundsListQuiere = false;
+    private bool searchSoundsListEspera = false;
+    private bool searchSoundsListSucia = false;
+    private bool searchSoundsClickOnList = false;
+    private bool searchSoundsListWasOpen = false;
+    private bool searchSoundsValueHandled = false;
+    private bool searchSoundsNeedsRefresh = false;
+    private int searchSoundsSelectedItemIndex = -1;
+    //Última canción elegida en la lista (sin usar el buscador). Sirve para que el desplegable
+    //"SearchSounds" se sincronice con la selección real de la lista al abrir el panel.
+    private LiveEntry selectedLiveSound;
+
+    //==========================================================================
+    // (Segundo buscador del panel Sounds: "Canvas/UI/Panels/Sounds/SearchSoundsbyCharacter")
+    //Carga el listado de PJ de "Characters/NormalCharacters/Character List" y arranca SIN selección.
+    //Al elegir un PJ deja en "Sounds/LiveSound List" sólo las canciones en cuyas voces
+    //("Sounds/LiveCharaSound List") aparezca ese PJ, y con ello "SearchSounds" se recarga con el
+    //listado filtrado. También admite filtrar al teclear la lista de PJ.
+    //==========================================================================
+    private TMP_Dropdown SearchByCharaDropdown;
+    private GameObject SearchByCharaRow;
+    private readonly List<Transform> searchByCharaItems = new List<Transform>();
+    private readonly List<string> searchByCharaNames = new List<string>();
+    private readonly List<int> searchByCharaIds = new List<int>();
+    private readonly List<int> searchByCharaVisible = new List<int>();
+    private string searchByCharaSignature = "";
+    private string searchByCharaFilter = "";
+    private bool searchByCharaActive = false;
+    private bool searchByCharaListQuiere = false;
+    private bool searchByCharaListEspera = false;
+    private bool searchByCharaListSucia = false;
+    private bool searchByCharaClickOnList = false;
+    private bool searchByCharaListWasOpen = false;
+    private bool searchByCharaValueHandled = false;
+    private bool searchByCharaNeedsRefresh = false;
+    private int searchByCharaSelectedItemIndex = -1;
+    //-1 = sin PJ elegido (no se filtra la lista de canciones).
+    private int searchByCharaSelectedCharaId = -1;
+
     [Header("settings")]
     public UISettingsCamera CameraSettings;
     public UISettingsModel ModelSettings;
@@ -229,6 +367,25 @@ public class UmaViewerUI : MonoBehaviour
         //(Live: búsqueda por teclado de los desplegables de voz. Sin InputField: el teclado se lee
         // aquí con Input.inputString y se dibuja en el propio rótulo del desplegable.)
         UpdateVocalSearch();
+
+        //(Misma búsqueda por teclado para el desplegable "Other Characters".)
+        UpdateOtherCharacterSearch();
+
+        //(Buscador de personajes: refresca su lista según el panel activo y le da la búsqueda.)
+        UpdateSearchCharacter();
+        UpdateSearchCharacterSearch();
+
+        //(Buscador de shows: misma mecánica sobre la lista de shows.)
+        UpdateSearchLive();
+        UpdateSearchLiveSearch();
+
+        //(Buscador de canciones/sonidos del panel Sounds.)
+        UpdateSearchSounds();
+        UpdateSearchSoundsSearch();
+
+        //(Segundo buscador del panel Sounds: filtra canciones por PJ cantante.)
+        UpdateSearchByChara();
+        UpdateSearchByCharaSearch();
     }
 
     /// <summary>Some settings may not be saved when set in Start()</summary>
@@ -251,6 +408,11 @@ public class UmaViewerUI : MonoBehaviour
 
     public void LoadModelPanels()
     {
+        //(Prepara los desplegables del panel de personajes: modo de listado de trajes y buscador.)
+        EnsureModelDropdown();
+        EnsureOtherCharactersDropdown();
+        EnsureSearchCharacterDropdown();
+
         var containerG = Instantiate(UmaContainerPrefab, AnimationSetList.content).GetComponent<UmaUIContainer>();
         containerG.Name = containerG.name = "Generic";
         containerG.Button.onClick.AddListener(() =>
@@ -313,10 +475,35 @@ public class UmaViewerUI : MonoBehaviour
             }
         }
 
+        //La lista de mobs tenía su propio PageManager (paginación + buscador). El buscador
+        //"SearchCharacter" ya cubre la búsqueda, así que si el PageManager de mobs NO existe en la
+        //escena se listan TODOS los mobs directamente en el Content (igual que los personajes
+        //normales) y el buscador filtra la lista completa. Si siguiera existiendo, se usa la
+        //paginación de siempre.
         var pageentrys = new List<PageManager.Entry>();
         foreach (var chara in Main.MobCharacters.OrderBy(c => c.Id))
         {
             var charaInstance = chara;
+
+            if (MobCharactersPageCtrl == null && MobCharactersList != null && MobCharactersList.content != null)
+            {
+                var mobContainer = Instantiate(UmaContainerPrefab, MobCharactersList.content).GetComponent<UmaUIContainer>();
+                UIPressScaleFeedback.AddTo(mobContainer.gameObject);
+                mobContainer.UseLocalizedText();
+                mobContainer.Name = mobContainer.name = chara.GetName();
+                mobContainer.Button.onClick.AddListener(() =>
+                {
+                    HighlightChildImage(MobCharactersList.content, mobContainer);
+                    ListCostumes(charaInstance, false);
+                });
+                if (chara.Icon)
+                {
+                    mobContainer.Image.sprite = chara.Icon;
+                    mobContainer.Image.enabled = true;
+                }
+                continue;
+            }
+
             var pageentry = new PageManager.Entry();
 
             pageentry.Name = chara.GetName();
@@ -333,7 +520,8 @@ public class UmaViewerUI : MonoBehaviour
             }
             pageentrys.Add(pageentry);
         }
-        MobCharactersPageCtrl.Initialize(pageentrys, MobCharactersList);
+        if (MobCharactersPageCtrl != null && MobCharactersList != null)
+            MobCharactersPageCtrl.Initialize(pageentrys, MobCharactersList);
     }
 
     public void LoadMiniModelPanels()
@@ -557,6 +745,12 @@ public class UmaViewerUI : MonoBehaviour
 
     public void LoadLivePanels()
     {
+        //(Prepara los buscadores de los paneles Shows y Sounds; el buscador por PJ necesita la lista de
+        //personajes, que ya se construyó en LoadModelPanels.)
+        EnsureSearchLiveDropdown();
+        EnsureSearchSoundsDropdown();
+        EnsureSearchByCharaDropdown();
+
         Action<LiveEntry, GameObject, ScrollRect, UnityAction> createContainer = (live, containerPrefab, parent, onClickAction) =>
         {
             var container = Instantiate(containerPrefab, parent.content).GetComponent<UmaUIContainer>();
@@ -572,8 +766,8 @@ public class UmaViewerUI : MonoBehaviour
 
         foreach (var live in Main.Lives.OrderBy(c => c.MusicId))
         {
-            createContainer(live, UmaContainerLivePrefab, LiveList, () => ShowLiveSelectPanel(live));
-            createContainer(live, UmaContainerLivePrefab, LiveSoundList, () => ListLiveSounds(live.MusicId));
+            createContainer(live, UmaContainerLivePrefab, LiveList, () => { selectedLiveSound = live; ShowLiveSelectPanel(live); });
+            createContainer(live, UmaContainerLivePrefab, LiveSoundList, () => { selectedLiveSound = live; ListLiveSounds(live.MusicId); });
         }
     }
 
@@ -987,17 +1181,36 @@ public class UmaViewerUI : MonoBehaviour
             Destroy(costumeList.content.GetChild(i).gameObject);
         }
 
-        Action<CharaEntry> action = delegate (CharaEntry achara)
+        //(Recordamos sobre qué personaje se está pintando para poder repintar cuando cambie el
+        //selector Uniques/General/Extras/Other Characters — OnModelDropdownChanged.)
+        currentCostumeChara = chara;
+        currentCostumeMini = mini;
+
+        //(El selector Uniques/General/Extras/Other Characters sólo aplica al listado normal; mobs y
+        //mini conservan el comportamiento de siempre: todos los trajes, 'All'.)
+        CostumeListMode mode = (!mini && !chara.IsMob) ? costumeListMode : CostumeListMode.All;
+
+        //(En "Other Characters" se listan los Uniques del PJ elegido en el desplegable, pero al cargar
+        //se conserva la cabeza/pelo/cola del PJ ACTUAL (chara), no la del otro.)
+        bool otherMode = mode == CostumeListMode.OtherCharacters && selectedOtherChara != null;
+        CharaEntry listChara = otherMode ? selectedOtherChara : chara;
+        CharaEntry headChara = otherMode ? chara : listChara;
+
+        //--- Trajes PROPIOS del personaje (id corto). Los mobs no los tienen. (En 'Uniques',
+        //'Other Characters' y 'All'; en General/Extras no salen.)
+        bool includeOwn = !listChara.IsMob &&
+            (mode == CostumeListMode.Uniques || mode == CostumeListMode.OtherCharacters || mode == CostumeListMode.All);
+        if (includeOwn)
         {
-            string nameVar = mini ? $"pfb_mbdy{achara.Id}" : $"pfb_bdy{achara.Id}";
-            string bodyPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
-            foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(bodyPath) && !a.Name.Contains("clothes") && a.Name.Contains(nameVar)))
+            string ownNameVar = mini ? $"pfb_mbdy{listChara.Id}" : $"pfb_bdy{listChara.Id}";
+            string ownBodyPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
+            foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(ownBodyPath) && !a.Name.Contains("clothes") && a.Name.Contains(ownNameVar)))
             {
                 var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
                 UIPressScaleFeedback.AddTo(container.gameObject);
                 string[] split = entry.Name.Split('_');
                 string costumeId = split[split.Length - 1];
-                var dressdata = Main.Costumes.FirstOrDefault(a => (a.CharaId == achara.Id && a.BodyTypeSub == int.Parse(costumeId)));
+                var dressdata = Main.Costumes.FirstOrDefault(a => (a.CharaId == listChara.Id && a.BodyTypeSub == int.Parse(costumeId)));
                 container.Name = container.name = GetCostumeName(costumeId, (dressdata == null ? costumeId : dressdata.DressName));
                 container.Image.sprite = (dressdata == null ? CostumeIconDefault : dressdata.Icon);
                 container.Image.enabled = true;
@@ -1006,94 +1219,98 @@ public class UmaViewerUI : MonoBehaviour
                 {
                     if (LiveSelectPannel.activeInHierarchy && CurrentSeletChara)
                     {
-                        CurrentSeletChara.SetValue(achara, costumeId, container.Image.sprite, CurrentHeadCostumeId);
+                        CurrentSeletChara.SetValue(listChara, costumeId, container.Image.sprite, CurrentHeadCostumeId);
                     }
                     else
                     {
                         HighlightChildImage(costumeList.content, container);
                         var list = new List<UmaDatabaseEntry>();
-                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath) && a.Name.Contains(chara.Id.ToString())));
-                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.HeadPath) && a.Name.Contains(chara.Id.ToString())));
-                        var tail_path = getCharaTailPath(chara);
+                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath) && a.Name.Contains(listChara.Id.ToString())));
+                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.HeadPath) && a.Name.Contains(headChara.Id.ToString())));
+                        var tail_path = getCharaTailPath(headChara);
                         if (!string.IsNullOrEmpty(tail_path))
                         {
                             list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(tail_path)));
                         }
                         list.Add(Main.AbList["3d/animator/drivenkeylocator"]);
-                        list.Add(Main.AbList[$"3d/motion/event/body/chara/chr{achara.Id}_00/anm_eve_chr{achara.Id}_00_idle01_loop"]);
+                        list.Add(Main.AbList[$"3d/motion/event/body/chara/chr{listChara.Id}_00/anm_eve_chr{listChara.Id}_00_idle01_loop"]);
 
                         Builder.UnloadUma();
                         //UmaAssetManager.UnloadAllBundle(true);
                         UmaAssetManager.PreLoadAndRun(list , delegate {
-                            StartCoroutine(Builder.LoadUma(achara, costumeId, mini, CurrentHeadCostumeId));
+                            StartCoroutine(Builder.LoadUma(listChara, costumeId, mini, CurrentHeadCostumeId, otherMode ? chara : null));
                         });
-                        //StartCoroutine(Builder.LoadUma(achara, costumeId, mini));
+                        //StartCoroutine(Builder.LoadUma(listChara, costumeId, mini));
                     }
                 });
             }
-        };
-
-        if (!chara.IsMob)
-        {
-            action.Invoke(chara);
         }
 
         //Common costumes
         List<string> costumes = new List<string>();
-        var nameVar = mini ? "pfb_mbdy0" : $"pfb_bdy0";
-        string bodyPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
-        foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(bodyPath) && !a.Name.Contains("/clothes/") && a.Name.Contains(nameVar)))
+        var commonVar = mini ? "pfb_mbdy0" : $"pfb_bdy0";
+        string commonPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
+        foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(commonPath) && !a.Name.Contains("/clothes/") && a.Name.Contains(commonVar)))
         {
             string id = Path.GetFileName(entry.Name);
             string[] split = id.Split('_');
             if (split.Length < 4) continue; //prevents error for mini umas
             id = split[1].Substring(mini ? 4 : 3) + "_" + split[2] + "_" + split[3];
-            if (!costumes.Contains(id))
+            if (costumes.Contains(id)) continue;
+            costumes.Add(id);
+
+            string costumeId = id;
+            var data = costumeId.Split('_');
+            var bodytype = int.Parse(data[0]);
+            var bodysub = int.Parse(data[1]);
+
+            var dressdata = Main.Costumes.FirstOrDefault(a => a.BodyType == bodytype && a.BodyTypeSub == bodysub);
+
+            //(Tres listas: 'Uniques'/'Other Characters' no llevan comunes; 'General' los comunes CON
+            //nombre; 'Extras' los comunes de testeo (id en crudo) más los que marca EsTrajeExtra
+            //(variantes Big Belly). 'All' (mobs/mini) los lleva todos.)
+            bool isExtra = EsTrajeExtra(id, dressdata);
+            bool wanted = isExtra
+                ? (mode == CostumeListMode.Extras || mode == CostumeListMode.All)
+                : (mode == CostumeListMode.General || mode == CostumeListMode.All);
+            if (!wanted) continue;
+
+            var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
+            UIPressScaleFeedback.AddTo(container.gameObject);
+            container.Name = container.name = GetCostumeName(id, (dressdata == null ? id : dressdata.DressName));
+            container.Image.sprite = (dressdata == null ? CostumeIconDefault : dressdata.Icon);
+            container.Image.enabled = true;
+            container.Id = costumeId;
+            container.Button.onClick.AddListener(() =>
             {
-                costumes.Add(id);
-                string costumeId = id;
-                var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
-                UIPressScaleFeedback.AddTo(container.gameObject);
-                var data = costumeId.Split('_');
-                var bodytype = int.Parse(data[0]);
-                var bodysub = int.Parse(data[1]);
-
-                var dressdata = Main.Costumes.FirstOrDefault(a => a.BodyType == bodytype && a.BodyTypeSub == bodysub);
-                container.Name = container.name = GetCostumeName(id, (dressdata == null ? id : dressdata.DressName));
-                container.Image.sprite = (dressdata == null ? CostumeIconDefault : dressdata.Icon);
-                container.Image.enabled = true;
-                container.Id = costumeId;
-                container.Button.onClick.AddListener(() =>
+                if (LiveSelectPannel.activeInHierarchy && CurrentSeletChara)
                 {
-                    if (LiveSelectPannel.activeInHierarchy && CurrentSeletChara)
+                    CurrentSeletChara.SetValue(listChara, costumeId, container.Image.sprite, CurrentHeadCostumeId);
+                }
+                else
+                {
+                    HighlightChildImage(costumeList.content, container);
+                    var list = new List<UmaDatabaseEntry>();
+                    list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath) && a.Name.Contains(listChara.Id.ToString())));
+                    list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.HeadPath) && a.Name.Contains(headChara.Id.ToString())));
+                    var tail_path = getCharaTailPath(headChara);
+                    if (!string.IsNullOrEmpty(tail_path))
                     {
-                        CurrentSeletChara.SetValue(chara, costumeId, container.Image.sprite, CurrentHeadCostumeId);
+                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(tail_path)));
                     }
-                    else
+                    list.Add(Main.AbList["3d/animator/drivenkeylocator"]);
+                    var motion_path = $"3d/motion/event/body/chara/chr{listChara.Id}_00/anm_eve_chr{listChara.Id}_00_idle01_loop";
+                    if (!listChara.IsMob && !ModelSettings.IsHeadFix && Main.AbList.TryGetValue(motion_path, out var motion_entry))
                     {
-                        HighlightChildImage(costumeList.content, container);
-                        var list = new List<UmaDatabaseEntry>();
-                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath) && a.Name.Contains(chara.Id.ToString())));
-                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.HeadPath) && a.Name.Contains(chara.Id.ToString())));
-                        var tail_path = getCharaTailPath(chara);
-                        if (!string.IsNullOrEmpty(tail_path))
-                        {
-                            list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(tail_path)));
-                        }
-                        list.Add(Main.AbList["3d/animator/drivenkeylocator"]);
-                        var motion_path = $"3d/motion/event/body/chara/chr{chara.Id}_00/anm_eve_chr{chara.Id}_00_idle01_loop";
-                        if (!chara.IsMob && !ModelSettings.IsHeadFix && Main.AbList.TryGetValue(motion_path, out var motion_entry))
-                        {
-                            list.Add(motion_entry);
-                        }
+                        list.Add(motion_entry);
+                    }
 
-                        Builder.UnloadUma();
-                        //UmaAssetManager.UnloadAllBundle(true);
-                        UmaAssetManager.PreLoadAndRun(list, delegate { StartCoroutine(Builder.LoadUma(chara, costumeId, mini, CurrentHeadCostumeId)); });
-                        //StartCoroutine(Builder.LoadUma(achara, costumeId, mini));
-                    }
-                });
-            }
+                    Builder.UnloadUma();
+                    //UmaAssetManager.UnloadAllBundle(true);
+                    UmaAssetManager.PreLoadAndRun(list, delegate { StartCoroutine(Builder.LoadUma(listChara, costumeId, mini, CurrentHeadCostumeId, otherMode ? chara : null)); });
+                    //StartCoroutine(Builder.LoadUma(listChara, costumeId, mini));
+                }
+            });
         }
 
         if(!chara.IsMob && !mini)
@@ -1103,8 +1320,8 @@ public class UmaViewerUI : MonoBehaviour
                 Destroy(HeadCostumeList.content.GetChild(i).gameObject);
             }
             CurrentHeadCostumeId = string.Empty;
-            nameVar = $"/pfb_chr{chara.Id}_";
-            foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{chara.Id}_") && !a.Name.Contains("clothes") && a.Name.Contains(nameVar)))
+            var headNameVar = $"/pfb_chr{chara.Id}_";
+            foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{chara.Id}_") && !a.Name.Contains("clothes") && a.Name.Contains(headNameVar)))
             {
                 var container = Instantiate(UmaContainerCostumePrefab, HeadCostumeList.content).GetComponent<UmaUIContainer>();
                 UIPressScaleFeedback.AddTo(container.gameObject);
@@ -1853,6 +2070,7 @@ public class UmaViewerUI : MonoBehaviour
             VocalModeDropdown.SetValueWithoutNotify((int)VocalMode);
             VocalModeDropdown.RefreshShownValue();
             VocalModeDropdown.onValueChanged.AddListener(SetVocalMode);
+            PrepareDropdownScroll(VocalModeDropdown);
         }
         else
         {
@@ -2183,6 +2401,8 @@ public class UmaViewerUI : MonoBehaviour
     void PrepareVocalComboCaption(TMP_Dropdown dd, int slot)
     {
         if (dd == null) return;
+        PrepareDropdownScroll(dd);
+
         var cap = dd.captionText;
         if (cap == null)
         {
@@ -2444,12 +2664,14 @@ public class UmaViewerUI : MonoBehaviour
         public Sprite Icon;         //dressdata.Icon, o CostumeIconDefault si no hay dressdata
         public CostumeEntry Dress;  //puede ser null
         public string DisplayName;  //lo que se pinta en el panel (GetCostumeName)
+        public bool IsCommon;       //true = id "XXXX_XX_XX"; false = propio (id corto)
     }
 
-    //(Live: trajes de un personaje sin crear UI: primero los PROPIOS (id corto) y después los COMUNES
-    //(XXXX_XX_XX), en el mismo orden que el listado del panel, para que el aleatorio elija entre los
-    //mismos trajes que se ven.)
-    List<CostumeOption> EnumerateCostumes(CharaEntry chara, bool mini)
+    //(Trajes de un personaje sin crear UI: primero los PROPIOS (id corto) y después los COMUNES
+    //(XXXX_XX_XX), en el mismo orden que el listado del panel, para que el aleatorio y el selector de
+    //modo elijan entre los mismos trajes que se ven. 'mode' decide qué ramas entran: por defecto 'All'
+    //(propios + comunes con y sin nombre), que es el comportamiento de siempre para mobs/mini.)
+    List<CostumeOption> EnumerateCostumes(CharaEntry chara, bool mini, CostumeListMode mode = CostumeListMode.All)
     {
         var result = new List<CostumeOption>();
         if (chara == null) return result;
@@ -2457,8 +2679,9 @@ public class UmaViewerUI : MonoBehaviour
 
         string bodyPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
 
-        //--- Trajes PROPIOS del personaje (id corto). Los mobs no los tienen.
-        if (!chara.IsMob)
+        //--- Trajes PROPIOS del personaje (id corto). Los mobs no los tienen. (En 'Uniques',
+        //'Other Characters' y 'All'; en General/Extras no salen.)
+        if (!chara.IsMob && (mode == CostumeListMode.Uniques || mode == CostumeListMode.OtherCharacters || mode == CostumeListMode.All))
         {
             string nameVar = mini ? $"pfb_mbdy{chara.Id}" : $"pfb_bdy{chara.Id}";
             foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(bodyPath) && !a.Name.Contains("clothes") && a.Name.Contains(nameVar)))
@@ -2468,7 +2691,7 @@ public class UmaViewerUI : MonoBehaviour
                 int sub;
                 if (!int.TryParse(costumeId, out sub)) sub = int.MinValue;   //nunca casa con un BodyTypeSub real
                 var dressdata = Main.Costumes.FirstOrDefault(a => a.CharaId == chara.Id && a.BodyTypeSub == sub);
-                result.Add(MakeCostumeOption(costumeId, dressdata));
+                result.Add(MakeCostumeOption(costumeId, dressdata, false));
             }
         }
 
@@ -2492,20 +2715,31 @@ public class UmaViewerUI : MonoBehaviour
                 bodysub = int.MinValue;
             }
             var dressdata = Main.Costumes.FirstOrDefault(a => a.BodyType == bodytype && a.BodyTypeSub == bodysub);
-            result.Add(MakeCostumeOption(id, dressdata));
+
+            //(Tres listas: 'Uniques'/'Other Characters' no llevan comunes; 'General' los comunes CON
+            //nombre; 'Extras' los de testeo (id en crudo) más los que marca EsTrajeExtra (Big Belly).
+            //'All' (mobs/mini) los lleva todos.)
+            bool isExtra = EsTrajeExtra(id, dressdata);
+            bool wanted = isExtra
+                ? (mode == CostumeListMode.Extras || mode == CostumeListMode.All)
+                : (mode == CostumeListMode.General || mode == CostumeListMode.All);
+            if (!wanted) continue;
+
+            result.Add(MakeCostumeOption(id, dressdata, true));
         }
 
         return result;
     }
 
-    CostumeOption MakeCostumeOption(string id, CostumeEntry dressdata)
+    CostumeOption MakeCostumeOption(string id, CostumeEntry dressdata, bool isCommon)
     {
         return new CostumeOption
         {
             Id = id,
             Dress = dressdata,
             Icon = dressdata == null ? CostumeIconDefault : dressdata.Icon,
-            DisplayName = GetCostumeName(id, dressdata == null ? id : dressdata.DressName)
+            DisplayName = GetCostumeName(id, dressdata == null ? id : dressdata.DressName),
+            IsCommon = isCommon
         };
     }
 
@@ -2530,6 +2764,2026 @@ public class UmaViewerUI : MonoBehaviour
         return EsTrajeDeTest(costumeId, dress)
             || costumeId == "0002_00_03"   // School Short Sleeves Big Belly
             || costumeId == "0002_01_03";  // School Long Sleeves Big Belly
+    }
+
+
+
+    //==========================================================================
+    // (Buscadores / desplegables con búsqueda por teclado y selector de modo de trajes)
+    // El diseño (posición, tamaño, rótulos) vive en Version2.unity; aquí SÓLO se resuelve por nombre
+    // y se cablea el comportamiento. Nada se redimensiona ni se recoloca. Ningún InputField: el
+    // teclado se lee a mano en Update() con Input.inputString (Input Manager clásico).
+    //==========================================================================
+
+    //Cámara con la que resolver los rect de un desplegable (Overlay → null).
+    Camera DropdownCanvasCamara(TMP_Dropdown dd)
+    {
+        var canvas = dd != null ? dd.GetComponentInParent<Canvas>() : null;
+        if (canvas == null) return null;
+        return canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+    }
+
+    //Busca un descendiente por nombre ACOTADO a root. A diferencia de FindChildByName (que cae a
+    //buscar en toda la escena y devolvería un "Content" ajeno), esto nunca sale del subárbol.
+    static Transform FindDescendant(Transform root, string name)
+    {
+        if (root == null) return null;
+        for (int i = 0; i < root.childCount; i++)
+        {
+            var c = root.GetChild(i);
+            if (c == null) continue;
+            if (c.name == name) return c;
+            var deep = FindDescendant(c, name);
+            if (deep != null) return deep;
+        }
+        return null;
+    }
+
+    static Transform FindListContent(Transform panel, string listName)
+    {
+        if (panel == null) return null;
+        var list = FindDescendant(panel, listName);
+        return list != null ? FindDescendant(list, "Content") : null;
+    }
+
+    //Un Dropdown necesita SIEMPRE plantilla (Template) + itemText para poder desplegar. Si vienen
+    //vacíos, se clona la plantilla de otro Dropdown de la escena (se prefiere "LiveMode") y se
+    //engancha al nuestro. Así no hay que tocar el YAML ni el Inspector.
+    void RepairDropdownTemplate(TMP_Dropdown dd)
+    {
+        if (dd == null) return;
+
+        if (dd.template == null || dd.itemText == null)
+        {
+            TMP_Dropdown src = null;
+            foreach (var d in FindObjectsOfType<TMP_Dropdown>(true))
+            {
+                if (d == null || d == dd || d.template == null) continue;
+                if (d.gameObject.name == "LiveMode") { src = d; break; }
+                if (src == null) src = d;
+            }
+            if (src == null)
+            {
+                Debug.LogError("[UmaViewerUI] Un Dropdown no tiene plantilla y no hay ningún otro con plantilla de donde copiarla.");
+                return;
+            }
+
+            if (dd.template == null)
+            {
+                var tpl = Instantiate(src.template.gameObject, dd.transform);
+                tpl.name = "Template";
+                var tplRt = tpl.GetComponent<RectTransform>();
+                tplRt.SetAsLastSibling();
+                tpl.SetActive(false);          //la plantilla debe estar oculta hasta desplegar
+                dd.template = tplRt;
+            }
+
+            if (dd.itemText == null && dd.template != null)
+            {
+                var item = dd.template.Find("Viewport/Content/Item");
+                if (item != null) dd.itemText = item.GetComponentInChildren<TMP_Text>(true);
+            }
+        }
+
+        //Los items del desplegable, a 15 fijo (igual que las combobox de voz).
+        if (dd.itemText != null)
+        {
+            dd.itemText.enableAutoSizing = false;
+            dd.itemText.fontSize = VocalComboFontMax;
+        }
+
+        PrepareDropdownMarquee(dd);
+        PrepareDropdownScroll(dd);
+    }
+
+    //La rueda del ratón mueve muy poco las listas de los desplegables: se multiplica por 10 la
+    //sensibilidad de scroll. Se aplica a la plantilla, así lo heredan las listas que Show() clona.
+    void PrepareDropdownScroll(TMP_Dropdown dd)
+    {
+        if (dd == null || dd.template == null) return;
+        var scroll = dd.template.GetComponentInChildren<ScrollRect>(true);
+        if (scroll == null) return;
+        scroll.scrollSensitivity *= 10f;
+    }
+
+    //(Tarea 2) Un texto demasiado largo para una línea se parte y se solapa con la fila siguiente.
+    //En vez de eso, la etiqueta se deja en UNA línea con una marquesina (TMPMarquee) y la fila recorta
+    //(RectMask2D). Se aplica a la etiqueta de los items del desplegable; y al rótulo (captionText)
+    //sólo si cuelga de un contenedor propio (para poder recortarlo sin comerse la lista).
+    void PrepareDropdownMarquee(TMP_Dropdown dd)
+    {
+        if (dd == null) return;
+
+        SetupMarqueeLabel(dd.itemText, true);
+
+        var caption = dd.captionText;
+        if (caption != null && caption.transform.parent != null && caption.transform.parent != dd.transform)
+            SetupMarqueeLabel(caption, true);
+    }
+
+    void SetupMarqueeLabel(TMP_Text label, bool maskParent)
+    {
+        if (label == null) return;
+
+        var mq = label.GetComponent<TMPMarquee>();
+        if (mq == null) mq = label.gameObject.AddComponent<TMPMarquee>();
+        mq.Target = label;
+
+        //Una sola línea, sin partirse; el recorte lo hace el RectMask2D.
+        label.enableWordWrapping = false;
+        label.overflowMode = TextOverflowModes.Overflow;
+        label.enableAutoSizing = false;
+
+        if (maskParent)
+        {
+            var row = label.transform.parent;
+            if (row != null && row.GetComponent<RectMask2D>() == null)
+                row.gameObject.AddComponent<RectMask2D>();
+        }
+    }
+
+    //Nombre visible de un item de lista (show/sonido): el texto de su hijo "Text" (legacy o TMP); si
+    //no, el Name del UmaUIContainer; si no, el nombre del GameObject.
+    static string SearchComboItemText(Transform item)
+    {
+        if (item == null) return "";
+        var textGo = FindDescendant(item, "Text");
+        if (textGo != null)
+        {
+            var legacy = textGo.GetComponent<Text>();
+            if (legacy != null && !string.IsNullOrEmpty(legacy.text)) return legacy.text;
+            var tmp = textGo.GetComponent<TMP_Text>();
+            if (tmp != null && !string.IsNullOrEmpty(tmp.text)) return tmp.text;
+        }
+        var container = item.GetComponent<UmaUIContainer>();
+        if (container != null && !string.IsNullOrEmpty(container.Name)) return container.Name;
+        return item.name;
+    }
+
+    //Desplaza la lista hasta el item elegido. Se calcula de forma agnóstica al layout: se compara el
+    //rect del item con el del viewport del ScrollRect y se mueve el content lo justo para dejarlo
+    //dentro.
+    void ScrollListToItem(Transform item)
+    {
+        if (item == null) return;
+        var itemRect = item as RectTransform;
+        if (itemRect == null) return;
+
+        var scrollRect = item.GetComponentInParent<ScrollRect>();
+        if (scrollRect == null || scrollRect.content == null) return;
+        var viewport = scrollRect.viewport != null ? scrollRect.viewport : scrollRect.transform as RectTransform;
+        if (viewport == null) return;
+
+        //Asegura que el layout esté calculado antes de medir (los items son dinámicos).
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect.content);
+
+        Bounds itemBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(viewport, itemRect);
+        var view = viewport.rect;
+
+        float deltaY = 0f;
+        if (itemBounds.max.y > view.yMax) deltaY = -(itemBounds.max.y - view.yMax);      //está por arriba
+        else if (itemBounds.min.y < view.yMin) deltaY = view.yMin - itemBounds.min.y;   //está por abajo
+        if (Mathf.Approximately(deltaY, 0f)) return;
+
+        scrollRect.content.anchoredPosition += new Vector2(0f, deltaY);
+        //Reaplica el clamp del ScrollRect (por si el item estaba cerca de un extremo).
+        scrollRect.verticalNormalizedPosition = Mathf.Clamp01(scrollRect.verticalNormalizedPosition);
+    }
+
+    //Id numérico con el que empieza el nombre del item ("1013 Mejiro McQueen" -> 1013).
+    static int ParseLeadingId(string nombre)
+    {
+        if (string.IsNullOrEmpty(nombre)) return -1;
+        nombre = nombre.TrimStart();
+        int i = 0;
+        while (i < nombre.Length && char.IsDigit(nombre[i])) i++;
+        if (i == 0) return -1;
+        int id;
+        return int.TryParse(nombre.Substring(0, i), out id) ? id : -1;
+    }
+
+
+    //==========================================================================
+    // (Selector Uniques/General/Extras/Other Characters del listado de trajes)
+    //==========================================================================
+
+    void EnsureModelDropdown()
+    {
+        if (ModelDropdown != null) return;
+
+        foreach (var d in FindObjectsOfType<TMP_Dropdown>(true))
+        {
+            if (d != null && d.gameObject.name == "ModelDropdown") { ModelDropdown = d; break; }
+        }
+
+        if (ModelDropdown == null)
+        {
+            Debug.LogError("[UmaViewerUI] No se encuentra el Dropdown 'ModelDropdown' del panel de personajes normales.");
+            return;
+        }
+
+        RepairDropdownTemplate(ModelDropdown);
+
+        //Descarta cualquier cableado previo (persistente o no) y deja sólo el nuestro.
+        ModelDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+        ModelDropdown.options.Clear();
+        ModelDropdown.options.Add(new TMP_Dropdown.OptionData("Uniques"));
+        ModelDropdown.options.Add(new TMP_Dropdown.OptionData("General"));
+        ModelDropdown.options.Add(new TMP_Dropdown.OptionData("Extras"));
+        ModelDropdown.options.Add(new TMP_Dropdown.OptionData("Other Characters"));
+        ModelDropdown.SetValueWithoutNotify((int)costumeListMode);
+        ModelDropdown.RefreshShownValue();
+        ModelDropdown.onValueChanged.AddListener(OnModelDropdownChanged);
+    }
+
+    //El desplegable "Other Characters" se rellena con TODOS los PJ de Main.Characters, mostrando el
+    //nombre sin el número inicial. Por defecto queda el primero. Sólo se ve en su modo.
+    void EnsureOtherCharactersDropdown()
+    {
+        if (OtherCharactersDropdown != null) return;
+
+        foreach (var d in FindObjectsOfType<TMP_Dropdown>(true))
+        {
+            if (d != null && d.gameObject.name == "OtherCharactersDropdown") { OtherCharactersDropdown = d; break; }
+        }
+
+        if (OtherCharactersDropdown == null)
+        {
+            Debug.LogError("[UmaViewerUI] No se encuentra el Dropdown 'OtherCharactersDropdown'.");
+            return;
+        }
+
+        RepairDropdownTemplate(OtherCharactersDropdown);
+
+        //La combobox se dibuja en el propio rótulo del desplegable, así que el clic debe pasar de
+        //largo hasta el Dropdown (igual que en las combobox de voz).
+        if (OtherCharactersDropdown.captionText != null)
+        {
+            OtherCharactersDropdown.captionText.raycastTarget = false;
+            OtherCharactersDropdown.captionText.overflowMode = TextOverflowModes.Overflow;
+        }
+        //Cierra y reabre en cada tecla (RefreshOtherOpenList): fundido corto para que no parpadee.
+        OtherCharactersDropdown.alphaFadeSpeed = VocalListFadeSpeed;
+
+        OtherCharactersDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+        otherCharactersList.Clear();
+        foreach (var c in Main.Characters.OrderBy(c => c.Id)) otherCharactersList.Add(c);
+        selectedOtherChara = otherCharactersList.Count > 0 ? otherCharactersList[0] : null;
+        RebuildOtherCharactersOptions();
+        OtherCharactersDropdown.onValueChanged.AddListener(OnOtherCharactersChanged);
+
+        OtherCharactersDropdown.gameObject.SetActive(costumeListMode == CostumeListMode.OtherCharacters);
+    }
+
+    //Rehace las opciones del desplegable "Other Characters" según el filtro tecleado.
+    //otherOptionsVisible[] queda en el MISMO orden que dd.options, para que dd.value (y por tanto
+    //OnOtherCharactersChanged) apunten al PJ correcto aunque la lista esté filtrada.
+    void RebuildOtherCharactersOptions()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null) return;
+
+        string f = (otherSearchFilter ?? "").Trim();
+        otherOptionsVisible.Clear();
+        dd.options.Clear();
+        foreach (var c in otherCharactersList)
+        {
+            string nombre = c.GetName() ?? "";
+            if (f.Length > 0 && nombre.IndexOf(f, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            otherOptionsVisible.Add(c);
+            dd.options.Add(new TMP_Dropdown.OptionData(nombre));
+        }
+
+        if (otherOptionsVisible.Count > 0)
+        {
+            int idx = otherOptionsVisible.IndexOf(selectedOtherChara);
+            if (idx < 0) idx = 0;
+            selectedOtherChara = otherOptionsVisible[idx];
+            dd.SetValueWithoutNotify(idx);
+        }
+        dd.RefreshShownValue();
+        RefreshOtherComboText();
+    }
+
+    //El rótulo enseña lo tecleado mientras se busca; si no hay filtro, el PJ elegido.
+    void RefreshOtherComboText()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || dd.captionText == null) return;
+
+        string texto = otherSearchFilter ?? "";
+        if (texto.Length == 0 && dd.value >= 0 && dd.value < dd.options.Count)
+            texto = dd.options[dd.value].text;
+
+        if (!string.Equals(dd.captionText.text, texto, StringComparison.Ordinal))
+            dd.captionText.text = texto;
+    }
+
+    void OnModelDropdownChanged(int value)
+    {
+        costumeListMode = (CostumeListMode)value;
+
+        //El desplegable de "otros personajes" sólo se ve en su modo.
+        if (OtherCharactersDropdown != null)
+            OtherCharactersDropdown.gameObject.SetActive(costumeListMode == CostumeListMode.OtherCharacters);
+
+        if (currentCostumeChara != null) ListCostumes(currentCostumeChara, currentCostumeMini);
+    }
+
+    void OnOtherCharactersChanged(int value)
+    {
+        //dd.value indexa la lista VISIBLE (filtrada o no), no la completa.
+        if (value >= 0 && value < otherOptionsVisible.Count) selectedOtherChara = otherOptionsVisible[value];
+        if (costumeListMode == CostumeListMode.OtherCharacters && currentCostumeChara != null)
+            ListCostumes(currentCostumeChara, currentCostumeMini);
+    }
+
+    //===== Búsqueda por teclado del desplegable "Other Characters" =====
+    bool HayListaDeOtrosBajoElPuntero()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var cam = DropdownCanvasCamara(dd);
+        var pos = Input.mousePosition;
+        var hijos = dd.template.parent.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < hijos.Length; i++)
+        {
+            var lista = hijos[i];
+            if (lista == null || lista.name != "Dropdown List" || !lista.gameObject.activeInHierarchy) continue;
+            var rt = lista as RectTransform;
+            if (rt != null && RectTransformUtility.RectangleContainsScreenPoint(rt, pos, cam)) return true;
+        }
+        return false;
+    }
+
+    bool OtherDropdownBajoElPuntero()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return false;
+        var rt = dd.transform as RectTransform;
+        if (rt == null) return false;
+        return RectTransformUtility.RectangleContainsScreenPoint(rt, Input.mousePosition, DropdownCanvasCamara(dd));
+    }
+
+    void UpdateOtherCharacterSearch()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy) return;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!HayListaDeOtrosBajoElPuntero())
+            {
+                if (OtherDropdownBajoElPuntero()) BeginOtherSearch();
+                else EndOtherSearch();
+            }
+            return;
+        }
+
+        if (!otherSearchActive) return;
+
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable())
+        {
+            EndOtherSearch();
+            return;
+        }
+
+        string tecleado = Input.inputString;
+        if (string.IsNullOrEmpty(tecleado)) return;
+
+        var buffer = new StringBuilder(otherSearchFilter ?? "");
+        bool cambio = false;
+        foreach (var c in tecleado)
+        {
+            if (c == '\b')
+            {
+                if (buffer.Length > 0) buffer.Length--;
+                cambio = true;
+            }
+            else if (char.IsControl(c)) continue;
+            else
+            {
+                buffer.Append(c);
+                cambio = true;
+            }
+        }
+        if (!cambio) return;
+
+        otherSearchFilter = buffer.ToString();
+        RebuildOtherCharactersOptions();
+        KeepOtherListOpen();
+    }
+
+    void BeginOtherSearch()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return;
+
+        otherSearchActive = true;
+        if (!string.IsNullOrEmpty(otherSearchFilter))
+        {
+            otherSearchFilter = "";
+            RebuildOtherCharactersOptions();
+        }
+        otherListQuiere = true;
+        otherListSucia = false;
+        dd.Show();
+    }
+
+    void EndOtherSearch()
+    {
+        otherSearchActive = false;
+        var dd = OtherCharactersDropdown;
+        if (dd != null && dd.IsActive()) dd.Hide();
+        if (string.IsNullOrEmpty(otherSearchFilter)) return;
+        otherSearchFilter = "";
+        RebuildOtherCharactersOptions();
+    }
+
+    void KeepOtherListOpen()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || !dd.IsInteractable()) return;
+
+        otherListQuiere = true;
+        if (!dd.IsActive())
+        {
+            otherListSucia = false;
+            dd.Show();
+            return;
+        }
+        if (otherListEspera) { otherListSucia = true; return; }
+        otherListEspera = true;
+        StartCoroutine(RefreshOtherOpenList(dd));
+    }
+
+    IEnumerator RefreshOtherOpenList(TMP_Dropdown dd)
+    {
+        while (true)
+        {
+            dd.Hide();
+            yield return new WaitForSecondsRealtime(VocalListFadeSpeed + 0.02f);
+            otherListSucia = false;
+            if (!otherListQuiere) break;
+            if (OtherCharactersDropdown != dd || !dd.IsInteractable()) break;
+            dd.Show();
+            if (!otherListSucia) break;
+        }
+        otherListEspera = false;
+        otherListSucia = false;
+    }
+
+
+    //==========================================================================
+    // (Buscador de personajes del panel Characters)
+    //  · Se rellena con el listado del panel de tipo activo leyendo su "Character List/Viewport/
+    //    Content" (Normal), "Mini Character List/Viewport/Content" (Mini) o el Content del PageManager
+    //    (Mob).
+    //  · Al elegir una entrada se dispara el click de ese mismo item de la lista.
+    //  · Búsqueda por teclado con filtrado de la lista abierta.
+    //==========================================================================
+
+    void EnsureSearchCharacterDropdown()
+    {
+        if (SearchCharacterDropdown != null) return;
+
+        foreach (var d in FindObjectsOfType<TMP_Dropdown>(true))
+        {
+            if (d != null && d.gameObject.name == "SearchCharacterDropdown") { SearchCharacterDropdown = d; break; }
+        }
+
+        if (SearchCharacterDropdown == null)
+        {
+            Debug.LogError("[UmaViewerUI] No se encuentra el Dropdown 'SearchCharacterDropdown' del panel Characters.");
+            return;
+        }
+
+        SearchCharacterRow = SearchCharacterDropdown.transform.parent != null
+            ? SearchCharacterDropdown.transform.parent.gameObject
+            : null;
+
+        RepairDropdownTemplate(SearchCharacterDropdown);
+
+        //La combobox se dibuja en el propio rótulo: el clic debe pasar al Dropdown.
+        if (SearchCharacterDropdown.captionText != null)
+        {
+            SearchCharacterDropdown.captionText.raycastTarget = false;
+            SearchCharacterDropdown.captionText.overflowMode = TextOverflowModes.Overflow;
+        }
+        SearchCharacterDropdown.alphaFadeSpeed = VocalListFadeSpeed;
+
+        SearchCharacterDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+        SearchCharacterDropdown.onValueChanged.AddListener(OnSearchCharacterChanged);
+
+        ResolveSearchCharacterPanels();
+        RebuildSearchCharacterOptions(true);
+        RefreshSearchCharacterVisibility();
+    }
+
+    //Cachea los 3 paneles de tipo (Normal/Mini/Mob) y el Content de su lista de personajes. Así el
+    //chequeo por frame no recorre la jerarquía entera, sólo mira activeInHierarchy.
+    void ResolveSearchCharacterPanels()
+    {
+        searchPanelNormal = searchPanelMini = searchPanelMob = null;
+        searchContentNormal = searchContentMini = searchContentMob = null;
+
+        var characters = SearchCharacterRow != null ? SearchCharacterRow.transform.parent : null;
+        if (characters == null) return;
+
+        var normal = FindDescendant(characters, "NormalCharacters");
+        var mini = FindDescendant(characters, "MiniCharacters");
+        var mob = FindDescendant(characters, "MobCharacters");
+
+        searchPanelNormal = normal != null ? normal.gameObject : null;
+        searchPanelMini = mini != null ? mini.gameObject : null;
+        searchPanelMob = mob != null ? mob.gameObject : null;
+
+        //Cada tipo nombra distinto su lista (y mobs la pagina el PageManager en el mismo Content).
+        searchContentNormal = FindListContent(normal, "Character List");
+        searchContentMini = FindListContent(mini, "Mini Character List");
+        searchContentMob = FindListContent(mob, "Character List");
+    }
+
+    //Devuelve el Content del panel de tipo ACTIVO ("el listado actual"), o null.
+    Transform ActiveSearchCharacterContent(out GameObject panel)
+    {
+        if (searchPanelNormal != null && searchPanelNormal.activeInHierarchy) { panel = searchPanelNormal; return searchContentNormal; }
+        if (searchPanelMini != null && searchPanelMini.activeInHierarchy) { panel = searchPanelMini; return searchContentMini; }
+        if (searchPanelMob != null && searchPanelMob.activeInHierarchy) { panel = searchPanelMob; return searchContentMob; }
+        panel = null;
+        return null;
+    }
+
+    //Mantiene la fila y el desplegable encendidos (la fila vive siempre bajo Characters y sólo se ve
+    //cuando ese panel está activo; aquí sólo se garantiza que no queden apagados).
+    void RefreshSearchCharacterVisibility()
+    {
+        if (SearchCharacterRow != null && !SearchCharacterRow.activeSelf) SearchCharacterRow.SetActive(true);
+        if (SearchCharacterDropdown != null && !SearchCharacterDropdown.gameObject.activeSelf)
+            SearchCharacterDropdown.gameObject.SetActive(true);
+    }
+
+    //Refresca la lista cada vez que cambia el panel de tipo activo o su contenido. La firma es barata
+    //(panel + nº de items + primero/último), de modo que no recorre la lista cada frame.
+    void UpdateSearchCharacter()
+    {
+        if (SearchCharacterDropdown == null) return;
+        RefreshSearchCharacterVisibility();
+
+        //Tras elegir una entrada se cierra la búsqueda y se vuelve a la lista completa (y al item
+        //elegido en el rótulo). Se difiere aquí para no tocar dd.options dentro del callback del
+        //propio Dropdown (OnSelectItem), que podría estar en mitad de su Set().
+        if (searchCharacterNeedsRefresh && !SearchCharacterListVisible())
+        {
+            searchCharacterNeedsRefresh = false;
+            searchCharacterFilter = "";
+            RebuildSearchCharacterOptions(false);
+            int pos = searchCharacterSelectedItemIndex >= 0
+                ? searchCharacterVisible.IndexOf(searchCharacterSelectedItemIndex)
+                : -1;
+            if (pos >= 0)
+            {
+                SearchCharacterDropdown.SetValueWithoutNotify(pos);
+                SearchCharacterDropdown.RefreshShownValue();
+                RefreshSearchComboText();
+            }
+        }
+
+        GameObject panel;
+        var content = ActiveSearchCharacterContent(out panel);
+        string firma = (panel != null ? panel.name : "none") + "|" + (content != null ? content.childCount : 0);
+        if (content != null && content.childCount > 0)
+            firma += "|" + content.GetChild(0).name + "|" + content.GetChild(content.childCount - 1).name;
+
+        if (firma != searchCharacterSignature && !searchCharacterActive)
+        {
+            searchCharacterSignature = firma;
+            RebuildSearchCharacterOptions(true);
+        }
+        //Se sincroniza con la selección real de la lista (si el usuario eligió un PJ sin el buscador).
+        SyncSearchCharacterSelectionFromCurrent();
+        //Reafirma el rótulo: vacío hasta que el usuario elija algo (el Dropdown lo repinta a options[0]
+        //al activarse el panel, y no queremos ese texto por defecto).
+        RefreshSearchComboText();
+    }
+
+    //Si el PJ actual (elegido en la lista, sin el buscador) está en el listado del desplegable, lo
+    //adopta como selección para que el rótulo lo muestre al abrir el panel.
+    void SyncSearchCharacterSelectionFromCurrent()
+    {
+        if (SearchCharacterDropdown == null) return;
+        if (searchCharacterActive) return;                     //no pisar mientras se busca
+        if (currentCostumeChara == null) return;
+        if (SearchCharacterRow == null || !SearchCharacterRow.activeInHierarchy) return;
+
+        int idx = -1;
+        for (int i = 0; i < searchCharacterNames.Count; i++)
+        {
+            if (ParseLeadingId(searchCharacterNames[i]) == currentCostumeChara.Id) { idx = i; break; }
+        }
+        if (idx < 0) return;
+        if (searchCharacterFilter == "" && searchCharacterSelectedItemIndex == idx) return;
+
+        searchCharacterSelectedItemIndex = idx;
+        searchCharacterFilter = "";
+        RebuildSearchCharacterOptions(false);
+        int pos = searchCharacterVisible.IndexOf(idx);
+        if (pos >= 0)
+        {
+            SearchCharacterDropdown.SetValueWithoutNotify(pos);
+            SearchCharacterDropdown.RefreshShownValue();
+            RefreshSearchComboText();
+        }
+    }
+
+    //Lee los UmaUIContainer del Content activo (su orden = orden visible de la lista).
+    void CollectActiveSearchCharacterItems()
+    {
+        searchCharacterItems.Clear();
+        searchCharacterNames.Clear();
+
+        GameObject panel;
+        var content = ActiveSearchCharacterContent(out panel);
+        if (content == null) return;
+
+        for (int i = 0; i < content.childCount; i++)
+        {
+            var child = content.GetChild(i);
+            if (child == null) continue;
+            var container = child.GetComponent<UmaUIContainer>();
+            if (container == null) continue;
+            string nombre = container.Name;
+            if (string.IsNullOrEmpty(nombre)) nombre = child.name;
+            searchCharacterItems.Add(child);
+            searchCharacterNames.Add(nombre);
+        }
+    }
+
+    //Rehace las opciones del desplegable. rebuildItems=true vuelve a leer la lista del panel activo;
+    //false sólo reaplica el filtro tecleado. searchCharacterVisible[] queda en el MISMO orden que
+    //dd.options, para que dd.value (y OnSearchCharacterChanged) apunten al item correcto.
+    void RebuildSearchCharacterOptions(bool rebuildItems)
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null) return;
+
+        if (rebuildItems) CollectActiveSearchCharacterItems();
+
+        string f = (searchCharacterFilter ?? "").Trim();
+        searchCharacterVisible.Clear();
+        dd.options.Clear();
+        for (int i = 0; i < searchCharacterNames.Count; i++)
+        {
+            string nombre = searchCharacterNames[i] ?? "";
+            if (f.Length > 0 && nombre.IndexOf(f, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            searchCharacterVisible.Add(i);
+            dd.options.Add(new TMP_Dropdown.OptionData(nombre));
+        }
+
+        if (dd.options.Count > 0) dd.SetValueWithoutNotify(0);
+        dd.RefreshShownValue();
+        RefreshSearchComboText();
+    }
+
+    //El rótulo enseña lo tecleado mientras se busca; si no hay filtro, el item elegido.
+    void RefreshSearchComboText()
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null || dd.captionText == null) return;
+
+        string texto = searchCharacterFilter ?? "";
+        if (texto.Length == 0 && searchCharacterSelectedItemIndex >= 0 && dd.value >= 0 && dd.value < dd.options.Count)
+            texto = dd.options[dd.value].text;
+
+        if (!string.Equals(dd.captionText.text, texto, StringComparison.Ordinal))
+            dd.captionText.text = texto;
+    }
+
+    //Callback del Dropdown: aplica la entrada elegida. Marca que onValueChanged ya la aplicó para que
+    //la detección de cierre de lista no la aplique dos veces.
+    void OnSearchCharacterChanged(int value)
+    {
+        searchCharacterValueHandled = true;
+        ApplySearchCharacterSelection(value);
+    }
+
+    //Al elegir una entrada, se pulsa su item de la lista (carga el personaje/traje).
+    void ApplySearchCharacterSelection(int value)
+    {
+        if (value < 0 || value >= searchCharacterVisible.Count) return;
+        int itemIndex = searchCharacterVisible[value];
+        if (itemIndex < 0 || itemIndex >= searchCharacterItems.Count) return;
+
+        var item = searchCharacterItems[itemIndex];
+        if (item == null) return;
+
+        var container = item.GetComponent<UmaUIContainer>();
+        var btn = container != null ? container.Button : item.GetComponent<Button>();
+        if (btn == null) btn = item.GetComponentInChildren<Button>(true);
+        if (btn != null && btn.IsInteractable()) btn.onClick.Invoke();
+
+        //Desplaza el ScrollRect de la lista activa hasta la entrada elegida para dejarla a la vista.
+        ScrollListToItem(item);
+
+        //Cierra la búsqueda y programa la vuelta a la lista completa (ver UpdateSearchCharacter).
+        searchCharacterSelectedItemIndex = itemIndex;
+        searchCharacterActive = false;
+        searchCharacterNeedsRefresh = true;
+    }
+
+    //===== Búsqueda por teclado del buscador de personajes =====
+    //OJO: Dropdown.IsActive() NO sirve aquí: es el de Selectable y responde a "el desplegable está
+    //activo e interactuable", no a "la lista está abierta". Se busca el GameObject "Dropdown List".
+    bool SearchCharacterListVisible()
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var parent = dd.template.parent;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var t = parent.GetChild(i);
+            if (t != null && t.name == "Dropdown List" && t.gameObject.activeInHierarchy) return true;
+        }
+        return false;
+    }
+
+    bool HayListaDeBusquedaBajoElPuntero()
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var cam = DropdownCanvasCamara(dd);
+        var pos = Input.mousePosition;
+        var hijos = dd.template.parent.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < hijos.Length; i++)
+        {
+            var lista = hijos[i];
+            if (lista == null || lista.name != "Dropdown List" || !lista.gameObject.activeInHierarchy) continue;
+            var rt = lista as RectTransform;
+            if (rt != null && RectTransformUtility.RectangleContainsScreenPoint(rt, pos, cam)) return true;
+        }
+        return false;
+    }
+
+    bool SearchDropdownBajoElPuntero()
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return false;
+        var rt = dd.transform as RectTransform;
+        if (rt == null) return false;
+        return RectTransformUtility.RectangleContainsScreenPoint(rt, Input.mousePosition, DropdownCanvasCamara(dd));
+    }
+
+    void UpdateSearchCharacterSearch()
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy)
+        {
+            searchCharacterListWasOpen = false;
+            searchCharacterClickOnList = false;
+            return;
+        }
+
+        //La lista acaba de cerrarse: si el cierre vino de pulsar una entrada, se aplica (aunque el
+        //índice elegido coincida con el actual; ver el comentario de los flags de selección).
+        bool abierta = SearchCharacterListVisible();
+        if (searchCharacterListWasOpen && !abierta && searchCharacterClickOnList)
+        {
+            searchCharacterClickOnList = false;
+            if (!searchCharacterValueHandled) ApplySearchCharacterSelection(dd.value);
+        }
+        searchCharacterListWasOpen = abierta;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!HayListaDeBusquedaBajoElPuntero())
+            {
+                if (SearchDropdownBajoElPuntero()) BeginSearchCharacterSearch();
+                else EndSearchCharacterSearch();
+            }
+            else
+            {
+                //El clic es sobre una entrada de la lista abierta: la procesará el propio Dropdown en
+                //el pointer-up. Se marca para aplicar la selección al cerrarse la lista.
+                searchCharacterClickOnList = true;
+                searchCharacterValueHandled = false;
+            }
+            return;
+        }
+
+        if (!searchCharacterActive) return;
+
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable())
+        {
+            EndSearchCharacterSearch();
+            return;
+        }
+
+        string tecleado = Input.inputString;
+        if (string.IsNullOrEmpty(tecleado)) return;
+
+        var buffer = new StringBuilder(searchCharacterFilter ?? "");
+        bool cambio = false;
+        foreach (var c in tecleado)
+        {
+            if (c == '\b')
+            {
+                if (buffer.Length > 0) buffer.Length--;
+                cambio = true;
+            }
+            else if (char.IsControl(c)) continue;
+            else
+            {
+                buffer.Append(c);
+                cambio = true;
+            }
+        }
+        if (!cambio) return;
+
+        searchCharacterFilter = buffer.ToString();
+        RebuildSearchCharacterOptions(false);
+        KeepSearchCharacterListOpen();
+    }
+
+    void BeginSearchCharacterSearch()
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return;
+
+        searchCharacterActive = true;
+        if (!string.IsNullOrEmpty(searchCharacterFilter))
+        {
+            searchCharacterFilter = "";
+            RebuildSearchCharacterOptions(false);
+        }
+        searchCharacterListQuiere = true;
+        searchCharacterListSucia = false;
+        dd.Show();
+    }
+
+    void EndSearchCharacterSearch()
+    {
+        searchCharacterActive = false;
+        var dd = SearchCharacterDropdown;
+        if (dd != null && dd.IsActive()) dd.Hide();
+        if (string.IsNullOrEmpty(searchCharacterFilter)) return;
+        searchCharacterFilter = "";
+        RebuildSearchCharacterOptions(false);
+    }
+
+    void KeepSearchCharacterListOpen()
+    {
+        var dd = SearchCharacterDropdown;
+        if (dd == null || !dd.IsInteractable()) return;
+
+        searchCharacterListQuiere = true;
+        if (!dd.IsActive())
+        {
+            searchCharacterListSucia = false;
+            dd.Show();
+            return;
+        }
+        if (searchCharacterListEspera) { searchCharacterListSucia = true; return; }
+        searchCharacterListEspera = true;
+        StartCoroutine(RefreshSearchCharacterOpenList(dd));
+    }
+
+    IEnumerator RefreshSearchCharacterOpenList(TMP_Dropdown dd)
+    {
+        while (true)
+        {
+            dd.Hide();
+            yield return new WaitForSecondsRealtime(VocalListFadeSpeed + 0.02f);
+            searchCharacterListSucia = false;
+            if (!searchCharacterListQuiere) break;
+            if (SearchCharacterDropdown != dd || !dd.IsInteractable()) break;
+            dd.Show();
+            if (!searchCharacterListSucia) break;
+        }
+        searchCharacterListEspera = false;
+        searchCharacterListSucia = false;
+    }
+
+
+    //==========================================================================
+    // (Buscador de shows del panel Shows — SearchLive)
+    //==========================================================================
+
+    void EnsureSearchLiveDropdown()
+    {
+        if (SearchLiveDropdown != null) return;
+
+        foreach (var d in FindObjectsOfType<TMP_Dropdown>(true))
+        {
+            if (d != null && d.gameObject.name == "SearchLiveDropdown") { SearchLiveDropdown = d; break; }
+        }
+
+        if (SearchLiveDropdown == null)
+        {
+            Debug.LogError("[UmaViewerUI] No se encuentra el Dropdown 'SearchLiveDropdown' del panel Shows.");
+            return;
+        }
+
+        SearchLiveRow = SearchLiveDropdown.transform.parent != null
+            ? SearchLiveDropdown.transform.parent.gameObject
+            : null;
+
+        RepairDropdownTemplate(SearchLiveDropdown);
+
+        if (SearchLiveDropdown.captionText != null)
+        {
+            SearchLiveDropdown.captionText.raycastTarget = false;
+            SearchLiveDropdown.captionText.overflowMode = TextOverflowModes.Overflow;
+        }
+        SearchLiveDropdown.alphaFadeSpeed = VocalListFadeSpeed;
+
+        SearchLiveDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+        SearchLiveDropdown.onValueChanged.AddListener(OnSearchLiveChanged);
+
+        RebuildSearchLiveOptions(true);
+        RefreshSearchLiveVisibility();
+    }
+
+    Transform GetSearchLiveContent()
+    {
+        if (LiveList != null && LiveList.content != null) return LiveList.content;
+        var shows = SearchLiveRow != null ? SearchLiveRow.transform.parent : null;
+        var list = shows != null ? FindDescendant(shows, "Live List") : null;
+        return list != null ? FindDescendant(list, "Content") : null;
+    }
+
+    void CollectSearchLiveItems()
+    {
+        searchLiveItems.Clear();
+        searchLiveNames.Clear();
+
+        var content = GetSearchLiveContent();
+        if (content == null) return;
+
+        for (int i = 0; i < content.childCount; i++)
+        {
+            var child = content.GetChild(i);
+            if (child == null) continue;
+            string nombre = SearchComboItemText(child);
+            if (string.IsNullOrEmpty(nombre)) nombre = child.name;
+            searchLiveItems.Add(child);
+            searchLiveNames.Add(nombre);
+        }
+    }
+
+    string SearchLiveSignature(Transform content)
+    {
+        if (content == null || content.childCount == 0) return "none|0";
+        string first = SearchComboItemText(content.GetChild(0));
+        string last = SearchComboItemText(content.GetChild(content.childCount - 1));
+        return content.childCount + "|" + first + "|" + last;
+    }
+
+    void RefreshSearchLiveVisibility()
+    {
+        if (SearchLiveRow != null && !SearchLiveRow.activeSelf) SearchLiveRow.SetActive(true);
+        if (SearchLiveDropdown != null && !SearchLiveDropdown.gameObject.activeSelf)
+            SearchLiveDropdown.gameObject.SetActive(true);
+    }
+
+    void UpdateSearchLive()
+    {
+        if (SearchLiveDropdown == null) return;
+        RefreshSearchLiveVisibility();
+
+        if (searchLiveNeedsRefresh && !SearchLiveListVisible())
+        {
+            searchLiveNeedsRefresh = false;
+            searchLiveFilter = "";
+            RebuildSearchLiveOptions(false);
+            int pos = searchLiveSelectedItemIndex >= 0
+                ? searchLiveVisible.IndexOf(searchLiveSelectedItemIndex)
+                : -1;
+            if (pos >= 0)
+            {
+                SearchLiveDropdown.SetValueWithoutNotify(pos);
+                SearchLiveDropdown.RefreshShownValue();
+                RefreshSearchLiveComboText();
+            }
+        }
+
+        var content = GetSearchLiveContent();
+        string firma = SearchLiveSignature(content);
+        if (firma != searchLiveSignature && !searchLiveActive)
+        {
+            searchLiveSignature = firma;
+            RebuildSearchLiveOptions(true);
+        }
+        //Reafirma el rótulo: vacío hasta que el usuario elija algo.
+        RefreshSearchLiveComboText();
+    }
+
+    void RebuildSearchLiveOptions(bool rebuildItems)
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null) return;
+
+        if (rebuildItems) CollectSearchLiveItems();
+
+        string f = (searchLiveFilter ?? "").Trim();
+        searchLiveVisible.Clear();
+        dd.options.Clear();
+        for (int i = 0; i < searchLiveNames.Count; i++)
+        {
+            string nombre = searchLiveNames[i] ?? "";
+            if (f.Length > 0 && nombre.IndexOf(f, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            searchLiveVisible.Add(i);
+            dd.options.Add(new TMP_Dropdown.OptionData(nombre));
+        }
+
+        if (dd.options.Count > 0) dd.SetValueWithoutNotify(0);
+        dd.RefreshShownValue();
+        RefreshSearchLiveComboText();
+    }
+
+    void RefreshSearchLiveComboText()
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null || dd.captionText == null) return;
+
+        string texto = searchLiveFilter ?? "";
+        if (texto.Length == 0 && searchLiveSelectedItemIndex >= 0 && dd.value >= 0 && dd.value < dd.options.Count)
+            texto = dd.options[dd.value].text;
+
+        if (!string.Equals(dd.captionText.text, texto, StringComparison.Ordinal))
+            dd.captionText.text = texto;
+    }
+
+    void OnSearchLiveChanged(int value)
+    {
+        searchLiveValueHandled = true;
+        ApplySearchLiveSelection(value);
+    }
+
+    void ApplySearchLiveSelection(int value)
+    {
+        if (value < 0 || value >= searchLiveVisible.Count) return;
+        int itemIndex = searchLiveVisible[value];
+        if (itemIndex < 0 || itemIndex >= searchLiveItems.Count) return;
+
+        var item = searchLiveItems[itemIndex];
+        if (item == null) return;
+
+        var container = item.GetComponent<UmaUIContainer>();
+        var btn = container != null ? container.Button : item.GetComponent<Button>();
+        if (btn == null) btn = item.GetComponentInChildren<Button>(true);
+        if (btn != null && btn.IsInteractable()) btn.onClick.Invoke();
+
+        ScrollListToItem(item);
+
+        searchLiveSelectedItemIndex = itemIndex;
+        searchLiveActive = false;
+        searchLiveNeedsRefresh = true;
+    }
+
+    //===== Búsqueda por teclado del buscador de shows =====
+    bool SearchLiveListVisible()
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var parent = dd.template.parent;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var t = parent.GetChild(i);
+            if (t != null && t.name == "Dropdown List" && t.gameObject.activeInHierarchy) return true;
+        }
+        return false;
+    }
+
+    bool HayListaDeBusquedaLiveBajoElPuntero()
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var cam = DropdownCanvasCamara(dd);
+        var pos = Input.mousePosition;
+        var hijos = dd.template.parent.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < hijos.Length; i++)
+        {
+            var lista = hijos[i];
+            if (lista == null || lista.name != "Dropdown List" || !lista.gameObject.activeInHierarchy) continue;
+            var rt = lista as RectTransform;
+            if (rt != null && RectTransformUtility.RectangleContainsScreenPoint(rt, pos, cam)) return true;
+        }
+        return false;
+    }
+
+    bool SearchLiveDropdownBajoElPuntero()
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return false;
+        var rt = dd.transform as RectTransform;
+        if (rt == null) return false;
+        return RectTransformUtility.RectangleContainsScreenPoint(rt, Input.mousePosition, DropdownCanvasCamara(dd));
+    }
+
+    void UpdateSearchLiveSearch()
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy)
+        {
+            searchLiveListWasOpen = false;
+            searchLiveClickOnList = false;
+            return;
+        }
+
+        bool abierta = SearchLiveListVisible();
+        if (searchLiveListWasOpen && !abierta && searchLiveClickOnList)
+        {
+            searchLiveClickOnList = false;
+            if (!searchLiveValueHandled) ApplySearchLiveSelection(dd.value);
+        }
+        searchLiveListWasOpen = abierta;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!HayListaDeBusquedaLiveBajoElPuntero())
+            {
+                if (SearchLiveDropdownBajoElPuntero()) BeginSearchLiveSearch();
+                else EndSearchLiveSearch();
+            }
+            else
+            {
+                searchLiveClickOnList = true;
+                searchLiveValueHandled = false;
+            }
+            return;
+        }
+
+        if (!searchLiveActive) return;
+
+        if (!dd.gameObject.activeInHierarchy || !dd.IsInteractable())
+        {
+            EndSearchLiveSearch();
+            return;
+        }
+
+        string tecleado = Input.inputString;
+        if (string.IsNullOrEmpty(tecleado)) return;
+
+        var buffer = new StringBuilder(searchLiveFilter ?? "");
+        bool cambio = false;
+        foreach (var c in tecleado)
+        {
+            if (c == '\b')
+            {
+                if (buffer.Length > 0) buffer.Length--;
+                cambio = true;
+            }
+            else if (char.IsControl(c)) continue;
+            else
+            {
+                buffer.Append(c);
+                cambio = true;
+            }
+        }
+        if (!cambio) return;
+
+        searchLiveFilter = buffer.ToString();
+        RebuildSearchLiveOptions(false);
+        KeepSearchLiveListOpen();
+    }
+
+    void BeginSearchLiveSearch()
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return;
+
+        searchLiveActive = true;
+        if (!string.IsNullOrEmpty(searchLiveFilter))
+        {
+            searchLiveFilter = "";
+            RebuildSearchLiveOptions(false);
+        }
+        searchLiveListQuiere = true;
+        searchLiveListSucia = false;
+        dd.Show();
+    }
+
+    void EndSearchLiveSearch()
+    {
+        searchLiveActive = false;
+        var dd = SearchLiveDropdown;
+        if (dd != null && dd.IsActive()) dd.Hide();
+        if (string.IsNullOrEmpty(searchLiveFilter)) return;
+        searchLiveFilter = "";
+        RebuildSearchLiveOptions(false);
+    }
+
+    void KeepSearchLiveListOpen()
+    {
+        var dd = SearchLiveDropdown;
+        if (dd == null || !dd.IsInteractable()) return;
+
+        searchLiveListQuiere = true;
+        if (!dd.IsActive())
+        {
+            searchLiveListSucia = false;
+            dd.Show();
+            return;
+        }
+        if (searchLiveListEspera) { searchLiveListSucia = true; return; }
+        searchLiveListEspera = true;
+        StartCoroutine(RefreshSearchLiveOpenList(dd));
+    }
+
+    IEnumerator RefreshSearchLiveOpenList(TMP_Dropdown dd)
+    {
+        while (true)
+        {
+            dd.Hide();
+            yield return new WaitForSecondsRealtime(VocalListFadeSpeed + 0.02f);
+            searchLiveListSucia = false;
+            if (!searchLiveListQuiere) break;
+            if (SearchLiveDropdown != dd || !dd.IsInteractable()) break;
+            dd.Show();
+            if (!searchLiveListSucia) break;
+        }
+        searchLiveListEspera = false;
+        searchLiveListSucia = false;
+    }
+
+
+    //==========================================================================
+    // (Buscador de canciones/sonidos del panel Sounds — SearchSounds)
+    //  · Live   -> canciones:  "Sounds/LiveSound List/Viewport/Content"
+    //  · Normal -> sonidos:    "Sounds/NormalSound List/NormalSound/Viewport/Content"
+    //==========================================================================
+
+    void EnsureSearchSoundsDropdown()
+    {
+        if (SearchSoundsDropdown != null) return;
+
+        foreach (var d in FindObjectsOfType<TMP_Dropdown>(true))
+        {
+            if (d != null && d.gameObject.name == "SearchSoundsDropdown") { SearchSoundsDropdown = d; break; }
+        }
+
+        if (SearchSoundsDropdown == null)
+        {
+            Debug.LogError("[UmaViewerUI] No se encuentra el Dropdown 'SearchSoundsDropdown' del panel Sounds.");
+            return;
+        }
+
+        SearchSoundsRow = SearchSoundsDropdown.transform.parent != null
+            ? SearchSoundsDropdown.transform.parent.gameObject
+            : null;
+
+        RepairDropdownTemplate(SearchSoundsDropdown);
+
+        if (SearchSoundsDropdown.captionText != null)
+        {
+            SearchSoundsDropdown.captionText.raycastTarget = false;
+            SearchSoundsDropdown.captionText.overflowMode = TextOverflowModes.Overflow;
+        }
+        SearchSoundsDropdown.alphaFadeSpeed = VocalListFadeSpeed;
+
+        SearchSoundsDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+        SearchSoundsDropdown.onValueChanged.AddListener(OnSearchSoundsChanged);
+
+        RebuildSearchSoundsOptions(true);
+        RefreshSearchSoundsVisibility();
+    }
+
+    //Content de la pestaña activa: canciones (Live) o sonidos (Normal).
+    Transform GetSearchSoundsContent()
+    {
+        if (LiveSoundList != null && LiveSoundList.gameObject.activeInHierarchy && LiveSoundList.content != null)
+            return LiveSoundList.content;
+        if (NormalSoundList != null && NormalSoundList.gameObject.activeInHierarchy && NormalSoundList.content != null)
+            return NormalSoundList.content;
+        return null;
+    }
+
+    void CollectSearchSoundsItems()
+    {
+        searchSoundsItems.Clear();
+        searchSoundsNames.Clear();
+
+        var content = GetSearchSoundsContent();
+        if (content == null) return;
+
+        for (int i = 0; i < content.childCount; i++)
+        {
+            var child = content.GetChild(i);
+            if (child == null) continue;
+            string nombre = SearchComboItemText(child);
+            if (string.IsNullOrEmpty(nombre)) nombre = child.name;
+            searchSoundsItems.Add(child);
+            searchSoundsNames.Add(nombre);
+        }
+    }
+
+    string SearchSoundsSignature(Transform content)
+    {
+        if (content == null || content.childCount == 0) return "none|0";
+        string first = SearchComboItemText(content.GetChild(0));
+        string last = SearchComboItemText(content.GetChild(content.childCount - 1));
+        return content.childCount + "|" + first + "|" + last;
+    }
+
+    void RefreshSearchSoundsVisibility()
+    {
+        if (SearchSoundsRow != null && !SearchSoundsRow.activeSelf) SearchSoundsRow.SetActive(true);
+        if (SearchSoundsDropdown != null && !SearchSoundsDropdown.gameObject.activeSelf)
+            SearchSoundsDropdown.gameObject.SetActive(true);
+    }
+
+    void UpdateSearchSounds()
+    {
+        if (SearchSoundsDropdown == null) return;
+        RefreshSearchSoundsVisibility();
+
+        if (searchSoundsNeedsRefresh && !SearchSoundsListVisible())
+        {
+            searchSoundsNeedsRefresh = false;
+            searchSoundsFilter = "";
+            RebuildSearchSoundsOptions(false);
+            int pos = searchSoundsSelectedItemIndex >= 0
+                ? searchSoundsVisible.IndexOf(searchSoundsSelectedItemIndex)
+                : -1;
+            if (pos >= 0)
+            {
+                SearchSoundsDropdown.SetValueWithoutNotify(pos);
+                SearchSoundsDropdown.RefreshShownValue();
+                RefreshSearchSoundsComboText();
+            }
+        }
+
+        var content = GetSearchSoundsContent();
+        string firma = SearchSoundsSignature(content);
+        if (firma != searchSoundsSignature && !searchSoundsActive)
+        {
+            searchSoundsSignature = firma;
+            RebuildSearchSoundsOptions(true);
+        }
+        //Se sincroniza con la canción elegida en la lista (si se eligió sin el buscador).
+        SyncSearchSoundsSelectionFromCurrent();
+        //Reafirma el rótulo: vacío hasta que el usuario elija algo.
+        RefreshSearchSoundsComboText();
+    }
+
+    //Si hay una canción elegida en la lista (sin el buscador) y sigue en el listado actual, el
+    //desplegable "SearchSounds" la adopta como selección al abrir el panel.
+    void SyncSearchSoundsSelectionFromCurrent()
+    {
+        if (SearchSoundsDropdown == null) return;
+        if (searchSoundsActive) return;
+        if (selectedLiveSound == null) return;
+        if (LiveSoundList == null || !LiveSoundList.gameObject.activeInHierarchy) return;
+
+        string prefix = " " + selectedLiveSound.MusicId + " ";
+        int idx = -1;
+        for (int i = 0; i < searchSoundsNames.Count; i++)
+        {
+            if (searchSoundsNames[i] != null && searchSoundsNames[i].StartsWith(prefix)) { idx = i; break; }
+        }
+        if (idx < 0) return;
+        if (searchSoundsFilter == "" && searchSoundsSelectedItemIndex == idx) return;
+
+        searchSoundsSelectedItemIndex = idx;
+        searchSoundsFilter = "";
+        RebuildSearchSoundsOptions(false);
+        int pos = searchSoundsVisible.IndexOf(idx);
+        if (pos >= 0)
+        {
+            SearchSoundsDropdown.SetValueWithoutNotify(pos);
+            SearchSoundsDropdown.RefreshShownValue();
+            RefreshSearchSoundsComboText();
+        }
+    }
+
+    void RebuildSearchSoundsOptions(bool rebuildItems)
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null) return;
+
+        if (rebuildItems) CollectSearchSoundsItems();
+
+        string f = (searchSoundsFilter ?? "").Trim();
+        searchSoundsVisible.Clear();
+        dd.options.Clear();
+        for (int i = 0; i < searchSoundsNames.Count; i++)
+        {
+            string nombre = searchSoundsNames[i] ?? "";
+            if (f.Length > 0 && nombre.IndexOf(f, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            searchSoundsVisible.Add(i);
+            dd.options.Add(new TMP_Dropdown.OptionData(nombre));
+        }
+
+        if (dd.options.Count > 0) dd.SetValueWithoutNotify(0);
+        dd.RefreshShownValue();
+        RefreshSearchSoundsComboText();
+    }
+
+    void RefreshSearchSoundsComboText()
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null || dd.captionText == null) return;
+
+        string texto = searchSoundsFilter ?? "";
+        if (texto.Length == 0 && searchSoundsSelectedItemIndex >= 0 && dd.value >= 0 && dd.value < dd.options.Count)
+            texto = dd.options[dd.value].text;
+
+        if (!string.Equals(dd.captionText.text, texto, StringComparison.Ordinal))
+            dd.captionText.text = texto;
+    }
+
+    void OnSearchSoundsChanged(int value)
+    {
+        searchSoundsValueHandled = true;
+        ApplySearchSoundsSelection(value);
+    }
+
+    void ApplySearchSoundsSelection(int value)
+    {
+        if (value < 0 || value >= searchSoundsVisible.Count) return;
+        int itemIndex = searchSoundsVisible[value];
+        if (itemIndex < 0 || itemIndex >= searchSoundsItems.Count) return;
+
+        var item = searchSoundsItems[itemIndex];
+        if (item == null) return;
+
+        var container = item.GetComponent<UmaUIContainer>();
+        var btn = container != null ? container.Button : item.GetComponent<Button>();
+        if (btn == null) btn = item.GetComponentInChildren<Button>(true);
+        if (btn != null && btn.IsInteractable()) btn.onClick.Invoke();
+
+        ScrollListToItem(item);
+
+        searchSoundsSelectedItemIndex = itemIndex;
+        searchSoundsActive = false;
+        searchSoundsNeedsRefresh = true;
+    }
+
+    //===== Búsqueda por teclado del buscador de sonidos =====
+    bool SearchSoundsListVisible()
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var parent = dd.template.parent;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var t = parent.GetChild(i);
+            if (t != null && t.name == "Dropdown List" && t.gameObject.activeInHierarchy) return true;
+        }
+        return false;
+    }
+
+    bool HayListaDeBusquedaSoundsBajoElPuntero()
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var cam = DropdownCanvasCamara(dd);
+        var pos = Input.mousePosition;
+        var hijos = dd.template.parent.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < hijos.Length; i++)
+        {
+            var lista = hijos[i];
+            if (lista == null || lista.name != "Dropdown List" || !lista.gameObject.activeInHierarchy) continue;
+            var rt = lista as RectTransform;
+            if (rt != null && RectTransformUtility.RectangleContainsScreenPoint(rt, pos, cam)) return true;
+        }
+        return false;
+    }
+
+    bool SearchSoundsDropdownBajoElPuntero()
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return false;
+        var rt = dd.transform as RectTransform;
+        if (rt == null) return false;
+        return RectTransformUtility.RectangleContainsScreenPoint(rt, Input.mousePosition, DropdownCanvasCamara(dd));
+    }
+
+    void UpdateSearchSoundsSearch()
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy)
+        {
+            searchSoundsListWasOpen = false;
+            searchSoundsClickOnList = false;
+            return;
+        }
+
+        bool abierta = SearchSoundsListVisible();
+        if (searchSoundsListWasOpen && !abierta && searchSoundsClickOnList)
+        {
+            searchSoundsClickOnList = false;
+            if (!searchSoundsValueHandled) ApplySearchSoundsSelection(dd.value);
+        }
+        searchSoundsListWasOpen = abierta;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!HayListaDeBusquedaSoundsBajoElPuntero())
+            {
+                if (SearchSoundsDropdownBajoElPuntero()) BeginSearchSoundsSearch();
+                else EndSearchSoundsSearch();
+            }
+            else
+            {
+                searchSoundsClickOnList = true;
+                searchSoundsValueHandled = false;
+            }
+            return;
+        }
+
+        if (!searchSoundsActive) return;
+
+        if (!dd.gameObject.activeInHierarchy || !dd.IsInteractable())
+        {
+            EndSearchSoundsSearch();
+            return;
+        }
+
+        string tecleado = Input.inputString;
+        if (string.IsNullOrEmpty(tecleado)) return;
+
+        var buffer = new StringBuilder(searchSoundsFilter ?? "");
+        bool cambio = false;
+        foreach (var c in tecleado)
+        {
+            if (c == '\b')
+            {
+                if (buffer.Length > 0) buffer.Length--;
+                cambio = true;
+            }
+            else if (char.IsControl(c)) continue;
+            else
+            {
+                buffer.Append(c);
+                cambio = true;
+            }
+        }
+        if (!cambio) return;
+
+        searchSoundsFilter = buffer.ToString();
+        RebuildSearchSoundsOptions(false);
+        KeepSearchSoundsListOpen();
+    }
+
+    void BeginSearchSoundsSearch()
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return;
+
+        searchSoundsActive = true;
+        if (!string.IsNullOrEmpty(searchSoundsFilter))
+        {
+            searchSoundsFilter = "";
+            RebuildSearchSoundsOptions(false);
+        }
+        searchSoundsListQuiere = true;
+        searchSoundsListSucia = false;
+        dd.Show();
+    }
+
+    void EndSearchSoundsSearch()
+    {
+        searchSoundsActive = false;
+        var dd = SearchSoundsDropdown;
+        if (dd != null && dd.IsActive()) dd.Hide();
+        if (string.IsNullOrEmpty(searchSoundsFilter)) return;
+        searchSoundsFilter = "";
+        RebuildSearchSoundsOptions(false);
+    }
+
+    void KeepSearchSoundsListOpen()
+    {
+        var dd = SearchSoundsDropdown;
+        if (dd == null || !dd.IsInteractable()) return;
+
+        searchSoundsListQuiere = true;
+        if (!dd.IsActive())
+        {
+            searchSoundsListSucia = false;
+            dd.Show();
+            return;
+        }
+        if (searchSoundsListEspera) { searchSoundsListSucia = true; return; }
+        searchSoundsListEspera = true;
+        StartCoroutine(RefreshSearchSoundsOpenList(dd));
+    }
+
+    IEnumerator RefreshSearchSoundsOpenList(TMP_Dropdown dd)
+    {
+        while (true)
+        {
+            dd.Hide();
+            yield return new WaitForSecondsRealtime(VocalListFadeSpeed + 0.02f);
+            searchSoundsListSucia = false;
+            if (!searchSoundsListQuiere) break;
+            if (SearchSoundsDropdown != dd || !dd.IsInteractable()) break;
+            dd.Show();
+            if (!searchSoundsListSucia) break;
+        }
+        searchSoundsListEspera = false;
+        searchSoundsListSucia = false;
+    }
+
+
+    //==========================================================================
+    // (Segundo buscador del panel Sounds — SearchSoundsbyCharacter)
+    //  · Se rellena con el listado de PJ de "Characters/NormalCharacters/Character List" y arranca SIN
+    //    selección.
+    //  · Al elegir un PJ deja en "Sounds/LiveSound List" sólo las canciones cuyas voces
+    //    ("Sounds/LiveCharaSound List") incluyan a ese PJ; "SearchSounds" se recarga con el listado
+    //    filtrado.
+    //  · También filtra al teclear.
+    //==========================================================================
+
+    void EnsureSearchByCharaDropdown()
+    {
+        if (SearchByCharaDropdown != null) return;
+
+        foreach (var d in FindObjectsOfType<TMP_Dropdown>(true))
+        {
+            if (d != null && d.transform.parent != null && d.transform.parent.name == "SearchSoundsbyCharacter")
+            { SearchByCharaDropdown = d; break; }
+        }
+
+        if (SearchByCharaDropdown == null)
+        {
+            Debug.LogError("[UmaViewerUI] No se encuentra el Dropdown de 'SearchSoundsbyCharacter'.");
+            return;
+        }
+
+        SearchByCharaRow = SearchByCharaDropdown.transform.parent.gameObject;
+
+        RepairDropdownTemplate(SearchByCharaDropdown);
+
+        if (SearchByCharaDropdown.captionText != null)
+        {
+            SearchByCharaDropdown.captionText.raycastTarget = false;
+            SearchByCharaDropdown.captionText.overflowMode = TextOverflowModes.Overflow;
+        }
+        SearchByCharaDropdown.alphaFadeSpeed = VocalListFadeSpeed;
+
+        SearchByCharaDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+        SearchByCharaDropdown.onValueChanged.AddListener(OnSearchByCharaChanged);
+
+        RebuildSearchByCharaOptions(true);
+        RefreshSearchByCharaVisibility();
+    }
+
+    //Content del listado de PJ normales ("Characters/NormalCharacters/Character List").
+    Transform GetCharacterListContent()
+    {
+        if (searchContentNormal != null) return searchContentNormal;
+        var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            var nc = FindDescendant(roots[i].transform, "NormalCharacters");
+            if (nc == null) continue;
+            var list = FindDescendant(nc, "Character List");
+            if (list != null) return FindDescendant(list, "Content");
+        }
+        return null;
+    }
+
+    void CollectSearchByCharaItems()
+    {
+        searchByCharaItems.Clear();
+        searchByCharaNames.Clear();
+        searchByCharaIds.Clear();
+
+        var content = GetCharacterListContent();
+        if (content == null) return;
+
+        for (int i = 0; i < content.childCount; i++)
+        {
+            var child = content.GetChild(i);
+            if (child == null) continue;
+            var container = child.GetComponent<UmaUIContainer>();
+            string nombre = container != null ? container.Name : child.name;
+            if (string.IsNullOrEmpty(nombre)) nombre = child.name;
+            searchByCharaItems.Add(child);
+            searchByCharaNames.Add(nombre);
+            searchByCharaIds.Add(ParseLeadingId(nombre));
+        }
+    }
+
+    string SearchByCharaSignature(Transform content)
+    {
+        if (content == null || content.childCount == 0) return "none|0";
+        return content.childCount + "|" + content.GetChild(0).name + "|" + content.GetChild(content.childCount - 1).name;
+    }
+
+    void RefreshSearchByCharaVisibility()
+    {
+        if (SearchByCharaRow != null && !SearchByCharaRow.activeSelf) SearchByCharaRow.SetActive(true);
+        if (SearchByCharaDropdown != null && !SearchByCharaDropdown.gameObject.activeSelf)
+            SearchByCharaDropdown.gameObject.SetActive(true);
+    }
+
+    void UpdateSearchByChara()
+    {
+        if (SearchByCharaDropdown == null) return;
+        RefreshSearchByCharaVisibility();
+
+        if (searchByCharaNeedsRefresh && !SearchByCharaListVisible())
+        {
+            searchByCharaNeedsRefresh = false;
+            searchByCharaFilter = "";
+            RebuildSearchByCharaOptions(false);
+            int pos = searchByCharaSelectedItemIndex >= 0
+                ? searchByCharaVisible.IndexOf(searchByCharaSelectedItemIndex)
+                : -1;
+            if (pos >= 0)
+            {
+                SearchByCharaDropdown.SetValueWithoutNotify(pos);
+                SearchByCharaDropdown.RefreshShownValue();
+                RefreshSearchByCharaComboText();
+            }
+        }
+
+        var content = GetCharacterListContent();
+        string firma = SearchByCharaSignature(content);
+        if (firma == searchByCharaSignature)
+        {
+            //Sin cambios de lista: basta con reafirmar el rótulo (el Dropdown lo repinta a options[0]
+            //al activarse el panel, y queremos que sin PJ elegido siga vacío).
+            RefreshSearchByCharaComboText();
+            return;
+        }
+        if (searchByCharaActive)
+        {
+            RefreshSearchByCharaComboText();
+            return;
+        }
+        searchByCharaSignature = firma;
+        RebuildSearchByCharaOptions(true);
+    }
+
+    void RebuildSearchByCharaOptions(bool rebuildItems)
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null) return;
+
+        if (rebuildItems) CollectSearchByCharaItems();
+
+        string f = (searchByCharaFilter ?? "").Trim();
+        searchByCharaVisible.Clear();
+        dd.options.Clear();
+        for (int i = 0; i < searchByCharaNames.Count; i++)
+        {
+            string nombre = searchByCharaNames[i] ?? "";
+            if (f.Length > 0 && nombre.IndexOf(f, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            searchByCharaVisible.Add(i);
+            dd.options.Add(new TMP_Dropdown.OptionData(nombre));
+        }
+
+        if (dd.options.Count > 0) dd.SetValueWithoutNotify(0);
+        dd.RefreshShownValue();
+        RefreshSearchByCharaComboText();
+    }
+
+    //El rótulo enseña lo tecleado; si no hay filtro, el PJ elegido; si no hay PJ, vacío.
+    void RefreshSearchByCharaComboText()
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null || dd.captionText == null) return;
+
+        string texto = searchByCharaFilter ?? "";
+        if (texto.Length == 0 && searchByCharaSelectedCharaId >= 0 && dd.value >= 0 && dd.value < dd.options.Count)
+            texto = dd.options[dd.value].text;
+
+        if (!string.Equals(dd.captionText.text, texto, StringComparison.Ordinal))
+            dd.captionText.text = texto;
+    }
+
+    void OnSearchByCharaChanged(int value)
+    {
+        searchByCharaValueHandled = true;
+        ApplySearchByCharaSelection(value);
+    }
+
+    void ApplySearchByCharaSelection(int value)
+    {
+        if (value < 0 || value >= searchByCharaVisible.Count) return;
+        int itemIndex = searchByCharaVisible[value];
+        if (itemIndex < 0 || itemIndex >= searchByCharaItems.Count) return;
+
+        searchByCharaSelectedItemIndex = itemIndex;
+        searchByCharaSelectedCharaId = searchByCharaIds[itemIndex];
+        searchByCharaActive = false;
+        searchByCharaNeedsRefresh = true;
+
+        //Deja en "Sounds/LiveSound List" sólo las canciones de ese PJ; "SearchSounds" se recarga solo
+        //al detectar el cambio de contenido.
+        RebuildLiveSoundList(searchByCharaSelectedCharaId);
+    }
+
+    //¿Canta este PJ (charaId) en esta canción? Misma lógica que ListLiveSounds: los ids de cantante
+    //salen del penúltimo token de los awb "snd_bgm_live_{songid}_chara_...".
+    bool LiveSongHasSinger(int musicId, int charaId)
+    {
+        if (charaId < 0) return true;
+        string nameVar = "snd_bgm_live_" + musicId + "_chara";
+        string idStr = charaId.ToString();
+        foreach (var a in Main.AbSounds)
+        {
+            if (a == null || !a.Name.Contains(nameVar) || !a.Name.EndsWith("awb")) continue;
+            var split = Path.GetFileNameWithoutExtension(a.Name).Split('_');
+            if (split.Length >= 2 && split[split.Length - 2] == idStr) return true;
+        }
+        return false;
+    }
+
+    //Rehace "Sounds/LiveSound List" con todas las canciones o sólo las del PJ elegido.
+    void RebuildLiveSoundList(int charaId)
+    {
+        if (LiveSoundList == null || LiveSoundList.content == null) return;
+
+        for (int i = LiveSoundList.content.childCount - 1; i >= 0; i--)
+            Destroy(LiveSoundList.content.GetChild(i).gameObject);
+
+        foreach (var live in Main.Lives.OrderBy(c => c.MusicId))
+        {
+            if (!LiveSongHasSinger(live.MusicId, charaId)) continue;
+            var liveEntry = live;
+            var container = Instantiate(UmaContainerLivePrefab, LiveSoundList.content).GetComponent<UmaUIContainer>();
+            container.Name = " " + liveEntry.MusicId + " " + liveEntry.SongName;
+            container.Image.sprite = liveEntry.Icon;
+            container.Image.enabled = container.Image.sprite;
+            container.Button.onClick.AddListener(() =>
+            {
+                HighlightChildImage(LiveSoundList.content, container);
+                selectedLiveSound = liveEntry;
+                ListLiveSounds(liveEntry.MusicId);
+            });
+        }
+    }
+
+    //===== Búsqueda por teclado del buscador por PJ =====
+    bool SearchByCharaListVisible()
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var parent = dd.template.parent;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var t = parent.GetChild(i);
+            if (t != null && t.name == "Dropdown List" && t.gameObject.activeInHierarchy) return true;
+        }
+        return false;
+    }
+
+    bool HayListaDeBusquedaByCharaBajoElPuntero()
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return false;
+        var cam = DropdownCanvasCamara(dd);
+        var pos = Input.mousePosition;
+        var hijos = dd.template.parent.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < hijos.Length; i++)
+        {
+            var lista = hijos[i];
+            if (lista == null || lista.name != "Dropdown List" || !lista.gameObject.activeInHierarchy) continue;
+            var rt = lista as RectTransform;
+            if (rt != null && RectTransformUtility.RectangleContainsScreenPoint(rt, pos, cam)) return true;
+        }
+        return false;
+    }
+
+    bool SearchByCharaDropdownBajoElPuntero()
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return false;
+        var rt = dd.transform as RectTransform;
+        if (rt == null) return false;
+        return RectTransformUtility.RectangleContainsScreenPoint(rt, Input.mousePosition, DropdownCanvasCamara(dd));
+    }
+
+    void UpdateSearchByCharaSearch()
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy)
+        {
+            searchByCharaListWasOpen = false;
+            searchByCharaClickOnList = false;
+            return;
+        }
+
+        bool abierta = SearchByCharaListVisible();
+        if (searchByCharaListWasOpen && !abierta && searchByCharaClickOnList)
+        {
+            searchByCharaClickOnList = false;
+            if (!searchByCharaValueHandled) ApplySearchByCharaSelection(dd.value);
+        }
+        searchByCharaListWasOpen = abierta;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!HayListaDeBusquedaByCharaBajoElPuntero())
+            {
+                if (SearchByCharaDropdownBajoElPuntero()) BeginSearchByCharaSearch();
+                else EndSearchByCharaSearch();
+            }
+            else
+            {
+                searchByCharaClickOnList = true;
+                searchByCharaValueHandled = false;
+            }
+            return;
+        }
+
+        if (!searchByCharaActive) return;
+
+        if (!dd.gameObject.activeInHierarchy || !dd.IsInteractable())
+        {
+            EndSearchByCharaSearch();
+            return;
+        }
+
+        string tecleado = Input.inputString;
+        if (string.IsNullOrEmpty(tecleado)) return;
+
+        var buffer = new StringBuilder(searchByCharaFilter ?? "");
+        bool cambio = false;
+        foreach (var c in tecleado)
+        {
+            if (c == '\b')
+            {
+                if (buffer.Length > 0) buffer.Length--;
+                cambio = true;
+            }
+            else if (char.IsControl(c)) continue;
+            else
+            {
+                buffer.Append(c);
+                cambio = true;
+            }
+        }
+        if (!cambio) return;
+
+        searchByCharaFilter = buffer.ToString();
+        RebuildSearchByCharaOptions(false);
+        KeepSearchByCharaListOpen();
+    }
+
+    void BeginSearchByCharaSearch()
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return;
+
+        searchByCharaActive = true;
+        if (!string.IsNullOrEmpty(searchByCharaFilter))
+        {
+            searchByCharaFilter = "";
+            RebuildSearchByCharaOptions(false);
+        }
+        searchByCharaListQuiere = true;
+        searchByCharaListSucia = false;
+        dd.Show();
+    }
+
+    void EndSearchByCharaSearch()
+    {
+        searchByCharaActive = false;
+        var dd = SearchByCharaDropdown;
+        if (dd != null && dd.IsActive()) dd.Hide();
+        if (string.IsNullOrEmpty(searchByCharaFilter)) return;
+        searchByCharaFilter = "";
+        RebuildSearchByCharaOptions(false);
+    }
+
+    void KeepSearchByCharaListOpen()
+    {
+        var dd = SearchByCharaDropdown;
+        if (dd == null || !dd.IsInteractable()) return;
+
+        searchByCharaListQuiere = true;
+        if (!dd.IsActive())
+        {
+            searchByCharaListSucia = false;
+            dd.Show();
+            return;
+        }
+        if (searchByCharaListEspera) { searchByCharaListSucia = true; return; }
+        searchByCharaListEspera = true;
+        StartCoroutine(RefreshSearchByCharaOpenList(dd));
+    }
+
+    IEnumerator RefreshSearchByCharaOpenList(TMP_Dropdown dd)
+    {
+        while (true)
+        {
+            dd.Hide();
+            yield return new WaitForSecondsRealtime(VocalListFadeSpeed + 0.02f);
+            searchByCharaListSucia = false;
+            if (!searchByCharaListQuiere) break;
+            if (SearchByCharaDropdown != dd || !dd.IsInteractable()) break;
+            dd.Show();
+            if (!searchByCharaListSucia) break;
+        }
+        searchByCharaListEspera = false;
+        searchByCharaListSucia = false;
     }
 
 }

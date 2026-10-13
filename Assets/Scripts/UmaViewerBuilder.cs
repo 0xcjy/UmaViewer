@@ -70,7 +70,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         Instance = this;
     }
 
-    public IEnumerator LoadUma(CharaEntry chara, string costumeId, bool mini, string haedCostumeId = "")
+    public IEnumerator LoadUma(CharaEntry chara, string costumeId, bool mini, string haedCostumeId = "", CharaEntry headOverride = null)
     {
         int id = chara.Id;
         var umaContainer = new GameObject($"Chara_{id}_{costumeId}").AddComponent<UmaContainerCharacter>();
@@ -94,7 +94,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         else
         {
             umaContainer.CharaData = UmaDatabaseController.ReadCharaData(chara);
-            LoadNormalUma(umaContainer, chara, costumeId, true, haedCostumeId);
+            LoadNormalUma(umaContainer, chara, costumeId, true, haedCostumeId, headOverride);
         }
 
         yield break;
@@ -136,7 +136,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         }
     }
 
-    private void LoadNormalUma(UmaContainerCharacter umaContainer, CharaEntry chara, string costumeId, bool loadMotion = false, string haedCostumeId = "")
+    private void LoadNormalUma(UmaContainerCharacter umaContainer, CharaEntry chara, string costumeId, bool loadMotion = false, string haedCostumeId = "", CharaEntry headOverride = null)
     {
         int id = chara.Id;
         umaContainer.CharaEntry = chara;
@@ -250,7 +250,23 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         string head_costumeId;
         int tailId = Convert.ToInt32(charaData["tail_model_id"]);
 
-        if (ModelSettings.IsHeadFix && CurrentHead != null)
+        if (headOverride != null)
+        {
+            //(Cuerpo del PJ 'chara', pero cabeza y cola del PJ 'headOverride'. Se usa, por ejemplo, en
+            //"Other Characters" del panel de trajes: cuerpo del otro PJ + cabeza/cola del actual.)
+            DataRow headData = UmaDatabaseController.ReadCharaData(headOverride);
+            head_id = headOverride.Id;
+            head_costumeId = string.IsNullOrEmpty(haedCostumeId) ? "00" : haedCostumeId;
+            if (headData != null) tailId = Convert.ToInt32(headData["tail_model_id"]);
+            CurrentHead = new UmaHeadData
+            {
+                id = head_id,
+                costumeId = head_costumeId,
+                tailId = tailId,
+                chara = headOverride
+            };
+        }
+        else if (ModelSettings.IsHeadFix && CurrentHead != null)
         {
             head_id = CurrentHead.id;
             head_costumeId = CurrentHead.costumeId;
