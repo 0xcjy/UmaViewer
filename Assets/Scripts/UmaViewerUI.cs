@@ -281,6 +281,9 @@ public class UmaViewerUI : MonoBehaviour
     //-1 = sin PJ elegido (no se filtra la lista de canciones).
     private int searchByCharaSelectedCharaId = -1;
 
+    //Fuente del juego que deben usar los desplegables (rótulo + lista). Se resuelve una sola vez.
+    private static TMP_FontAsset _dropdownFont;
+
     [Header("settings")]
     public UISettingsCamera CameraSettings;
     public UISettingsModel ModelSettings;
@@ -325,6 +328,9 @@ public class UmaViewerUI : MonoBehaviour
 
     private void Start()
     {
+        //(Fuentes: cadena de respaldo + reparación de atlas con huecos nulos. Ver SetupFontFallbacks.)
+        SetupFontFallbacks();
+
         OtherSettings.ApplySettings();
         SetupJukeboxSoundUI();
         CameraSettings.AAModeDropdown.SetValueWithoutNotify(Config.Instance.AntiAliasing);
@@ -2071,6 +2077,7 @@ public class UmaViewerUI : MonoBehaviour
             VocalModeDropdown.RefreshShownValue();
             VocalModeDropdown.onValueChanged.AddListener(SetVocalMode);
             PrepareDropdownScroll(VocalModeDropdown);
+            PrepareDropdownFont(VocalModeDropdown);
         }
         else
         {
@@ -2402,6 +2409,7 @@ public class UmaViewerUI : MonoBehaviour
     {
         if (dd == null) return;
         PrepareDropdownScroll(dd);
+        PrepareDropdownFont(dd);
 
         var cap = dd.captionText;
         if (cap == null)
@@ -2854,6 +2862,7 @@ public class UmaViewerUI : MonoBehaviour
 
         PrepareDropdownMarquee(dd);
         PrepareDropdownScroll(dd);
+        PrepareDropdownFont(dd);
     }
 
     //La rueda del ratón mueve muy poco las listas de los desplegables: se multiplica por 10 la
@@ -2864,6 +2873,133 @@ public class UmaViewerUI : MonoBehaviour
         var scroll = dd.template.GetComponentInChildren<ScrollRect>(true);
         if (scroll == null) return;
         scroll.scrollSensitivity *= 10f;
+    }
+
+    //El rótulo y la lista de los desplegables deben usar la fuente del juego ("dynamic01 SDF"). Al
+    //entrar en Play, algunos templates pierden esa fuente (vuelven a LiberationSans) y se ve distinta.
+    //Aquí se fuerza en runtime, tanto en el rótulo (captionText) como en las etiquetas de la lista
+    //(itemText; las copias que clona Show() la heredan de la plantilla).
+    //El rótulo y la lista de los desplegables deben usar la fuente del juego ("dynamic01 SDF"). Al
+    //entrar en Play, algunos templates pierden esa fuente (vuelven a LiberationSans) y se ve distinta.
+    //Aquí se fuerza en runtime, tanto en el rótulo (captionText) como en las etiquetas de la lista
+    //(itemText; las copias que clona Show() la heredan de la plantilla).
+    void PrepareDropdownFont(TMP_Dropdown dd)
+    {
+        if (dd == null) return;
+        var font = DropdownFontAsset();
+        if (font == null) return;
+        ApplyDropdownFont(dd.captionText, font);
+        ApplyDropdownFont(dd.itemText, font);
+    }
+
+    static TMP_FontAsset DropdownFontAsset()
+    {
+        if (_dropdownFont != null) return _dropdownFont;
+        _dropdownFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/dynamic01 SDF");
+        if (_dropdownFont == null) _dropdownFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/dynamic01 SDF 1");
+        if (_dropdownFont == null)
+            Debug.LogWarning("[UmaViewerUI] No se encuentra la fuente 'dynamic01 SDF' en Resources: " +
+                             "los desplegables se quedan con la que traiga la escena.");
+        return _dropdownFont;
+    }
+
+    static void ApplyDropdownFont(TMP_Text label, TMP_FontAsset font)
+    {
+        if (label == null || font == null) return;
+        if (label.font != font) label.font = font;
+    }
+
+    //==========================================================================
+    // (Fuentes: cadena de respaldo y descarte de fuentes rotas)
+    // Algunos textos traen caracteres (kanji/kana o signos especiales, p. ej. "ū") que la fuente
+    // principal no incluye; esos van a la cadena de respaldo. Y alguna fuente de la escena (p. ej.
+    // la copia "华文仿宋 SDF") tiene los glifos apuntando a atlas que ya no existen: al hornearla o
+    // representarla, TMP lanza UnassignedReferenceException / IndexOutOfRangeException.
+    //  · Se DESCARTAN de todas las cadenas las fuentes rotas (nunca se llega a ellas).
+    //  · Se engancha la cadena pedida: principal -> "dynamic01 SDF 1" -> genérica de Unity.
+    //==========================================================================
+    static readonly System.Reflection.BindingFlags FontFlags =
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+
+    void SetupFontFallbacks()
+    {
+        var primary = Resources.Load<TMP_FontAsset>("Fonts & Materials/dynamic01 SDF");
+        var game = Resources.Load<TMP_FontAsset>("Fonts & Materials/dynamic01 SDF 1");
+        var generic = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+
+        //Quita de todas las cadenas las fuentes rotas (incluidas las de los propios respaldos).
+        SanitizeFallbacks(primary);
+        SanitizeFallbacks(game);
+        SanitizeFallbacks(generic);
+
+        if (primary == null) return;
+
+        //La principal es dinámica: que pueda crecer de atlas si se queda corta.
+        primary.isMultiAtlasTexturesEnabled = true;
+
+        //Cadena de respaldo pedida: principal -> "dynamic01 SDF 1" (tiene más glifos JP) -> genérica
+        //de Unity. Nunca se incluye una fuente rota.
+        var chain = new List<TMP_FontAsset>();
+        if (game != null && game != primary && !IsFontBroken(game)) chain.Add(game);
+        if (generic != null && generic != primary && !IsFontBroken(generic)) chain.Add(generic);
+        primary.fallbackFontAssetTable = chain;
+
+        if (game != null)
+        {
+            game.isMultiAtlasTexturesEnabled = true;
+            var gameChain = new List<TMP_FontAsset>();
+            if (generic != null && generic != game && !IsFontBroken(generic)) gameChain.Add(generic);
+            game.fallbackFontAssetTable = gameChain;
+        }
+    }
+
+    //Deja en la cadena de respaldo sólo fuentes utilizables (quita las rotas).
+    static void SanitizeFallbacks(TMP_FontAsset font)
+    {
+        if (font == null || font.fallbackFontAssetTable == null) return;
+        var kept = new List<TMP_FontAsset>();
+        foreach (var fb in font.fallbackFontAssetTable)
+        {
+            if (fb == null) continue;
+            //Fuente inservible (glifos apuntando a atlas inexistentes): no se añade a la cadena. Se
+            //hace en silencio a propósito: en esta escena hay una copia corrupta y avisar cada vez
+            //sólo llenaba la consola.
+            if (IsFontBroken(fb)) continue;
+            kept.Add(fb);
+        }
+        font.fallbackFontAssetTable = kept;
+    }
+
+    //true = la fuente tiene glifos que apuntan a un atlas inexistente (o el atlas activo es un
+    //hueco nulo): hornear/representar con ella lanzaría excepción.
+    static bool IsFontBroken(TMP_FontAsset font)
+    {
+        if (font == null) return false;
+        var tex = font.atlasTextures;
+        if (tex == null || tex.Length == 0) return true;
+
+        var idxField = typeof(TMP_FontAsset).GetField("m_AtlasTextureIndex", FontFlags);
+        if (idxField != null)
+        {
+            int idx = (int)idxField.GetValue(font);
+            if (idx < 0 || idx >= tex.Length || tex[idx] == null) return true;
+        }
+
+        var glyphField = typeof(TMP_FontAsset).GetField("m_GlyphTable", FontFlags);
+        var table = glyphField != null ? glyphField.GetValue(font) as System.Collections.IList : null;
+        if (table != null && table.Count > 0)
+        {
+            var prop = table[0].GetType().GetProperty("atlasIndex");
+            if (prop != null)
+            {
+                for (int i = 0; i < table.Count; i++)
+                {
+                    int ai = (int)prop.GetValue(table[i]);
+                    if (ai < 0 || ai >= tex.Length || tex[ai] == null) return true;
+                }
+            }
+        }
+        return false;
     }
 
     //(Tarea 2) Un texto demasiado largo para una línea se parte y se solapa con la fila siguiente.
