@@ -172,6 +172,12 @@ namespace Gallop.Live
         public bool _syncTime = false;
         public bool _soloMode = false;
 
+        //(Live: modo de voz del directo y cantantes elegidas en el bloque VocalSelect.
+        // Los rellena UmaViewerBuilder.LoadLive desde la UI y los consume InitializeMusic.
+        // -1 = slot sin elegir ("Random": se resuelve una voz al azar para esa posición).)
+        public LiveVocalMode VocalMode = LiveVocalMode.SoloConcert;
+        public int[] VocalCharaIds = new int[] { -1, -1, -1, -1, -1, -1, -1 };
+
         public int characterCount = 0;
         public int allowCount = 0;
 
@@ -695,37 +701,132 @@ namespace Gallop.Live
             }
         }
 
-        public void InitializeMusic(int songid, List<LiveCharacterLoadData> characters)
+        //(Live: resolución de las pistas de voz a partir de VocalMode/VocalCharaIds.
+        //El modo y las cantantes ya NO se derivan de los slots del panel, sino de los desplegables
+        //del bloque VocalSelect.)
+        //Devuelve los charaId que deben cantar, EN ORDEN DE PISTA (center, left, right, …).
+        //  · SoloConcert → sólo VocalCharaIds[0]; si no hay elección, una voz al azar (comportamiento
+        //    histórico, para que la canción nunca se quede sin voz).
+        //  · MixVoices   → todas las posiciones elegidas; los slots sin elegir (-1) eligen una voz al
+        //    azar para esa posición.
+        //No se descartan duplicados a propósito: la tabla _part tiene una columna por pista, así que
+        //la misma cantante puede ocupar dos columnas distintas (center+left), igual que en el juego.
+        public static List<int> GetVocalCharaIdList(int songid, LiveVocalMode mode, int[] ids)
         {
-
-            for (int i = 0; i < characters.Count; i++)
+            var result = new List<int>();
+            if (mode == LiveVocalMode.SoloConcert)
             {
-                if (characters[i].CharaEntry.Name != "" && i < partInfo.SingerCount)
-                {
-                    var charaid = characters[i].CharaEntry.Id;
+                if (ids != null && ids.Length > 0 && ids[0] >= 0) result.Add(ids[0]);
+                if (result.Count == 0) AddRandomVocalCharaId(songid, result);
+                return result;
+            }
+            if (ids == null) return result;
+            for (int i = 0; i < ids.Length; i++)
+            {
+                if (ids[i] >= 0) result.Add(ids[i]);
+                else AddRandomVocalCharaId(songid, result);
+            }
+            return result;
+        }
 
-                    var entry = UmaViewerMain.Instance.AbSounds.FirstOrDefault(a => a.Name.Contains(string.Format(VOCAL_PATH, songid, charaid)) && a.Name.EndsWith("awb"));
-                    if (entry == null)
-                    {
-                        List<UmaDatabaseEntry> entries = new List<UmaDatabaseEntry>();
-                        foreach (var random in UmaViewerMain.Instance.AbSounds.Where(a => (a.Name.Contains(string.Format(RANDOM_VOCAL_PATH, songid)) && a.Name.EndsWith("awb"))))
-                        {
-                            entries.Add(random);
-                        }
-                        if (entries.Count > 0)
-                        {
-                            entry = entries[UnityEngine.Random.Range(0, entries.Count - 1)];
-                        }
-                    }
+        //(Live: fallback aleatorio por posición. El código antiguo usaba Random.Range(0, Count - 1),
+        // que nunca elegía el último elemento de la lista.)
+        static void AddRandomVocalCharaId(int songid, List<int> result)
+        {
+            var pick = GetRandomVocalEntry(songid);
+            if (pick == null) return;
+            var split = Path.GetFileNameWithoutExtension(pick.Name).Split('_');
+            if (split.Length >= 2 && int.TryParse(split[split.Length - 2], out int id))
+            {
+                result.Add(id);
+            }
+        }
 
-                    if (entry != null)
-                    {
-                        Debug.Log(entry.Name);
-                        liveVocal.Add(UmaViewerAudio.ApplySound(entry.Name.Split('.')[0], i));
-                    }
-                }
+        //(Live: una voz cualquiera de esta canción, o null si no hay ninguna.)
+        static UmaDatabaseEntry GetRandomVocalEntry(int songid)
+        {
+            var candidates = UmaViewerMain.Instance.AbSounds
+                .Where(a => a.Name.Contains(string.Format(RANDOM_VOCAL_PATH, songid)) && a.Name.EndsWith("awb"))
+                .ToList();
+            if (candidates.Count == 0) return null;
+            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        }
+
+        //(Live: busca la pista EXACTA de una cantante. Si el AWB exacto no está en disco devuelve
+        //null (la pista queda en silencio); NUNCA sustituye la elección del usuario por otra cantante.
+        //El azar queda reservado a AddRandomVocalCharaId, que sólo se usa cuando no se eligió a nadie.)
+        //Se compara por NOMBRE DE ARCHIVO (no con Contains sobre la ruta), para no confundir ids que
+        //comparten prefijo (chara_1001_01 dentro de chara_10011_01).)
+        static UmaDatabaseEntry ResolveVocalSoundEntry(int songid, int charaid)
+        {
+            var sounds = UmaViewerMain.Instance?.AbSounds;
+            if (sounds == null) return null;
+            string exact = string.Format(VOCAL_PATH, songid, charaid);
+            string exactFile = Path.GetFileNameWithoutExtension(exact);
+
+            foreach (var a in sounds)
+            {
+                if (a == null || !a.Name.EndsWith("awb")) continue;
+                if (Path.GetFileNameWithoutExtension(a.Name)
+                        .Equals(exactFile, StringComparison.OrdinalIgnoreCase)) return a;
             }
 
+            //Mismo prefijo pero cualquier sufijo de onda (VOCAL_PATH exige '_01').
+            string prefix = $"snd_bgm_live_{songid}_chara_{charaid}_";
+            foreach (var a in sounds)
+            {
+                if (a == null || !a.Name.EndsWith("awb")) continue;
+                if (Path.GetFileNameWithoutExtension(a.Name)
+                        .StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return a;
+            }
+            Debug.LogWarning($"[Live] No existe el AWB de voz de la chara {charaid} en la cancion {songid} " +
+                             $"(buscado '{exact}'); esta pista se queda en silencio.");
+            return null;
+        }
+
+        public void InitializeMusic(int songid, List<LiveCharacterLoadData> characters)
+        {
+            //(Live: las voces ya NO se eligen por los slots del panel, sino por VocalMode/VocalCharaIds
+            // del bloque VocalSelect. 'characters' se conserva en la firma por compatibilidad.)
+            var vocalIds = GetVocalCharaIdList(songid, VocalMode, VocalCharaIds);
+
+            //Evita arrastrar voces de una inicialización anterior (si se pulsase Play dos veces,
+            //liveVocal ya tendría tags y ninguna columna del _part casaría, dejando el mix mudo).
+            liveVocal.Clear();
+
+            //Recorte por TrackCount (pistas reales), no por SingerCount: una canción puede tener 7
+            //columnas y usar sólo 3, y entonces la 4ª voz elegida se descartaba sin motivo.
+            int maxVoices = vocalIds.Count;
+            if (VocalMode == LiveVocalMode.MixVoices && partInfo != null && partInfo.TrackCount > 0)
+                maxVoices = Mathf.Min(maxVoices, partInfo.TrackCount);
+
+            //Tabla _part presente pero VACÍA: AlterUpdate leería 0 en todas las columnas (silencio
+            //absoluto). En ese caso se fuerza una sola voz y suena su canción entera.
+            if (VocalMode == LiveVocalMode.MixVoices && partInfo != null && partInfo.SingerCount == 0)
+                maxVoices = Mathf.Min(maxVoices, 1);
+
+            for (int i = 0; i < vocalIds.Count && i < maxVoices; i++)
+            {
+                var entry = ResolveVocalSoundEntry(songid, vocalIds[i]);
+                if (entry == null) continue;
+                //La columna la fija liveVocal.Count (no el índice del bucle): es el valor que se pasa
+                //a ApplySound y del que sale el tag (PartForm) que AlterUpdate usa para leer la
+                //columna correcta del _part.
+                var source = UmaViewerAudio.ApplySound(entry.Name.Split('.')[0], liveVocal.Count);
+                if (source == null || source.sourceList == null || source.sourceList.Count == 0)
+                {
+                    Debug.LogWarning($"[Live] '{entry.Name}' no produjo ningun AudioSource; se omite.");
+                    continue;
+                }
+                liveVocal.Add(source);
+            }
+
+            Debug.Log($"[Live] VOCAL cancion={songid} modo={VocalMode} elegidas=[{string.Join(", ", vocalIds)}] " +
+                      $"resueltas={liveVocal.Count}/{maxVoices}");
+
+            //Con 0 o 1 voces no hay nada que mezclar: se salta AlterUpdate y la única pista suena
+            //completa (todos sus waves a volumen 1), que es el "Solo concert".
+            _soloMode = liveVocal.Count < 2;
 
             liveMusic = UmaViewerAudio.ApplySound(string.Format(SONG_PATH, songid), -1);
         }
@@ -1016,33 +1117,18 @@ namespace Gallop.Live
             UnityCameraVMDRecorder.SaveLiveCameraVMD(live, ExitTime, frames);
         }
 
-        public static List<UmaDatabaseEntry> GetLiveAllVoiceEntry(int songid, List<LiveCharacterLoadData> characters)
+        //(Live: ya no se recorre 'characters' sino VocalCharaIds: se descargan exactamente las
+        //pistas que se van a oír, no una por slot del panel.)
+        public static List<UmaDatabaseEntry> GetLiveAllVoiceEntry(int songid, LiveVocalMode mode, int[] vocalCharaIds)
         {
             List<UmaDatabaseEntry> entryList = new List<UmaDatabaseEntry>();
-            for (int i = 0; i < characters.Count; i++)
+            var vocalIds = GetVocalCharaIdList(songid, mode, vocalCharaIds);
+            for (int i = 0; i < vocalIds.Count; i++)
             {
-                if (characters[i].CharaEntry.Name != "")
+                var entry = ResolveVocalSoundEntry(songid, vocalIds[i]);
+                if (entry != null)
                 {
-                    var charaid = characters[i].CharaEntry.Id;
-
-                    var entry = UmaViewerMain.Instance.AbSounds.FirstOrDefault(a => a.Name.Contains(string.Format(VOCAL_PATH, songid, charaid)) && a.Name.EndsWith("awb"));
-                    if (entry == null)
-                    {
-                        List<UmaDatabaseEntry> entries = new List<UmaDatabaseEntry>();
-                        foreach (var random in UmaViewerMain.Instance.AbSounds.Where(a => (a.Name.Contains(string.Format(RANDOM_VOCAL_PATH, songid)) && a.Name.EndsWith("awb"))))
-                        {
-                            entries.Add(random);
-                        }
-                        if (entries.Count > 0)
-                        {
-                            entry = entries[UnityEngine.Random.Range(0, entries.Count - 1)];
-                        }
-                    }
-
-                    if (entry != null)
-                    {
-                        entryList.Add(entry);
-                    }
+                    entryList.Add(entry);
                 }
             }
 
@@ -1056,13 +1142,15 @@ namespace Gallop.Live
         public static List<UmaDatabaseEntry> GetLivePreloadEntries(
             LiveEntry live,
             List<LiveCharacterLoadData> characters,
-            bool requireStage)
+            bool requireStage,
+            LiveVocalMode vocalMode = LiveVocalMode.SoloConcert,
+            int[] vocalCharaIds = null)
         {
             var result = new List<UmaDatabaseEntry>();
             if (live == null)
                 return result;
 
-            result.AddRange(GetLiveAllVoiceEntry(live.MusicId, characters));
+            result.AddRange(GetLiveAllVoiceEntry(live.MusicId, vocalMode, vocalCharaIds));
 
             var main = UmaViewerMain.Instance;
             if (main == null || main.AbList == null)

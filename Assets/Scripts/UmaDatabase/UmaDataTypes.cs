@@ -108,6 +108,12 @@ public class LiveEntry
 public class PartEntry
 {
     public Dictionary<string, List<float>> PartSettings = new Dictionary<string, List<float>>();
+
+    //(Live: nº de columnas de PISTA reales de la tabla (center/left/right/left2/right2/left3/
+    //right3). Es el límite físico de pistas que admite una canción y el recorte correcto de
+    //maxVoices en Director, a diferencia de SingerCount ("columnas con algún valor > 0").)
+    public int TrackCount = 0;
+
     public int SingerCount = 0;
     public PartEntry(string data)
     {
@@ -138,7 +144,9 @@ public class PartEntry
         }
         foreach (var part in PartSettings)
         {
-            if (part.Key != "time" && !part.Key.Contains("_") && part.Value.Exists(v => v > 0f))
+            if (part.Key == "time" || part.Key.Contains("_")) continue;
+            TrackCount++;
+            if (part.Value.Exists(v => v > 0f))
                 SingerCount++;
         }
     }
@@ -154,6 +162,13 @@ public class CostumeEntry
     public int BodyType;
     public int BodyTypeSub;
     public Sprite Icon;
+}
+
+//(Live: modo de voz del directo — Solo concert / Mix voices)
+public enum LiveVocalMode
+{
+    SoloConcert = 0,
+    MixVoices = 1
 }
 
 public enum UIMessageType

@@ -839,7 +839,15 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         CurrentOtherContainer = prop;
     }
 
+    //(Compatibilidad: llamadores que no eligen voz —p. ej. la captura de render del Editor—
+    // usan el valor por defecto: modo Solo concert con una voz al azar.)
     public void LoadLive(LiveEntry live, List<LiveCharacterSelect> characters)
+    {
+        LoadLive(live, characters, LiveVocalMode.SoloConcert, null);
+    }
+
+    public void LoadLive(LiveEntry live, List<LiveCharacterSelect> characters,
+                         LiveVocalMode vocalMode, int[] vocalCharaIds)
     {
         if (!LiveAutoSelection.FillMissing(Main, live, characters, UI.CostumeIconDefault))
         {
@@ -857,7 +865,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         // exact dependency-expanded request count shown by the progress UI.
         LiveRuntimeDiagnostics.BeginPreload(live, liveCharacters, requireStage);
         List<UmaDatabaseEntry> preloadEntries =
-            LiveResourceRegister.RegisterDownload(live, liveCharacters, requireStage);
+            LiveResourceRegister.RegisterDownload(live, liveCharacters, requireStage, vocalMode, vocalCharaIds);
 
         UmaAssetManager.PreLoadAndRun(preloadEntries, delegate
         {
@@ -871,6 +879,12 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                     controller.live = live;
                     controller.IsRecordVMD = UI.isRecordVMD;
                     controller.RequireStage = requireStage;
+                    //(Live: modo de voz y cantantes elegidas en el bloque VocalSelect. Se clona el
+                    // array para que la selección quede fijada en este live aunque la UI cambie.)
+                    controller.VocalMode = vocalMode;
+                    controller.VocalCharaIds = vocalCharaIds != null
+                        ? (int[])vocalCharaIds.Clone()
+                        : new int[] { -1, -1, -1, -1, -1, -1, -1 };
 
                     var binder = mainLive.GetComponent<CyalumeAutoBinder>() ??
                                  mainLive.AddComponent<CyalumeAutoBinder>();

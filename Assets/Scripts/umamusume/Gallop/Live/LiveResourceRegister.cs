@@ -14,7 +14,8 @@ namespace Gallop.Live
     public static class LiveResourceRegister
     {
         public static List<UmaDatabaseEntry> RegisterDownload(
-            LiveEntry live, IList<LiveCharacterLoadData> characters, bool requireStage)
+            LiveEntry live, IList<LiveCharacterLoadData> characters, bool requireStage,
+            LiveVocalMode vocalMode = LiveVocalMode.SoloConcert, int[] vocalCharaIds = null)
         {
             var roots = new List<UmaDatabaseEntry>();
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -57,7 +58,8 @@ namespace Gallop.Live
             }
 
             foreach (var entry in Director.GetLivePreloadEntries(
-                         live, characters == null ? null : new List<LiveCharacterLoadData>(characters), requireStage))
+                         live, characters == null ? null : new List<LiveCharacterLoadData>(characters), requireStage,
+                         vocalMode, vocalCharaIds))
                 Add(entry);
             int directorRoots = roots.Count;
             int normalRoots = 0, mobRoots = 0, normalCharacters = 0, mobCharacters = 0, skipped = 0;
