@@ -11,6 +11,7 @@ using UnityEngine.Rendering;
 using UnityEngine.UI;
 //修改(载入通用服装ColorSet相关)(保存当前选中的颜色配置到TXT文件)
 using System.Text;
+using System.Text.RegularExpressions;
 
 public class UmaViewerUI : MonoBehaviour
 {
@@ -100,6 +101,8 @@ public class UmaViewerUI : MonoBehaviour
     public Image LiveSelectImage;
     public Text LiveSelectInfoText;
     private LiveEntry currentLive;
+    //Contenedor de los botones rápidos ("QuickPreset") del panel de selección del live.
+    private GameObject SlotActionsContainer;
 
     //(Live: selector de modo de voz y bloque VocalSelect)
     [Header("live vocal select")]
@@ -970,6 +973,10 @@ public class UmaViewerUI : MonoBehaviour
         //los slots. El diseño vive en la escena; aquí sólo se cablea el comportamiento.)
         BuildVocalSelectors();
         RefreshVocalOptions(entry.MusicId);
+
+        //(Live: botones rápidos del panel: copiar slot 1 / aleatorizar trajes. Viven fuera del content
+        //del scroll, así que sobreviven al borrado de slots.)
+        BuildSlotActions();
     }
 
     void ListCostumes(CharaEntry chara, bool mini)
@@ -2302,6 +2309,227 @@ public class UmaViewerUI : MonoBehaviour
         var ids = vocalOptionIds[slot];
         if (ids == null || optionIndex < 0 || optionIndex >= ids.Count) return -1;
         return ids[optionIndex];
+    }
+
+
+
+    //==========================================================================
+    // (Live: botones rápidos del panel de selección — "copiar slot 1" y "aleatorizar trajes")
+    // El contenedor "QuickPreset" y sus botones viven en la escena (posición, tamaño y rótulo); aquí
+    // sólo se localizan por nombre y se les cablea el onClick. Como cuelgan directamente del panel y
+    // no del content del scroll, sobreviven al borrado de slots.
+    //==========================================================================
+
+    void BuildSlotActions()
+    {
+        if (LiveSelectPannel == null) return;
+
+        if (SlotActionsContainer == null)
+            SlotActionsContainer = FindChildByName(LiveSelectPannel.transform, "QuickPreset");
+        if (SlotActionsContainer == null)
+        {
+            Debug.LogWarning("[UmaViewerUI] No se encuentra 'QuickPreset' en el panel de selección: no habrá " +
+                             "botones de copiar slot 1 / aleatorizar trajes.");
+            return;
+        }
+
+        WireSlotAction("Copy", CopySlot1ToRest);
+        WireSlotAction("Random", RandomizeCostumes);
+    }
+
+    //Cablea el onClick del botón con ese nombre dentro de QuickPreset. Reemplaza el evento entero para
+    //no duplicar listeners si el panel se abre más de una vez. No toca el diseño: sólo el evento.
+    void WireSlotAction(string buttonName, UnityAction onClick)
+    {
+        if (SlotActionsContainer == null) return;
+
+        var go = FindChildByName(SlotActionsContainer.transform, buttonName);
+        if (go == null)
+        {
+            Debug.LogWarning($"[UmaViewerUI] No se encuentra el botón '{buttonName}' dentro de QuickPreset.");
+            return;
+        }
+
+        var button = go.GetComponent<Button>() ?? go.GetComponentInChildren<Button>(true);
+        if (button == null)
+        {
+            Debug.LogWarning($"[UmaViewerUI] El botón '{buttonName}' no tiene componente Button.");
+            return;
+        }
+
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(onClick);
+    }
+
+    //Botón "copiar slot 1": pone el MISMO modelo y el MISMO traje de la posición 1 en todas las demás.
+    //No precarga nada: SetValue sólo escribe datos y el modelo 3D se monta después al iniciar el live.
+    void CopySlot1ToRest()
+    {
+        var slots = LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>();
+        if (slots.Length < 2) return;
+
+        var src = EnsureSlot1Filled(slots[0]);
+        if (src == null) return;   //EnsureSlot1Filled ya ha avisado por consola
+
+        //Se empieza en i=1 para no pisar la posición 1, que es la fuente.
+        for (int i = 1; i < slots.Length; i++)
+        {
+            slots[i].SetValue(src.CharaEntry, src.CostumeId,
+                              src.CostumeImage.sprite, src.HeadCostumeId);
+        }
+        //Sin mensaje de éxito a propósito: ShowMessage activa el panel de mensajes y se abriría encima
+        //del propio panel de selección. Sólo se avisa de los fallos.
+    }
+
+    //Si la posición 1 está vacía, se autorrellena con un personaje y el uniforme por defecto, igual
+    //que el fallback que usa el builder al iniciar el live, para que el resultado no dependa del
+    //momento del clic. Devuelve el slot ya rellenado, o null si no hay datos de personajes.
+    LiveCharacterSelect EnsureSlot1Filled(LiveCharacterSelect src)
+    {
+        if (src == null) return null;
+        if (src.CharaEntry != null && !string.IsNullOrEmpty(src.CostumeId)) return src;
+
+        if (Main.Characters == null || Main.Characters.Count == 0)
+        {
+            ShowMessage("No character data available.", UIMessageType.Warning);
+            return null;
+        }
+
+        //OJO: 'Random' a secas sería ambiguo (el archivo tiene 'using System;' y 'using UnityEngine;'),
+        //así que se fully-qualifica.
+        src.CharaEntry = Main.Characters[UnityEngine.Random.Range(0, Main.Characters.Count / 2)];
+        src.CostumeId = "0002_00_00";
+        src.SetValue(src.CharaEntry, src.CostumeId, CostumeIconDefault, src.HeadCostumeId);
+        return src;
+    }
+
+    //Botón "aleatorizar trajes": reparte trajes con nombre (propios 'Unique' y comunes 'General') del
+    //MISMO modelo de la posición 1 en las posiciones 2..N. Queda fuera lo de testeo y las variantes
+    //"Big Belly" (EsTrajeExtra). El modelo (CharaEntry) y el HeadCostumeId son SIEMPRE los de la
+    //posición 1: sólo cambia el CostumeId. Con repetición permitida, para no dejar huecos con pocos
+    //trajes y muchos slots. No precarga nada: el modelo 3D se monta después al iniciar el live.
+    void RandomizeCostumes()
+    {
+        var slots = LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>();
+        if (slots.Length < 2) return;
+
+        var src = EnsureSlot1Filled(slots[0]);
+        if (src == null) return;   //EnsureSlot1Filled ya ha avisado por consola
+
+        var pool = new List<CostumeOption>();
+        foreach (var c in EnumerateCostumes(src.CharaEntry, false))
+        {
+            if (!EsTrajeExtra(c.Id, c.Dress)) pool.Add(c);
+        }
+
+        if (pool.Count == 0)   //personaje sin ningún traje con nombre visible
+        {
+            ShowMessage("No valid costumes found for this character.", UIMessageType.Warning);
+            return;
+        }
+
+        for (int i = 1; i < slots.Length; i++)
+        {
+            var pick = pool[UnityEngine.Random.Range(0, pool.Count)];
+            slots[i].SetValue(src.CharaEntry, pick.Id, pick.Icon, src.HeadCostumeId);
+        }
+        //Sin mensaje de éxito a propósito (ver CopySlot1ToRest).
+    }
+
+    //(Live: dato de un traje, sin UI. La lista la construye EnumerateCostumes y la consume el botón
+    //"aleatorizar trajes".)
+    struct CostumeOption
+    {
+        public string Id;           //corto "00"/"01"/"90" (propio) o "0007_05_00" (común)
+        public Sprite Icon;         //dressdata.Icon, o CostumeIconDefault si no hay dressdata
+        public CostumeEntry Dress;  //puede ser null
+        public string DisplayName;  //lo que se pinta en el panel (GetCostumeName)
+    }
+
+    //(Live: trajes de un personaje sin crear UI: primero los PROPIOS (id corto) y después los COMUNES
+    //(XXXX_XX_XX), en el mismo orden que el listado del panel, para que el aleatorio elija entre los
+    //mismos trajes que se ven.)
+    List<CostumeOption> EnumerateCostumes(CharaEntry chara, bool mini)
+    {
+        var result = new List<CostumeOption>();
+        if (chara == null) return result;
+        if (Main == null || Main.AbChara == null || Main.Costumes == null) return result;
+
+        string bodyPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
+
+        //--- Trajes PROPIOS del personaje (id corto). Los mobs no los tienen.
+        if (!chara.IsMob)
+        {
+            string nameVar = mini ? $"pfb_mbdy{chara.Id}" : $"pfb_bdy{chara.Id}";
+            foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(bodyPath) && !a.Name.Contains("clothes") && a.Name.Contains(nameVar)))
+            {
+                string[] split = entry.Name.Split('_');
+                string costumeId = split[split.Length - 1];
+                int sub;
+                if (!int.TryParse(costumeId, out sub)) sub = int.MinValue;   //nunca casa con un BodyTypeSub real
+                var dressdata = Main.Costumes.FirstOrDefault(a => a.CharaId == chara.Id && a.BodyTypeSub == sub);
+                result.Add(MakeCostumeOption(costumeId, dressdata));
+            }
+        }
+
+        //--- Trajes COMUNES (id "XXXX_XX_XX"), deduplicados por id.
+        var seen = new List<string>();
+        string commonVar = mini ? "pfb_mbdy0" : "pfb_bdy0";
+        foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(bodyPath) && !a.Name.Contains("/clothes/") && a.Name.Contains(commonVar)))
+        {
+            string id = Path.GetFileName(entry.Name);
+            string[] split = id.Split('_');
+            if (split.Length < 4) continue;   //previene error con las mini umas
+            id = split[1].Substring(mini ? 4 : 3) + "_" + split[2] + "_" + split[3];
+            if (seen.Contains(id)) continue;
+            seen.Add(id);
+
+            string[] data = id.Split('_');
+            int bodytype, bodysub;
+            if (!int.TryParse(data[0], out bodytype) || !int.TryParse(data[1], out bodysub))
+            {
+                bodytype = int.MinValue;
+                bodysub = int.MinValue;
+            }
+            var dressdata = Main.Costumes.FirstOrDefault(a => a.BodyType == bodytype && a.BodyTypeSub == bodysub);
+            result.Add(MakeCostumeOption(id, dressdata));
+        }
+
+        return result;
+    }
+
+    CostumeOption MakeCostumeOption(string id, CostumeEntry dressdata)
+    {
+        return new CostumeOption
+        {
+            Id = id,
+            Dress = dressdata,
+            Icon = dressdata == null ? CostumeIconDefault : dressdata.Icon,
+            DisplayName = GetCostumeName(id, dressdata == null ? id : dressdata.DressName)
+        };
+    }
+
+    //Forma de los IDs de los trajes COMUNES: XXXX_XX_XX. Los PROPIOS usan IDs cortos ("00", "01",
+    //"90") y jamás deben filtrarse.
+    static readonly Regex TrajeComun = new Regex(@"^\d{4}_\d{2}_\d{2}$", RegexOptions.Compiled);
+
+    //true = es un traje de testeo: tiene forma de ID común Y además se muestra con el ID en crudo (no
+    //hay fila en dress_data ni nombre fijo en GetCostumeName), que es justo lo que lo hace inservible.
+    //Hacen falta LAS DOS condiciones: con la forma sola se descartarían los que sí funcionan.
+    public static bool EsTrajeDeTest(string costumeId, CostumeEntry dress)
+    {
+        if (string.IsNullOrEmpty(costumeId)) return false;
+        string shown = (dress == null || string.IsNullOrEmpty(dress.DressName)) ? costumeId : dress.DressName;
+        return TrajeComun.IsMatch(costumeId) && GetCostumeName(costumeId, shown) == costumeId;
+    }
+
+    //Trajes que, aunque tengan nombre, no deben entrar en el aleatorio: hoy, las variantes "Big Belly"
+    //del uniforme escolar. El botón "aleatorizar trajes" los excluye junto con los de testeo.
+    static bool EsTrajeExtra(string costumeId, CostumeEntry dress)
+    {
+        return EsTrajeDeTest(costumeId, dress)
+            || costumeId == "0002_00_03"   // School Short Sleeves Big Belly
+            || costumeId == "0002_01_03";  // School Long Sleeves Big Belly
     }
 
 }
