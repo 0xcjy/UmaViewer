@@ -36,14 +36,19 @@ public class LiveViewerUI : MonoBehaviour
         }
         ApplyFrameRateOptions();
         UISettingsGraphics.Build(FrameRateDropDown);
-        RuntimeGraphicsSettings.Apply();
-        UmaViewerMain.ApplyFrameRateLimit();
+        RuntimeGraphicsSettings.ApplyLiveRenderScale();
+        UmaViewerMain.ApplyFrameRateLimitLive();
 
         height = BottonUITransform.rect.height;
         targetHeight = 0;
         Invoke(nameof(HideSlider), 1.5f);
         Instance = this;
         CreatePlaybackDiagnostics();
+
+        // Overlay de depuración con el frame actual del live, que se enciende y apaga con
+        // Ctrl+Shift+F9. Se monta por código (no en el YAML) y vive en esta escena, que es la que
+        // tiene el Director. Ver LiveFrameDebugOverlay.cs.
+        LiveFrameDebugOverlay.Ensure();
         //TrueProgressBar = (UnityEngine.UIElements.Slider)ProgressBar;
     }
 
@@ -127,9 +132,9 @@ public class LiveViewerUI : MonoBehaviour
 
     public void SetFrameRate(int fps)
     {
-        Config.Instance.TargetFrameRate = UISettingsGraphics.FrameRateAt(fps);
+        Config.Instance.TargetFrameRate = UISettingsGraphics.FrameRateAt(fps, Config.Instance.TargetFrameRate);
         Config.Instance.UpdateConfig(false);
-        UmaViewerMain.ApplyFrameRateLimit();
+        UmaViewerMain.ApplyFrameRateLimitLive();
     }
 
     private void ApplyFrameRateOptions()
@@ -137,8 +142,8 @@ public class LiveViewerUI : MonoBehaviour
         if (FrameRateDropDown == null) return;
 
         FrameRateDropDown.ClearOptions();
-        FrameRateDropDown.AddOptions(UISettingsGraphics.FrameRateLabels());
-        FrameRateDropDown.SetValueWithoutNotify(UISettingsGraphics.FrameRateIndex());
+        FrameRateDropDown.AddOptions(UISettingsGraphics.FrameRateLabels(Config.Instance.TargetFrameRate));
+        FrameRateDropDown.SetValueWithoutNotify(UISettingsGraphics.FrameRateIndexOf(Config.Instance.TargetFrameRate));
         FrameRateDropDown.RefreshShownValue();
     }
 

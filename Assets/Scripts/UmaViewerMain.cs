@@ -47,7 +47,15 @@ public class UmaViewerMain : MonoBehaviour
         CostumeList = outgame.FindAll(e => e.Name.StartsWith(UmaDatabaseController.CostumePath));
     }
 
+    // Version2 (UI): aplica el frame rate PROPIO del viewer.
     public static void ApplyFrameRateLimit()
+    {
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = Config.Instance.GetUIFrameRate();
+    }
+
+    // Live: aplica el frame rate PROPIO del live.
+    public static void ApplyFrameRateLimitLive()
     {
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = Config.Instance.GetTargetFrameRate();

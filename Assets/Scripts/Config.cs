@@ -58,8 +58,14 @@ public class Config
     public string AntiAliasingTip = "Display, screenshot antialiasing level. 0 - no AA, 1 - 2x MSAA, 2 - 4x MSAA, 3 - 8x MSAA";
     public int AntiAliasing = 2;
 
-    public string TargetFrameRateTip = "Application frame rate: positive integer FPS, 0 = unlimited (desktop).";
+    public string TargetFrameRateTip = "Live scene frame rate: positive integer FPS, 0 = unlimited (desktop). Changed only by the Live settings panel.";
     public int TargetFrameRate = 60;
+
+    public string UIFrameRateTip = "Viewer (UI) frame rate: positive integer FPS, 0 = unlimited (desktop). Changed only by the Version2 settings panel.";
+    public int UIFrameRate = 60;
+
+    public string UIRenderScalePercentTip = "Viewer (UI) render scale, 10-200 %. 100 = native resolution. Changed only by the Version2 settings panel.";
+    public int UIRenderScalePercent = 100;
 
     public int RenderScalePercent = 100;
     public int AnisotropicFiltering = 2;
@@ -273,6 +279,11 @@ public class Config
     public int GetTargetFrameRate()
     {
         return TargetFrameRate <= 0 ? -1 : TargetFrameRate;
+    }
+
+    public int GetUIFrameRate()
+    {
+        return UIFrameRate <= 0 ? -1 : UIFrameRate;
     }
 
     public bool TryGetNetworkProxyUri(out Uri proxyUri, out string error)

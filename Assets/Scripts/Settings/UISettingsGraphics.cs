@@ -8,38 +8,42 @@ public static class UISettingsGraphics
 {
     private static readonly int[] Rates = { 60, 30, 90, 120, 144, 165, 240, 0 };
 
-    public static List<string> FrameRateLabels()
+    // Los helpers de frame rate reciben el valor "actual" por parámetro: hay DOS ajustes
+    // independientes y cada panel edita el suyo. El viewer (Version2) usa `Config.UIFrameRate` y el
+    // live usa `Config.TargetFrameRate`.
+    public static List<string> FrameRateLabels(int current)
     {
         var labels = new List<string>();
         foreach (int rate in Rates) labels.Add(rate == 0 ? "Unlimited" : rate + " FPS");
-        if (FrameRateIndex() == Rates.Length) labels.Add(Config.Instance.TargetFrameRate + " FPS");
+        if (FrameRateIndexOf(current) == Rates.Length) labels.Add(current + " FPS");
         return labels;
     }
 
-    public static int FrameRateIndex()
+    public static int FrameRateIndexOf(int current)
     {
-        int rate = Math.Max(0, Config.Instance.TargetFrameRate);
+        int rate = Math.Max(0, current);
         int index = Array.IndexOf(Rates, rate);
         return index < 0 ? Rates.Length : index;
     }
 
-    public static int FrameRateAt(int index)
+    public static int FrameRateAt(int index, int fallback)
     {
-        return index >= 0 && index < Rates.Length ? Rates[index] : Config.Instance.TargetFrameRate;
+        return index >= 0 && index < Rates.Length ? Rates[index] : fallback;
     }
 
-    public static InputField AddFrameRateInput(Transform parent, Action refresh, Font font = null)
+    // `getCurrent`/`apply` deciden QUÉ ajuste se edita (viewer o live). El campo de texto no guarda
+    // estado propio: siempre refleja lo que devuelve `getCurrent`.
+    public static InputField AddFrameRateInput(Transform parent, Func<int> getCurrent, Action<int> apply, Action refresh, Font font = null)
     {
-        return AddNumber(parent, "Custom FPS (0 = unlimited)", Config.Instance.TargetFrameRate.ToString(), true,
+        return AddNumber(parent, "Custom FPS (0 = unlimited)", getCurrent().ToString(), true,
             text =>
             {
-                if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int rate) || rate < 0)
-                    return Config.Instance.TargetFrameRate.ToString();
-                Config.Instance.TargetFrameRate = rate;
-                Config.Instance.UpdateConfig(false);
-                UmaViewerMain.ApplyFrameRateLimit();
-                refresh();
-                return rate.ToString();
+                if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int rate) && rate >= 0)
+                {
+                    apply(rate);
+                    refresh();
+                }
+                return getCurrent().ToString();
             }, font);
     }
 
@@ -92,8 +96,16 @@ public static class UISettingsGraphics
         scroll.movementType = ScrollRect.MovementType.Clamped;
         scroll.scrollSensitivity = 30;
 
-        var customFps = AddFrameRateInput(content, () => RefreshFrameRate(frameRate), font);
-        frameRate.onValueChanged.AddListener(index => customFps.SetTextWithoutNotify(FrameRateAt(index).ToString()));
+        var customFps = AddFrameRateInput(content,
+            () => Config.Instance.TargetFrameRate,
+            rate =>
+            {
+                Config.Instance.TargetFrameRate = rate;
+                Config.Instance.UpdateConfig(false);
+                UmaViewerMain.ApplyFrameRateLimitLive();
+            },
+            () => RefreshFrameRate(frameRate), font);
+        frameRate.onValueChanged.AddListener(index => customFps.SetTextWithoutNotify(FrameRateAt(index, Config.Instance.TargetFrameRate).ToString()));
         AddChoice(content, template, "MSAA", new[] { "Off", "2x", "4x", "8x" }, Config.Instance.AntiAliasing,
             value => Config.Instance.AntiAliasing = value);
         AddNumber(content, "Render Scale (%)", Config.Instance.RenderScalePercent.ToString(), true, text =>
@@ -126,15 +138,15 @@ public static class UISettingsGraphics
     private static void RefreshFrameRate(Dropdown dropdown)
     {
         dropdown.ClearOptions();
-        dropdown.AddOptions(FrameRateLabels());
-        dropdown.SetValueWithoutNotify(FrameRateIndex());
+        dropdown.AddOptions(FrameRateLabels(Config.Instance.TargetFrameRate));
+        dropdown.SetValueWithoutNotify(FrameRateIndexOf(Config.Instance.TargetFrameRate));
         dropdown.RefreshShownValue();
     }
 
     private static void SaveGraphics()
     {
         Config.Instance.UpdateConfig(false);
-        RuntimeGraphicsSettings.Apply();
+        RuntimeGraphicsSettings.ApplyLiveRenderScale();
         if (UmaViewerUI.Instance != null && UmaViewerUI.Instance.CameraSettings != null)
             UmaViewerUI.Instance.CameraSettings.AAModeDropdown.SetValueWithoutNotify(Config.Instance.AntiAliasing);
     }

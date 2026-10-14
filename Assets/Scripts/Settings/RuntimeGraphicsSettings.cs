@@ -9,7 +9,20 @@ public static class RuntimeGraphicsSettings
     private static UniversalRenderPipelineAsset runtime;
     private static readonly int[] Samples = { 1, 2, 4, 8 };
 
+    // Version2 (viewer/UI): usa el ajuste "UIrenderScale" del panel (por defecto 100 % = nativa).
     public static void Apply()
+    {
+        ApplyScale(Config.Instance != null ? Config.Instance.UIRenderScalePercent / 100f : 1f);
+    }
+
+    // Live: aplica el ajuste "Render Scale (%)" del panel del live.
+    public static void ApplyLiveRenderScale()
+    {
+        ApplyScale(Config.Instance != null ? Config.Instance.RenderScalePercent / 100f : 1f);
+    }
+
+    // `renderScale` = resolución interna de render (1 = nativa).
+    private static void ApplyScale(float renderScale)
     {
         var config = Config.Instance;
         if (config == null) return;
@@ -36,7 +49,7 @@ public static class RuntimeGraphicsSettings
             else GraphicsSettings.renderPipelineAsset = runtime;
         }
         runtime.msaaSampleCount = samples;
-        runtime.renderScale = Mathf.Clamp(config.RenderScalePercent / 100f, 0.5f, 2f);
+        runtime.renderScale = Mathf.Clamp(renderScale, 0.5f, 2f);
         runtime.shadowDistance = Mathf.Clamp(config.ShadowDistance, 0f, 150f);
     }
 }
