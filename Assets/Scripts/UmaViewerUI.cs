@@ -171,6 +171,13 @@ public class UmaViewerUI : MonoBehaviour
     private bool otherListQuiere = false;
     private bool otherListEspera = false;
     private bool otherListSucia = false;
+    //PJ del último item clicado en la lista abierta. TMP_Dropdown dispara su onValueChanged al SOLTAR
+    //el ratón (no al pulsar) y con un índice que puede haber quedado obsoleto si la lista se rehizo:
+    //se guarda aquí el PJ real clicado (resuelto por el TEXTO del item) y el callback usa ESTE.
+    private CharaEntry pendingOtherChara;
+    //Último frame en que se recargó la lista de trajes desde el buscador (evita recargarla dos veces
+    //en el mismo frame: TMP puede disparar el callback dos veces).
+    private int lastOtherCostumeFrame = -1;
     //Opciones que se están viendo AHORA (filtradas o no); dd.value es un índice en ESTA lista.
     private readonly List<CharaEntry> otherOptionsVisible = new List<CharaEntry>();
 
@@ -3193,13 +3200,27 @@ public class UmaViewerUI : MonoBehaviour
 
         if (otherOptionsVisible.Count > 0)
         {
-            int idx = otherOptionsVisible.IndexOf(selectedOtherChara);
+            int idx = IndexOfOtherChara(selectedOtherChara);
             if (idx < 0) idx = 0;
             selectedOtherChara = otherOptionsVisible[idx];
             dd.SetValueWithoutNotify(idx);
         }
         dd.RefreshShownValue();
         RefreshOtherComboText();
+    }
+
+    //Índice del PJ en la lista visible: por referencia y, si no está, por NOMBRE (la lista puede
+    //haberse reconstruido con instancias nuevas).
+    int IndexOfOtherChara(CharaEntry chara)
+    {
+        if (chara == null) return -1;
+        int idx = otherOptionsVisible.IndexOf(chara);
+        if (idx >= 0) return idx;
+
+        string nombre = chara.GetName();
+        for (int i = 0; i < otherOptionsVisible.Count; i++)
+            if (otherOptionsVisible[i] != null && otherOptionsVisible[i].GetName() == nombre) return i;
+        return -1;
     }
 
     //El rótulo enseña lo tecleado mientras se busca; si no hay filtro, el PJ elegido.
@@ -3229,10 +3250,46 @@ public class UmaViewerUI : MonoBehaviour
 
     void OnOtherCharactersChanged(int value)
     {
+        //Si venimos de un clic en la lista, manda el PJ clicado: TMP dispara esto al SOLTAR el ratón, y
+        //para entonces la lista ya puede estar rehecha (sin filtro), así que su índice apuntaría a otro
+        //PJ (el primero de la lista completa).
+        if (pendingOtherChara != null)
+        {
+            CharaEntry clicado = pendingOtherChara;
+            //NO se consume: TMP_Dropdown puede disparar el callback DOS veces en el mismo frame (el
+            //item clicado estaba ya ON ⇒ OnSelectItem lo reenciende y se llama a sí mismo: el anidado
+            //dispara con el PJ pendiente y el externo vuelve a disparar con el índice ya obsoleto).
+            //El pendiente se limpia al hacer clic fuera de la lista o al empezar/terminar la búsqueda.
+            ApplyOtherCharaSelection(clicado);
+            return;
+        }
+
         //dd.value indexa la lista VISIBLE (filtrada o no), no la completa.
-        if (value >= 0 && value < otherOptionsVisible.Count) selectedOtherChara = otherOptionsVisible[value];
-        if (costumeListMode == CostumeListMode.OtherCharacters && currentCostumeChara != null)
+        if (value >= 0 && value < otherOptionsVisible.Count)
+            ApplyOtherCharaSelection(otherOptionsVisible[value]);
+    }
+
+    //Fija el PJ elegido, quita el filtro y recarga la lista de trajes. OJO: NO toca `pendingOtherChara`
+    //(lo limpia quien corresponda): el clic de la lista lo deja puesto para que los callbacks de TMP
+    //—que llegan al SOLTAR el ratón y pueden ser DOS en el mismo frame— usen ese PJ y no su índice.
+    void ApplyOtherCharaSelection(CharaEntry chara)
+    {
+        if (chara == null) return;
+
+        selectedOtherChara = chara;
+        otherSearchFilter = "";
+        otherSearchActive = false;
+        otherListQuiere = false;
+        RebuildOtherCharactersOptions();
+
+        //Los dos callbacks del mismo frame no deben reconstruir la lista de trajes dos veces (Destroy
+        //se difiere al final del frame y quedarían items duplicados).
+        if (costumeListMode == CostumeListMode.OtherCharacters && currentCostumeChara != null &&
+            lastOtherCostumeFrame != Time.frameCount)
+        {
+            lastOtherCostumeFrame = Time.frameCount;
             ListCostumes(currentCostumeChara, currentCostumeMini);
+        }
     }
 
     //===== Búsqueda por teclado del desplegable "Other Characters" =====
@@ -3262,6 +3319,58 @@ public class UmaViewerUI : MonoBehaviour
         return RectTransformUtility.RectangleContainsScreenPoint(rt, Input.mousePosition, DropdownCanvasCamara(dd));
     }
 
+    //Índice de OPCIÓN del item de la lista ABIERTA bajo el puntero, o -1. El Content de la lista tiene
+    //el item-plantilla en el índice 0 y los clones a partir del 1, así que el índice de opción es
+    //(hermano - 1): la MISMA cuenta que hace TMP_Dropdown.OnSelectItem.
+    int OtherListItemBajoElPuntero()
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || dd.template == null || dd.template.parent == null) return -1;
+
+        var cam = DropdownCanvasCamara(dd);
+        var pos = Input.mousePosition;
+        var hijos = dd.template.parent.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < hijos.Length; i++)
+        {
+            var lista = hijos[i];
+            if (lista == null || lista.name != "Dropdown List" || !lista.gameObject.activeInHierarchy) continue;
+
+            Transform content = null;
+            foreach (var t in lista.GetComponentsInChildren<Transform>(true))
+            {
+                if (t != null && t.name == "Content") { content = t; break; }
+            }
+            if (content == null) continue;
+
+            for (int j = 1; j < content.childCount; j++)   // 0 = item-plantilla
+            {
+                var item = content.GetChild(j) as RectTransform;
+                if (item == null || !item.gameObject.activeInHierarchy) continue;
+                if (RectTransformUtility.RectangleContainsScreenPoint(item, pos, cam)) return j - 1;
+            }
+        }
+        return -1;
+    }
+
+    //PJ del item `index` de la lista abierta, resuelto por el TEXTO del item (lo que el usuario ve).
+    //Así no depende de que `otherOptionsVisible` siga siendo la lista filtrada cuando llegue el
+    //callback de TMP_Dropdown.
+    CharaEntry OtherCharaOfItem(int index)
+    {
+        var dd = OtherCharactersDropdown;
+        if (dd == null || index < 0 || index >= dd.options.Count) return null;
+
+        string texto = dd.options[index].text;
+        if (string.IsNullOrEmpty(texto)) return null;
+
+        for (int i = 0; i < otherCharactersList.Count; i++)
+        {
+            var c = otherCharactersList[i];
+            if (c != null && c.GetName() == texto) return c;
+        }
+        return null;
+    }
+
     void UpdateOtherCharacterSearch()
     {
         var dd = OtherCharactersDropdown;
@@ -3271,8 +3380,23 @@ public class UmaViewerUI : MonoBehaviour
         {
             if (!HayListaDeOtrosBajoElPuntero())
             {
+                //Clic fuera de la lista: el PJ apuntado por un clic anterior ya no vale.
+                pendingOtherChara = null;
                 if (OtherDropdownBajoElPuntero()) BeginOtherSearch();
                 else EndOtherSearch();
+            }
+            else
+            {
+                //Clic en un item: se resuelve el PJ por el TEXTO del item (lo que el usuario ve) y se
+                //aplica YA. TMP_Dropdown puede ignorar el clic (si el índice ya es el "actual"; con un
+                //solo resultado del filtro pasa SIEMPRE) y su onValueChanged llega al SOLTAR el ratón,
+                //ya con el índice obsoleto: por eso se guarda el PJ y el callback usa ESTE.
+                CharaEntry clicado = OtherCharaOfItem(OtherListItemBajoElPuntero());
+                if (clicado != null)
+                {
+                    pendingOtherChara = clicado;
+                    ApplyOtherCharaSelection(clicado);
+                }
             }
             return;
         }
@@ -3317,6 +3441,7 @@ public class UmaViewerUI : MonoBehaviour
         if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable()) return;
 
         otherSearchActive = true;
+        pendingOtherChara = null;
         if (!string.IsNullOrEmpty(otherSearchFilter))
         {
             otherSearchFilter = "";
@@ -3330,6 +3455,7 @@ public class UmaViewerUI : MonoBehaviour
     void EndOtherSearch()
     {
         otherSearchActive = false;
+        pendingOtherChara = null;
         var dd = OtherCharactersDropdown;
         if (dd != null && dd.IsActive()) dd.Hide();
         if (string.IsNullOrEmpty(otherSearchFilter)) return;
