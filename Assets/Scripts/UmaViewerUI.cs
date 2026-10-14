@@ -1254,7 +1254,8 @@ public class UmaViewerUI : MonoBehaviour
                 var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
                 UIPressScaleFeedback.AddTo(container.gameObject);
                 container.Name = container.name = GetCostumeName(costumeId, (dressdata == null ? costumeId : dressdata.DressName));
-                container.Image.sprite = (dressdata == null ? CostumeIconDefault : dressdata.Icon);
+                container.Image.sprite = CustomCostumeIcons.Get(listChara.Id, costumeId, false)
+                    ?? (dressdata == null ? CostumeIconDefault : dressdata.Icon);
                 container.Image.enabled = true;
                 container.Id = costumeId;
                 container.Button.onClick.AddListener(() =>
@@ -1328,7 +1329,8 @@ public class UmaViewerUI : MonoBehaviour
             var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
             UIPressScaleFeedback.AddTo(container.gameObject);
             container.Name = container.name = GetCostumeName(id, (dressdata == null ? id : dressdata.DressName));
-            container.Image.sprite = (dressdata == null ? CostumeIconDefault : dressdata.Icon);
+            container.Image.sprite = CustomCostumeIcons.Get(listChara.Id, costumeId, true)
+                ?? (dressdata == null ? CostumeIconDefault : dressdata.Icon);
             container.Image.enabled = true;
             container.Id = costumeId;
             container.Button.onClick.AddListener(() =>
@@ -2774,7 +2776,7 @@ public class UmaViewerUI : MonoBehaviour
                     continue;
                 }
 
-                result.Add(MakeCostumeOption(costumeId, dressdata, false));
+                result.Add(MakeCostumeOption(chara.Id, costumeId, dressdata, false));
             }
         }
 
@@ -2816,19 +2818,20 @@ public class UmaViewerUI : MonoBehaviour
                 if (!Main.AbList.ContainsKey(bodyKey) || CostumeBlacklist.IsBlacklisted(chara.Id, id)) continue;
             }
 
-            result.Add(MakeCostumeOption(id, dressdata, true));
+            result.Add(MakeCostumeOption(chara.Id, id, dressdata, true));
         }
 
         return result;
     }
 
-    CostumeOption MakeCostumeOption(string id, CostumeEntry dressdata, bool isCommon)
+    CostumeOption MakeCostumeOption(int charaId, string id, CostumeEntry dressdata, bool isCommon)
     {
         return new CostumeOption
         {
             Id = id,
             Dress = dressdata,
-            Icon = dressdata == null ? CostumeIconDefault : dressdata.Icon,
+            Icon = CustomCostumeIcons.Get(charaId, id, isCommon)
+                ?? (dressdata == null ? CostumeIconDefault : dressdata.Icon),
             DisplayName = GetCostumeName(id, dressdata == null ? id : dressdata.DressName),
             IsCommon = isCommon
         };
