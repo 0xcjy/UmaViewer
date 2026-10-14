@@ -43,6 +43,34 @@ public class Popup : MonoBehaviour
         return popup;
     }
 
+    // Popup SIN botones y NO cerrable (no se puede cerrar con clic). Pensado para procesos en
+    // curso: se muestra mientras dura el trabajo y se cierra destruyendo su GameObject.
+    public static Popup CreateProgress(string text)
+    {
+        var popup = Create(text, -1, 200);
+        popup.HideButtons();
+        return popup;
+    }
+
+    private void HideButtons()
+    {
+        // El prefab agrupa los dos botones bajo el nodo "Buttons"; ocultarlo los quita todos y
+        // deja el popup sin ninguna opcion de cierre.
+        Transform buttonsRow = null;
+        if (AcceptButton != null) buttonsRow = AcceptButton.transform.parent;
+        else if (RejectButton != null) buttonsRow = RejectButton.transform.parent;
+
+        if (buttonsRow != null)
+        {
+            buttonsRow.gameObject.SetActive(false);
+        }
+        else
+        {
+            if (AcceptButton != null) AcceptButton.gameObject.SetActive(false);
+            if (RejectButton != null) RejectButton.gameObject.SetActive(false);
+        }
+    }
+
     public void OnAcceptButtonClick()
     {
         _onAccept?.Invoke();

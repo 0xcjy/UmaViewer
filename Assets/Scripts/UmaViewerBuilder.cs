@@ -1174,6 +1174,14 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
     {
         if (CurrentLyrics.Count > 0) CurrentLyrics.Clear();
 
+        // (AÑADIDO) Con idioma English, si hay letra EN generada desde el cliente Global, se usa
+        // en vez de la del cliente activo (que, con Region JP, viene en japones).
+        if (Config.Instance.Language == Language.En && GlobalLyrics.TryGet(songid, out var enLyrics))
+        {
+            CurrentLyrics.AddRange(enLyrics);
+            return CurrentLyrics;
+        }
+
         string lyricsVar = $"live/musicscores/m{songid}/m{songid}_lyrics";
         UmaDatabaseEntry lyricsAsset = Main.AbList[lyricsVar];
         AssetBundle bundle = UmaAssetManager.LoadAssetBundle(lyricsAsset);

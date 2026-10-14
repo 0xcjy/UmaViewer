@@ -20,6 +20,9 @@ public class Config
     public string GlobalDBKeyTip = "Key to read game database files (for Global)";
     public string GlobalDBKeyText;
 
+    public string GlobalNamesPathTip = "Optional: GLOBAL game folder (the one ending in Persistent) used ONLY to translate JP names (characters, costumes, songs) to English. Leave empty to auto-detect the usual Steam path.";
+    public string GlobalNamesPath = "";
+
     public string ABKeyTip = "Key to read asset bundles";
     public string ABKeyText;
 

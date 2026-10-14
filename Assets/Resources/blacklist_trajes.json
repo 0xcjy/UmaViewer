@@ -1,0 +1,3286 @@
+{
+  "generated": "2026-10-14 20:12:40",
+  "note": "Trajes por personaje SIN cuerpo/modelado (no deben ofrecerse). Derivado de la comprobacion de la carga normal.",
+  "blacklist": {
+    "1002": {
+      "name": "Silence Suzuka",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1004": {
+      "name": "Maruzensky",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1005": {
+      "name": "Fuji Kiseki",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1006": {
+      "name": "Oguri Cap",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1007": {
+      "name": "Gold Ship",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1008": {
+      "name": "Vodka",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1009": {
+      "name": "Daiwa Scarlet",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1010": {
+      "name": "Taiki Shuttle",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1011": {
+      "name": "Grass Wonder",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1013": {
+      "name": "Mejiro McQueen",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1014": {
+      "name": "El Condor Pasa",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1017": {
+      "name": "Symboli Rudolf",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1018": {
+      "name": "Air Groove",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1019": {
+      "name": "Agnes Digital",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1021": {
+      "name": "Tamamo Cross",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1022": {
+      "name": "Fine Motion",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1023": {
+      "name": "Biwa Hayahide",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1024": {
+      "name": "Mayano Top Gun",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1025": {
+      "name": "Manhattan Cafe",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1026": {
+      "name": "Mihono Bourbon",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1027": {
+      "name": "Mejiro Ryan",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1028": {
+      "name": "Hishi Akebono",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1029": {
+      "name": "Yukino Bijin",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1030": {
+      "name": "Rice Shower",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1031": {
+      "name": "Ines Fujin",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1032": {
+      "name": "Agnes Tachyon",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1034": {
+      "name": "Inari One",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1036": {
+      "name": "Air Shakur",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1039": {
+      "name": "Kawakami Princess",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1042": {
+      "name": "Seeking the Pearl",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1044": {
+      "name": "Sweep Tosho",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1045": {
+      "name": "Super Creek",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1047": {
+      "name": "Zenno Rob Roy",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1050": {
+      "name": "Narita Taishin",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1051": {
+      "name": "Nishino Flower",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1054": {
+      "name": "Biko Pegasus",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        }
+      ]
+    },
+    "1055": {
+      "name": "Marvelous Sunday",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1057": {
+      "name": "Mr. C.B.",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "1058": {
+      "name": "Meisho Doto",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1059": {
+      "name": "Mejiro Dober",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1061": {
+      "name": "King Halo",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1063": {
+      "name": "Ikuno Dictus",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "1066": {
+      "name": "Twin Turbo",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1070": {
+      "name": "Sirius Symboli",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1076": {
+      "name": "Sakura Laurel",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1077": {
+      "name": "Narita Top Road",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1080": {
+      "name": "Transcend",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1081": {
+      "name": "Espoir City",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1083": {
+      "name": "Symboli Kris S",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1084": {
+      "name": "Tanino Gimlet",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "1086": {
+      "name": "Mejiro Ramonu",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1087": {
+      "name": "Aston Machan",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1088": {
+      "name": "Satono Crown",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1092": {
+      "name": "Dantsu Flame",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1093": {
+      "name": "K.S.Miracle",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1095": {
+      "name": "Believe",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1097": {
+      "name": "Still in Love",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1098": {
+      "name": "Copano Rickey",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1099": {
+      "name": "Hokko Tarumae",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1100": {
+      "name": "Wonder Acute",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1101": {
+      "name": "サムソンビッグ",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1104": {
+      "name": "Katsuragi Ace",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1105": {
+      "name": "Neo Universe",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1106": {
+      "name": "Hishi Miracle",
+      "costumes": [
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "1107": {
+      "name": "Tap Dance City",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1108": {
+      "name": "Duramente",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1110": {
+      "name": "Cesario",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "1112": {
+      "name": "Daring Heart",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1113": {
+      "name": "Fusaichi Pandora",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1115": {
+      "name": "Orfevre",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1116": {
+      "name": "Gentildonna",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1117": {
+      "name": "Win Variation",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1118": {
+      "name": "Admire Groove",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1119": {
+      "name": "Dream Journey",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1124": {
+      "name": "Bubble Gum Fellow",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1126": {
+      "name": "Sakura Chitose O",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1127": {
+      "name": "Fenomeno",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1128": {
+      "name": "Blast Onepiece",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1129": {
+      "name": "Almond Eye",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1132": {
+      "name": "Loves Only You",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1133": {
+      "name": "Chrono Genesis",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1135": {
+      "name": "Stay Gold",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1136": {
+      "name": "Red Desire",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1137": {
+      "name": "Kiseki",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1138": {
+      "name": "Forever Young",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1139": {
+      "name": "Casino Drive",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1140": {
+      "name": "Marche Lorraine",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1142": {
+      "name": "Logotype",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1144": {
+      "name": "Rose Kingdom",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1146": {
+      "name": "Efforia",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "1149": {
+      "name": "Phalaenopsis",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "2001": {
+      "name": "Happy Meek",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "2004": {
+      "name": "Montjeu",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "2006": {
+      "name": "Rigantona",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "2007": {
+      "name": "Sonon Elfie",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "9001": {
+      "name": "Tazuna Hayakawa",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "9002": {
+      "name": "Director Akikawa",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9003": {
+      "name": "Etsuko Otonashi",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9004": {
+      "name": "Trainer Kiryuin",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9005": {
+      "name": "Sasami Anshinzawa",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9006": {
+      "name": "Riko Kashimoto",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "9007": {
+      "name": "Beauty Anshinzawa",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9008": {
+      "name": "Light Hello",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9040": {
+      "name": "Darley Arabian",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9042": {
+      "name": "Byerley Turk",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "9043": {
+      "name": "Satake Mei",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        }
+      ]
+    },
+    "9045": {
+      "name": "Sugar Lights",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9046": {
+      "name": "Saint Lite",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        },
+        {
+          "id": "0014_00_00",
+          "kind": "extra",
+          "name": "0014_00_00"
+        }
+      ]
+    },
+    "9047": {
+      "name": "Speed Symboli",
+      "costumes": [
+        {
+          "id": "0002_00_03",
+          "kind": "common",
+          "name": "School Short Sleeves Big Belly"
+        },
+        {
+          "id": "0002_01_03",
+          "kind": "common",
+          "name": "School Long Sleeves Big Belly"
+        },
+        {
+          "id": "0007_00_00",
+          "kind": "extra",
+          "name": "0007_00_00"
+        },
+        {
+          "id": "0007_01_00",
+          "kind": "extra",
+          "name": "0007_01_00"
+        },
+        {
+          "id": "0007_02_00",
+          "kind": "extra",
+          "name": "0007_02_00"
+        },
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        },
+        {
+          "id": "0008_00_00",
+          "kind": "extra",
+          "name": "0008_00_00"
+        },
+        {
+          "id": "0008_01_00",
+          "kind": "extra",
+          "name": "0008_01_00"
+        },
+        {
+          "id": "0008_02_00",
+          "kind": "extra",
+          "name": "0008_02_00"
+        },
+        {
+          "id": "0008_03_00",
+          "kind": "extra",
+          "name": "0008_03_00"
+        },
+        {
+          "id": "0008_04_00",
+          "kind": "extra",
+          "name": "0008_04_00"
+        },
+        {
+          "id": "0008_05_00",
+          "kind": "extra",
+          "name": "0008_05_00"
+        },
+        {
+          "id": "0008_06_00",
+          "kind": "extra",
+          "name": "0008_06_00"
+        },
+        {
+          "id": "0008_07_00",
+          "kind": "extra",
+          "name": "0008_07_00"
+        },
+        {
+          "id": "0008_08_00",
+          "kind": "extra",
+          "name": "0008_08_00"
+        },
+        {
+          "id": "0008_09_00",
+          "kind": "extra",
+          "name": "0008_09_00"
+        }
+      ]
+    },
+    "9048": {
+      "name": "Haiseiko",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9049": {
+      "name": "Tucker Bryne",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    },
+    "9050": {
+      "name": "Hoshina Kiyoko",
+      "costumes": [
+        {
+          "id": "0007_03_00",
+          "kind": "extra",
+          "name": "0007_03_00"
+        },
+        {
+          "id": "0007_04_00",
+          "kind": "extra",
+          "name": "0007_04_00"
+        },
+        {
+          "id": "0007_05_00",
+          "kind": "extra",
+          "name": "0007_05_00"
+        }
+      ]
+    }
+  }
+}

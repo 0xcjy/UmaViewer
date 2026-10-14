@@ -81,6 +81,11 @@ public class UmaViewerMain : MonoBehaviour
     private IEnumerator Start()
     {
         if (AbList == null) yield break;
+
+        // Traduce nombres JP->EN con la instalacion GLOBAL (solo nombres; si no esta,
+        // no pasa nada y se conservan los japoneses).
+        GlobalNames.EnsureLoaded(Config.Instance.GlobalNamesPath);
+
         int loadingStep = 0;
         int loadingStepsTotal = 10;
         var UmaCharaData = UmaDatabaseController.Instance.CharaData;
@@ -149,7 +154,7 @@ public class UmaViewerMain : MonoBehaviour
                 Characters.Add(new CharaEntry()
                 {
                     Name = item["charaname"].ToString(),
-                    EnName = LocalizeEn.GetCharaName(id),
+                    EnName = GlobalNames.Get(GlobalNames.CategoryChara, id, LocalizeEn.GetCharaName(id)),
                     Icon = UmaViewerBuilder.Instance.LoadCharaIcon(id.ToString()),
                     Id = id,
                     ThemeColor = "#" + item["ui_nameplate_color_1"].ToString()
@@ -170,7 +175,7 @@ public class UmaViewerMain : MonoBehaviour
             MobCharacters.Add(new CharaEntry()
             {
                 Name = item["charaname"].ToString(),
-                EnName = LocalizeEn.GetMobName(id),
+                EnName = GlobalNames.Get(GlobalNames.CategoryMob, id, LocalizeEn.GetMobName(id)),
                 Icon = UmaViewerBuilder.Instance.LoadMobCharaIcon(id.ToString()),
                 Id = id,
                 IsMob = true
@@ -196,6 +201,12 @@ public class UmaViewerMain : MonoBehaviour
             {
                 costume.CharaId = Convert.ToInt32(data["chara_id"]);
                 costume.DressName = data["dressname"].ToString();
+                // (AÑADIDO) Traduccion de nombres de traje con el global (solo si hay idioma EN).
+                if (Config.Instance.Language == Language.En &&
+                    int.TryParse(data["id"].ToString(), out int dressTextId))
+                {
+                    costume.DressName = GlobalNames.Get(GlobalNames.CategoryDress, dressTextId, costume.DressName);
+                }
                 costume.BodyType = Convert.ToInt32(data["body_type"]);
                 costume.BodyTypeSub = Convert.ToInt32(data["body_type_sub"]);
             }
@@ -214,6 +225,11 @@ public class UmaViewerMain : MonoBehaviour
                 {
                     var musicId = Convert.ToInt32(item["music_id"]);
                     var songName = item["songname"].ToString();
+                    // (AÑADIDO) Traduccion de nombres de cancion con el global (solo si idioma EN).
+                    if (Config.Instance.Language == Language.En)
+                    {
+                        songName = GlobalNames.Get(GlobalNames.CategorySong, musicId, songName);
+                    }
                     var membercount = Convert.ToInt32(item["live_member_number"]);
                     var defaultdress = Convert.ToInt32(item["default_main_dress"]);
 

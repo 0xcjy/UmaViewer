@@ -1209,6 +1209,26 @@ public class UmaViewerUI : MonoBehaviour
         CharaEntry listChara = otherMode ? selectedOtherChara : chara;
         CharaEntry headChara = otherMode ? chara : listChara;
 
+        // (AÑADIDO) BLACKLIST personaje->traje: mismo filtro que EnumerateCostumes, aqui para el
+        // listado del panel. Un traje sin cuerpo no debe aparecer ni poder elegirse. Solo se
+        // aplica a personajes normales (mobs y minis usan otro esquema de rutas).
+        bool filtrarSinCuerpo = !mini && !listChara.IsMob;
+        string bodyHeight = "", bodyShape = "", bodyBust = "";
+        if (filtrarSinCuerpo)
+        {
+            var bodyData = UmaDatabaseController.ReadCharaData(listChara);
+            if (bodyData != null)
+            {
+                bodyHeight = bodyData["height"].ToString();
+                bodyShape = bodyData["shape"].ToString();
+                bodyBust = bodyData["bust"].ToString();
+            }
+            else
+            {
+                filtrarSinCuerpo = false;
+            }
+        }
+
         //--- Trajes PROPIOS del personaje (id corto). Los mobs no los tienen. (En 'Uniques',
         //'Other Characters' y 'All'; en General/Extras no salen.)
         bool includeOwn = !listChara.IsMob &&
@@ -1219,11 +1239,20 @@ public class UmaViewerUI : MonoBehaviour
             string ownBodyPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
             foreach (var entry in Main.AbChara.Where(a => a.Name.StartsWith(ownBodyPath) && !a.Name.Contains("clothes") && a.Name.Contains(ownNameVar)))
             {
-                var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
-                UIPressScaleFeedback.AddTo(container.gameObject);
                 string[] split = entry.Name.Split('_');
                 string costumeId = split[split.Length - 1];
                 var dressdata = Main.Costumes.FirstOrDefault(a => (a.CharaId == listChara.Id && a.BodyTypeSub == int.Parse(costumeId)));
+
+                // (AÑADIDO) Blacklist: propio sin cuerpo (escaneo de assets + lista de archivo).
+                if (filtrarSinCuerpo &&
+                    (!Main.AbList.ContainsKey(ownBodyPath + $"bdy{listChara.Id}_{costumeId}/pfb_bdy{listChara.Id}_{costumeId}") ||
+                     CostumeBlacklist.IsBlacklisted(listChara.Id, costumeId)))
+                {
+                    continue;
+                }
+
+                var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
+                UIPressScaleFeedback.AddTo(container.gameObject);
                 container.Name = container.name = GetCostumeName(costumeId, (dressdata == null ? costumeId : dressdata.DressName));
                 container.Image.sprite = (dressdata == null ? CostumeIconDefault : dressdata.Icon);
                 container.Image.enabled = true;
@@ -1287,6 +1316,14 @@ public class UmaViewerUI : MonoBehaviour
                 ? (mode == CostumeListMode.Extras || mode == CostumeListMode.All)
                 : (mode == CostumeListMode.General || mode == CostumeListMode.All);
             if (!wanted) continue;
+
+            // (AÑADIDO) Blacklist: común sin cuerpo para ESTE personaje (p.ej. McQueen + Big Belly).
+            if (filtrarSinCuerpo)
+            {
+                string bodyShort = id.Remove(id.LastIndexOf('_'));
+                string bodyKey = commonPath + $"bdy{bodyShort}/pfb_bdy{id}_{bodyHeight}_{bodyShape}_{bodyBust}";
+                if (!Main.AbList.ContainsKey(bodyKey) || CostumeBlacklist.IsBlacklisted(listChara.Id, id)) continue;
+            }
 
             var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
             UIPressScaleFeedback.AddTo(container.gameObject);
@@ -2690,9 +2727,31 @@ public class UmaViewerUI : MonoBehaviour
     {
         var result = new List<CostumeOption>();
         if (chara == null) return result;
-        if (Main == null || Main.AbChara == null || Main.Costumes == null) return result;
+        if (Main == null || Main.AbChara == null || Main.Costumes == null || Main.AbList == null) return result;
 
         string bodyPath = mini ? UmaDatabaseController.MiniBodyPath : UmaDatabaseController.BodyPath;
+
+        // (AÑADIDO) BLACKLIST personaje->traje: si el personaje NO tiene cuerpo/modelado para un
+        // traje, cargarlo revienta con "No body, can't load!". Se filtra AQUI (unico punto donde
+        // se construye la lista) para que ese traje no aparezca en el panel ni entre en
+        // "aleatorizar trajes". Solo aplica a personajes normales: mobs y minis usan otro
+        // esquema de rutas. La clave se calcula igual que en LoadNormalUma.
+        bool filtrarSinCuerpo = !mini && !chara.IsMob;
+        string bodyHeight = "", bodyShape = "", bodyBust = "";
+        if (filtrarSinCuerpo)
+        {
+            var bodyData = UmaDatabaseController.ReadCharaData(chara);
+            if (bodyData != null)
+            {
+                bodyHeight = bodyData["height"].ToString();
+                bodyShape = bodyData["shape"].ToString();
+                bodyBust = bodyData["bust"].ToString();
+            }
+            else
+            {
+                filtrarSinCuerpo = false;
+            }
+        }
 
         //--- Trajes PROPIOS del personaje (id corto). Los mobs no los tienen. (En 'Uniques',
         //'Other Characters' y 'All'; en General/Extras no salen.)
@@ -2706,6 +2765,15 @@ public class UmaViewerUI : MonoBehaviour
                 int sub;
                 if (!int.TryParse(costumeId, out sub)) sub = int.MinValue;   //nunca casa con un BodyTypeSub real
                 var dressdata = Main.Costumes.FirstOrDefault(a => a.CharaId == chara.Id && a.BodyTypeSub == sub);
+
+                // (AÑADIDO) Blacklist: propio sin cuerpo (escaneo de assets + lista de archivo).
+                if (filtrarSinCuerpo &&
+                    (!Main.AbList.ContainsKey(bodyPath + $"bdy{chara.Id}_{costumeId}/pfb_bdy{chara.Id}_{costumeId}") ||
+                     CostumeBlacklist.IsBlacklisted(chara.Id, costumeId)))
+                {
+                    continue;
+                }
+
                 result.Add(MakeCostumeOption(costumeId, dressdata, false));
             }
         }
@@ -2739,6 +2807,14 @@ public class UmaViewerUI : MonoBehaviour
                 ? (mode == CostumeListMode.Extras || mode == CostumeListMode.All)
                 : (mode == CostumeListMode.General || mode == CostumeListMode.All);
             if (!wanted) continue;
+
+            // (AÑADIDO) Blacklist: comun sin cuerpo para ESTE personaje (p.ej. McQueen + Big Belly).
+            if (filtrarSinCuerpo)
+            {
+                string bodyShort = id.Remove(id.LastIndexOf('_'));
+                string bodyKey = bodyPath + $"bdy{bodyShort}/pfb_bdy{id}_{bodyHeight}_{bodyShape}_{bodyBust}";
+                if (!Main.AbList.ContainsKey(bodyKey) || CostumeBlacklist.IsBlacklisted(chara.Id, id)) continue;
+            }
 
             result.Add(MakeCostumeOption(id, dressdata, true));
         }

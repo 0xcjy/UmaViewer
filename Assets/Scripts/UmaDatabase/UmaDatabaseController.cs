@@ -429,6 +429,46 @@ public class UmaDatabaseController
         return meta;
     }
 
+    /// <summary>
+    /// Lee la tabla `a` (meta) de OTRO cliente (p.ej. el Global) sin tocar las conexiones
+    /// activas: intenta primero sqlite normal y, si falla, la via encriptada (sqlite3mc).
+    /// Devuelve null si la carpeta no tiene meta o no se pudo leer.
+    /// </summary>
+    public static Dictionary<string, UmaDatabaseEntry> ReadMetaFromFolder(string folder, byte[] dbKey)
+    {
+        if (string.IsNullOrEmpty(folder)) return null;
+
+        string metaPath = Path.Combine(folder, "meta");
+        if (!File.Exists(metaPath)) return null;
+
+        try
+        {
+            using (var conn = new SqliteConnection($@"Data Source={metaPath};"))
+            {
+                conn.Open();
+                return ReadMeta(conn);
+            }
+        }
+        catch (Exception)
+        {
+            // El meta del cliente Global va encriptado (sqlite3mc): se intenta abajo.
+        }
+
+        try
+        {
+            byte[] effectiveKey = (dbKey == null || dbKey.Length == 0)
+                ? Config.Instance.GlobalDBKey
+                : dbKey;
+            var key = Instance.GenFinalKey((byte[])effectiveKey.Clone());
+            return ReadMetaFromEncryptedDb(metaPath, key, 3);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[UmaDatabaseController] No se pudo leer el meta de " + folder + ": " + ex.Message);
+            return null;
+        }
+    }
+
     static void SetDefaultGameRegion(SqliteConnection conn)
     {
         var str = ReadMaster(conn, "SELECT text FROM text_data LIMIT 1");
