@@ -165,12 +165,19 @@ namespace Gallop.Live
 
         public List<Animation> charaAnims;
         public List<UmaViewerAudio.CuteAudioSource> liveVocal = new List<UmaViewerAudio.CuteAudioSource>();
+        //(Live: charaId de cada entrada de `liveVocal`, en el MISMO orden e índices. Lo usa el overlay
+        //de depuración de voces para poner nombre a cada slot.)
+        public List<int> liveVocalCharaIds = new List<int>();
         public UmaViewerAudio.CuteAudioSource liveMusic = new UmaViewerAudio.CuteAudioSource();
 
         public PartEntry partInfo;
 
         public bool _syncTime = false;
         public bool _soloMode = false;
+
+        //(Live) Ver InitializeMusic: la MISMA cantante ocupa todas las pistas (incluye Solo concert),
+        //así que AlterUpdate no deja sonar más de 3 a la vez.
+        public bool _capSameVoice = false;
 
         //(Live: modo de voz del directo y cantantes elegidas en el bloque VocalSelect.
         // Los rellena UmaViewerBuilder.LoadLive desde la UI y los consume InitializeMusic.
@@ -790,20 +797,37 @@ namespace Gallop.Live
             // del bloque VocalSelect. 'characters' se conserva en la firma por compatibilidad.)
             var vocalIds = GetVocalCharaIdList(songid, VocalMode, VocalCharaIds);
 
+            //(Live) Solo concert: la cantante del slot 1 ocupa TODAS las pistas que usa la canción (la UI
+            //sigue mostrando sólo el slot 1). Antes se creaba UNA sola pista y se saltaba la mezcla,
+            //sonando todas sus waves a la vez; ahora pasa por el mismo camino que Mix voices con una
+            //única voz, así que la tabla `_part` elige la onda correcta en cada momento.
+            if (VocalMode == LiveVocalMode.SoloConcert && vocalIds.Count > 0)
+            {
+                int singerCount = (partInfo != null && partInfo.SingerCount > 0) ? partInfo.SingerCount : 1;
+                int singer = vocalIds[0];
+                vocalIds.Clear();
+                for (int i = 0; i < singerCount; i++) vocalIds.Add(singer);
+            }
+
             //Evita arrastrar voces de una inicialización anterior (si se pulsase Play dos veces,
             //liveVocal ya tendría tags y ninguna columna del _part casaría, dejando el mix mudo).
             liveVocal.Clear();
+            liveVocalCharaIds.Clear();
 
-            //Recorte por TrackCount (pistas reales), no por SingerCount: una canción puede tener 7
-            //columnas y usar sólo 3, y entonces la 4ª voz elegida se descartaba sin motivo.
+            //Recorte por COLUMNAS QUE PUEDEN SONAR (SingerCount = columnas con algún valor > 0), no por
+            //TrackCount (todas las columnas declaradas en la cabecera): una canción puede declarar 5
+            //pistas y usar sólo 3, y las 2 que nunca tienen valor jamás suenan (su columna lee 0 en
+            //todas las filas). Crear esos slots sólo añadía pistas MUDAS ocupadas por voces al azar.
+            //La UI ya limita los desplegables a Clamp(SingerCount, 3, 7), así que con esto van coherentes.
             int maxVoices = vocalIds.Count;
-            if (VocalMode == LiveVocalMode.MixVoices && partInfo != null && partInfo.TrackCount > 0)
-                maxVoices = Mathf.Min(maxVoices, partInfo.TrackCount);
-
-            //Tabla _part presente pero VACÍA: AlterUpdate leería 0 en todas las columnas (silencio
-            //absoluto). En ese caso se fuerza una sola voz y suena su canción entera.
-            if (VocalMode == LiveVocalMode.MixVoices && partInfo != null && partInfo.SingerCount == 0)
-                maxVoices = Mathf.Min(maxVoices, 1);
+            if (VocalMode == LiveVocalMode.MixVoices && partInfo != null)
+            {
+                //Tabla _part presente pero VACÍA (ninguna columna suena nunca): AlterUpdate leería 0 en
+                //todas (silencio absoluto). En ese caso se fuerza una sola voz y suena su canción entera.
+                maxVoices = partInfo.SingerCount == 0
+                    ? Mathf.Min(maxVoices, 1)
+                    : Mathf.Min(maxVoices, partInfo.SingerCount);
+            }
 
             for (int i = 0; i < vocalIds.Count && i < maxVoices; i++)
             {
@@ -819,10 +843,17 @@ namespace Gallop.Live
                     continue;
                 }
                 liveVocal.Add(source);
+                liveVocalCharaIds.Add(vocalIds[i]);
             }
 
+            //(Live) Flag "la MISMA cantante en todas las pistas" (incluye Solo concert, que rellena todos
+            //los slots con el PJ del slot 1): AlterUpdate no dejará sonar más de 3 pistas a la vez.
+            _capSameVoice = liveVocalCharaIds.Count >= 2 &&
+                            liveVocalCharaIds.TrueForAll(id => id == liveVocalCharaIds[0]);
+
             Debug.Log($"[Live] VOCAL cancion={songid} modo={VocalMode} elegidas=[{string.Join(", ", vocalIds)}] " +
-                      $"resueltas={liveVocal.Count}/{maxVoices}");
+                      $"resueltas={liveVocal.Count}/{maxVoices} capSameVoice={_capSameVoice}" +
+                      (partInfo != null ? $" (SingerCount={partInfo.SingerCount} TrackCount={partInfo.TrackCount})" : ""));
 
             //Con 0 o 1 voces no hay nada que mezclar: se salta AlterUpdate y la única pista suena
             //completa (todos sus waves a volumen 1), que es el "Solo concert".
@@ -877,7 +908,7 @@ namespace Gallop.Live
             _liveTimelineControl.AlterUpdate(_liveCurrentTime);
             if (!_soloMode)
             {
-                UmaViewerAudio.AlterUpdate(_liveCurrentTime, partInfo, liveVocal, sliderControl.is_Outed);
+                UmaViewerAudio.AlterUpdate(_liveCurrentTime, partInfo, liveVocal, sliderControl.is_Outed, _capSameVoice);
             }
         }
 

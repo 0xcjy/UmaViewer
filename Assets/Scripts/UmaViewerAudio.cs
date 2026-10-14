@@ -146,7 +146,22 @@ public class UmaViewerAudio
     };
     static readonly string[] OrderedParts = { "left3", "left2", "left", "center", "right", "right2", "right3" };
 
-    static public void AlterUpdate(float _liveCurrentTime, PartEntry partInfo, List<CuteAudioSource> liveVocal, bool forceUpdate = false)
+    //(Live) Nombre de columna del `_part` → slot (PartForm). El slot es el orden con el que se crean
+    //las pistas: center, left, right, left2, right2, left3, right3.
+    static readonly Dictionary<string, int> PartSlot = new Dictionary<string, int>(StringComparer.Ordinal)
+    {
+        { "center", (int)PartForm.center }, { "left", (int)PartForm.left }, { "right", (int)PartForm.right },
+        { "left2", (int)PartForm.left2 }, { "right2", (int)PartForm.right2 },
+        { "left3", (int)PartForm.left3 }, { "right3", (int)PartForm.right3 },
+    };
+
+    //(Live) Tope de pistas con la MISMA voz sonando A LA VEZ. Con 4+ copias de la misma cantante
+    //(p. ej. coros, o Solo concert repartiendo el slot 1 por todas las pistas) el volumen se desmadra,
+    //así que a partir de la 4ª —en orden de slot— se silencia. 2 o 3 no dan problema.
+    public const int MaxSimultaneousSameVoice = 3;
+    static readonly bool[] SilencedSlots = new bool[7];
+
+    static public void AlterUpdate(float _liveCurrentTime, PartEntry partInfo, List<CuteAudioSource> liveVocal, bool forceUpdate = false, bool capSameVoice = false)
     {
         if (partInfo == null || liveVocal == null ||
             !partInfo.PartSettings.TryGetValue("time", out var times)) return;
@@ -155,11 +170,28 @@ public class UmaViewerAudio
         if (targetIndex < 0 || (!forceUpdate && LastAudioPartIndex == targetIndex)) return;
         LastAudioPartIndex = targetIndex;
 
+        //(Live) Con el flag activo sólo pueden sonar las 3 primeras pistas (en orden de slot) que pida
+        //la tabla en este momento; la 4ª y siguientes quedan mudas.
+        for (int i = 0; i < SilencedSlots.Length; i++) SilencedSlots[i] = false;
+        if (capSameVoice && liveVocal.Count > MaxSimultaneousSameVoice)
+        {
+            int allowed = 0;
+            for (int slot = 0; slot < liveVocal.Count && slot < SilencedSlots.Length; slot++)
+            {
+                string partName = ((PartForm)slot).ToString();
+                if (FindVocal(liveVocal, partName) == null) continue;
+                if (PartValue(partInfo, partName, targetIndex, 0f) <= 0f) continue;   // no canta ahora
+                if (allowed >= MaxSimultaneousSameVoice) SilencedSlots[slot] = true;
+                else allowed++;
+            }
+        }
+
         int activeCount = 0;
         foreach (string part in OrderedParts)
         {
             var vocal = FindVocal(liveVocal, part);
-            if (vocal != null && PartValue(partInfo, part, targetIndex, 0f) > 0f) activeCount++;
+            if (vocal == null || SilencedSlots[PartSlot[part]]) continue;
+            if (PartValue(partInfo, part, targetIndex, 0f) > 0f) activeCount++;
         }
         // Original AlterUpdate 0x1b8c31d and 0x1b8c562: >=900 means default,
         // not zero. An explicit zero remains authored silence.
@@ -171,6 +203,7 @@ public class UmaViewerAudio
             var vocal = FindVocal(liveVocal, part);
             if (vocal == null) continue;
             int index = (int)PartValue(partInfo, part, targetIndex, 0f);
+            if (SilencedSlots[PartSlot[part]]) index = 0;   //(Live) tope de la misma voz: pista muda
             vocal.SwitchActiveSource(index, forceUpdate);
             bool active = index > 0;
             int row = activeCount < DefaultVolumeIndices.Length ? activeCount : 0;

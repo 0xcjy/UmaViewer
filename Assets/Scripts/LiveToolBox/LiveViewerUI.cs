@@ -49,6 +49,10 @@ public class LiveViewerUI : MonoBehaviour
         // Ctrl+Shift+F9. Se monta por código (no en el YAML) y vive en esta escena, que es la que
         // tiene el Director. Ver LiveFrameDebugOverlay.cs.
         LiveFrameDebugOverlay.Ensure();
+
+        // Overlay de depuración con los slots de voz del live (qué PJ canta en cada uno y si su
+        // pista está sonando), que se enciende y apaga con Ctrl+F8. Ver LiveVocalDebugOverlay.cs.
+        LiveVocalDebugOverlay.Ensure();
         //TrueProgressBar = (UnityEngine.UIElements.Slider)ProgressBar;
     }
 
