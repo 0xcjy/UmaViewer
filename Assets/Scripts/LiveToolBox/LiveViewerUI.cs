@@ -14,6 +14,10 @@ public class LiveViewerUI : MonoBehaviour
 
     public Dropdown FrameRateDropDown;
 
+    //(Live: los controles de ajustes graficos viven en la escena `LiveScene`; este componente los
+    //rellena y cablea. Ver LiveGraphicsSettingsUI.cs.)
+    public LiveGraphicsSettingsUI GraphicsSettings;
+
     public GameObject RecordingUI;
 
     public Text RecordingText;
@@ -35,7 +39,8 @@ public class LiveViewerUI : MonoBehaviour
             new Config();
         }
         ApplyFrameRateOptions();
-        UISettingsGraphics.Build(FrameRateDropDown);
+        //(Los controles de ajustes graficos ya existen en la escena: aqui solo se rellenan.)
+        if (GraphicsSettings != null) GraphicsSettings.Apply();
         RuntimeGraphicsSettings.ApplyLiveRenderScale();
         UmaViewerMain.ApplyFrameRateLimitLive();
 
@@ -143,6 +148,12 @@ public class LiveViewerUI : MonoBehaviour
 
     private void ApplyFrameRateOptions()
     {
+        if (GraphicsSettings != null)
+        {
+            GraphicsSettings.RefreshFrameRate();
+            return;
+        }
+
         if (FrameRateDropDown == null) return;
 
         FrameRateDropDown.ClearOptions();
