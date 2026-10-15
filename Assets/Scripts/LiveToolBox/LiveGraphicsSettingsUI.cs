@@ -3,23 +3,31 @@ using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Controles de los ajustes graficos del live. Los objetos viven en la escena `LiveScene` (YAML):
-// este componente solo los rellena, sincroniza sus valores con `Config` y cablea los eventos.
+// Controles de los ajustes del live. Los objetos viven en la escena `LiveScene` (YAML): este
+// componente solo los rellena, sincroniza sus valores con `Config` y cablea los eventos. Los
+// desplegables de FPS y de render scale ademas se pueden escribir (ver TypeInDropdown).
 public class LiveGraphicsSettingsUI : MonoBehaviour
 {
+    // Presets del panel del viewer, mas 0 = Unlimited para el live.
+    private static readonly int[] FrameRatePresets = { 30, 60, 90, 120, 180, 240, 0 };
+    private static readonly int[] RenderScalePresets = { 50, 75, 100, 150, 200 };
     private static readonly string[] MsaaOptions = { "Off", "2x", "4x", "8x" };
     private static readonly string[] AnisoOptions = { "Off", "Per Texture", "Force On" };
     private static readonly string[] TextureQualityOptions = { "Full", "Half", "Quarter", "Eighth" };
 
+    private const int MinRenderScale = 50;
+    private const int MaxRenderScale = 200;
+
     public Dropdown FrameRateDropdown;
-    public InputField CustomFps;
+    public Dropdown RenderScaleDropdown;
     public Dropdown MsaaDropdown;
-    public InputField RenderScale;
     public Dropdown AnisoDropdown;
     public Dropdown TextureQualityDropdown;
     public InputField LodBias;
     public InputField ShadowDistance;
 
+    private TypeInDropdown _frameRate;
+    private TypeInDropdown _renderScale;
     private bool _applied;
 
     // Idempotente: lo llama LiveViewerUI cuando Config ya existe.
@@ -28,59 +36,28 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
         if (_applied) return;
         _applied = true;
 
-        RefreshFrameRate();
-        if (CustomFps != null)
-            CustomFps.SetTextWithoutNotify(Config.Instance.TargetFrameRate.ToString(CultureInfo.InvariantCulture));
-        if (RenderScale != null)
-            RenderScale.SetTextWithoutNotify(Config.Instance.RenderScalePercent.ToString(CultureInfo.InvariantCulture));
+        if (FrameRateDropdown != null)
+        {
+            _frameRate = new LegacyTypeInDropdown(FrameRateDropdown, FrameRatePresets, 0, 0, "", FrameRateLabel, ApplyFrameRate);
+            _frameRate.SetValue(Config.Instance.TargetFrameRate);
+        }
+
+        if (RenderScaleDropdown != null)
+        {
+            _renderScale = new LegacyTypeInDropdown(RenderScaleDropdown, RenderScalePresets, MinRenderScale, MaxRenderScale, "%", ApplyRenderScale);
+            _renderScale.SetValue(Config.Instance.RenderScalePercent);
+        }
+
         if (LodBias != null)
             LodBias.SetTextWithoutNotify(Config.Instance.LodBias.ToString(CultureInfo.InvariantCulture));
         if (ShadowDistance != null)
             ShadowDistance.SetTextWithoutNotify(Config.Instance.ShadowDistance.ToString(CultureInfo.InvariantCulture));
-
-        if (FrameRateDropdown != null)
-        {
-            FrameRateDropdown.onValueChanged.AddListener(delegate (int index)
-            {
-                if (CustomFps != null)
-                    CustomFps.SetTextWithoutNotify(
-                        UISettingsGraphics.FrameRateAt(index, Config.Instance.TargetFrameRate).ToString(CultureInfo.InvariantCulture));
-            });
-        }
-
-        if (CustomFps != null)
-        {
-            CustomFps.onEndEdit.AddListener(delegate (string raw)
-            {
-                int rate;
-                if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out rate) && rate >= 0)
-                {
-                    Config.Instance.TargetFrameRate = rate;
-                    Config.Instance.UpdateConfig(false);
-                    UmaViewerMain.ApplyFrameRateLimitLive();
-                    RefreshFrameRate();
-                }
-                CustomFps.SetTextWithoutNotify(Config.Instance.TargetFrameRate.ToString(CultureInfo.InvariantCulture));
-            });
-        }
 
         FillChoice(MsaaDropdown, MsaaOptions, Config.Instance.AntiAliasing, delegate (int value)
         {
             Config.Instance.AntiAliasing = value;
             UISettingsGraphics.SaveGraphics();
         });
-
-        if (RenderScale != null)
-        {
-            RenderScale.onEndEdit.AddListener(delegate (string raw)
-            {
-                int value;
-                if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value >= 50 && value <= 200)
-                    Config.Instance.RenderScalePercent = value;
-                UISettingsGraphics.SaveGraphics();
-                RenderScale.SetTextWithoutNotify(Config.Instance.RenderScalePercent.ToString(CultureInfo.InvariantCulture));
-            });
-        }
 
         FillChoice(AnisoDropdown, AnisoOptions, Config.Instance.AnisotropicFiltering, delegate (int value)
         {
@@ -119,13 +96,62 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        // Un clic dentro de uno de los desplegables escribibles empieza a escuchar el teclado; un
+        // clic fuera adopta lo que hubiera escrito.
+        if (Input.GetMouseButtonDown(0))
+        {
+            HandleTypingClick(_frameRate);
+            HandleTypingClick(_renderScale);
+        }
+
+        if (_frameRate != null) _frameRate.Update();
+        if (_renderScale != null) _renderScale.Update();
+    }
+
+    // Vuelve a pintar el desplegable de FPS con el valor actual de Config.
     public void RefreshFrameRate()
     {
-        if (FrameRateDropdown == null) return;
-        FrameRateDropdown.ClearOptions();
-        FrameRateDropdown.AddOptions(UISettingsGraphics.FrameRateLabels(Config.Instance.TargetFrameRate));
-        FrameRateDropdown.SetValueWithoutNotify(UISettingsGraphics.FrameRateIndexOf(Config.Instance.TargetFrameRate));
-        FrameRateDropdown.RefreshShownValue();
+        if (_frameRate != null) _frameRate.SetValue(Config.Instance.TargetFrameRate);
+    }
+
+    private static void HandleTypingClick(TypeInDropdown field)
+    {
+        if (field == null) return;
+        if (ContainsPointer(field.Rect)) field.BeginTyping();
+        else if (field.Typing) field.Commit();
+    }
+
+    private static bool ContainsPointer(RectTransform rect)
+    {
+        if (rect == null) return false;
+        var canvas = rect.GetComponentInParent<Canvas>();
+        var cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, Input.mousePosition, cam);
+    }
+
+    private static string FrameRateLabel(int fps)
+    {
+        return fps == 0 ? "Unlimited" : fps.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void ApplyFrameRate(int fps)
+    {
+        if (Config.Instance.TargetFrameRate != fps)
+        {
+            Config.Instance.TargetFrameRate = fps;
+            Config.Instance.UpdateConfig(false);
+        }
+        UmaViewerMain.ApplyFrameRateLimitLive();
+        if (_frameRate != null) _frameRate.SetValue(fps);
+    }
+
+    private void ApplyRenderScale(int percent)
+    {
+        Config.Instance.RenderScalePercent = Mathf.Clamp(percent, MinRenderScale, MaxRenderScale);
+        UISettingsGraphics.SaveGraphics();
+        if (_renderScale != null) _renderScale.SetValue(Config.Instance.RenderScalePercent);
     }
 
     private static void FillChoice(Dropdown dropdown, string[] options, int value, UnityEngine.Events.UnityAction<int> change)

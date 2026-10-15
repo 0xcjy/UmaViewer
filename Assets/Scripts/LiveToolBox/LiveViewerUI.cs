@@ -12,8 +12,6 @@ public class LiveViewerUI : MonoBehaviour
 
     public RectTransform BottonUITransform;
 
-    public Dropdown FrameRateDropDown;
-
     //(Live: los controles de ajustes graficos viven en la escena `LiveScene`; este componente los
     //rellena y cablea. Ver LiveGraphicsSettingsUI.cs.)
     public LiveGraphicsSettingsUI GraphicsSettings;
@@ -38,7 +36,6 @@ public class LiveViewerUI : MonoBehaviour
         {
             new Config();
         }
-        ApplyFrameRateOptions();
         //(Los controles de ajustes graficos ya existen en la escena: aqui solo se rellenan.)
         if (GraphicsSettings != null) GraphicsSettings.Apply();
         RuntimeGraphicsSettings.ApplyLiveRenderScale();
@@ -82,9 +79,7 @@ public class LiveViewerUI : MonoBehaviour
         textObject.layer = parent.gameObject.layer;
         textObject.transform.SetParent(parent, false);
         var text = textObject.GetComponent<UnityEngine.UI.Text>();
-        text.font = FrameRateDropDown != null && FrameRateDropDown.captionText != null
-            ? FrameRateDropDown.captionText.font : null;
-        if (text.font == null && LyricsText != null) text.font = LyricsText.font;
+        text.font = LyricsText != null ? LyricsText.font : null;
         if (text.font == null) text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         text.fontSize = 16;
         text.color = Color.white;
@@ -137,29 +132,6 @@ public class LiveViewerUI : MonoBehaviour
     private void HideSlider()
     {
         targetHeight = -height;
-    }
-
-    public void SetFrameRate(int fps)
-    {
-        Config.Instance.TargetFrameRate = UISettingsGraphics.FrameRateAt(fps, Config.Instance.TargetFrameRate);
-        Config.Instance.UpdateConfig(false);
-        UmaViewerMain.ApplyFrameRateLimitLive();
-    }
-
-    private void ApplyFrameRateOptions()
-    {
-        if (GraphicsSettings != null)
-        {
-            GraphicsSettings.RefreshFrameRate();
-            return;
-        }
-
-        if (FrameRateDropDown == null) return;
-
-        FrameRateDropDown.ClearOptions();
-        FrameRateDropDown.AddOptions(UISettingsGraphics.FrameRateLabels(Config.Instance.TargetFrameRate));
-        FrameRateDropDown.SetValueWithoutNotify(UISettingsGraphics.FrameRateIndexOf(Config.Instance.TargetFrameRate));
-        FrameRateDropDown.RefreshShownValue();
     }
 
     public void UpdateLyrics(float time)

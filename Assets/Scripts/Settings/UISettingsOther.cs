@@ -25,9 +25,9 @@ public class UISettingsOther : MonoBehaviour
 
     //--- Elementos `Other/UIfps` y `Other/UIrenderScale/Dropdown` (viven en Version2.unity; aquí SÓLO
     //se resuelven por nombre y se cablea el comportamiento). Ver EnsureUIFps/EnsureUIRenderScale.
+    //El desplegable escribible que los cablea es la clase compartida `TypeInDropdown`.
     private static readonly int[] UIFpsOptions = { 30, 60, 90, 120, 180, 240 };
     private static readonly int[] UIRenderScaleOptions = { 50, 75, 100, 150, 200 };
-    private const float TypingIdleSeconds = 0.7f;   //Se adopta lo escrito cuando se deja de teclear.
     private const int MinUIRenderScale = 50;        //El render scale del viewer se limita a 50-200 %.
     private const int MaxUIRenderScale = 200;
 
@@ -132,7 +132,7 @@ public class UISettingsOther : MonoBehaviour
     private static void HandleTypingClick(TypeInDropdown field)
     {
         if (field == null) return;
-        if (ContainsPointer(field.Dropdown)) field.BeginTyping();
+        if (ContainsPointer(field.Rect)) field.BeginTyping();
         else if (field.Typing) field.Commit();
     }
 
@@ -142,7 +142,7 @@ public class UISettingsOther : MonoBehaviour
 
         var dd = FindDropdown("UIfps");
         if (dd == null) return;
-        _uiFps = new TypeInDropdown(dd, UIFpsOptions, 0, 0, "", ApplyUIFrameRate);
+        _uiFps = new TmpTypeInDropdown(dd, UIFpsOptions, 0, 0, "", ApplyUIFrameRate);
         _uiFps.SetValue(Config.Instance.UIFrameRate);
     }
 
@@ -152,7 +152,7 @@ public class UISettingsOther : MonoBehaviour
 
         var dd = FindDropdown("UIrenderScale");
         if (dd == null) return;
-        _uiRenderScale = new TypeInDropdown(dd, UIRenderScaleOptions, MinUIRenderScale, MaxUIRenderScale, "%", ApplyUIRenderScale);
+        _uiRenderScale = new TmpTypeInDropdown(dd, UIRenderScaleOptions, MinUIRenderScale, MaxUIRenderScale, "%", ApplyUIRenderScale);
         _uiRenderScale.SetValue(Config.Instance.UIRenderScalePercent);
     }
 
@@ -211,147 +211,12 @@ public class UISettingsOther : MonoBehaviour
     }
 
     //Rect COMPLETO del desplegable (rótulo + flecha), igual que en los buscadores.
-    private static bool ContainsPointer(TMP_Dropdown dd)
+    private static bool ContainsPointer(RectTransform rect)
     {
-        if (dd == null) return false;
-        var canvas = dd.GetComponentInParent<Canvas>();
+        if (rect == null) return false;
+        var canvas = rect.GetComponentInParent<Canvas>();
         var cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
-        return RectTransformUtility.RectangleContainsScreenPoint(dd.transform as RectTransform, Input.mousePosition, cam);
-    }
-
-    //--------------------------------------------------------------------------
-    // Desplegable con lista de presets que además se puede escribir: lo tecleado
-    // se ADOPTA como valor (con un rango permitido y un sufijo opcional, p. ej. "%").
-    // Lo escrito se pinta en el rótulo mientras se teclea, como en los buscadores.
-    //--------------------------------------------------------------------------
-    private class TypeInDropdown
-    {
-        private readonly TMP_Dropdown dd;
-        private readonly List<int> values = new List<int>();
-        private readonly int min;
-        private readonly int max;
-        private readonly string suffix;
-        private readonly System.Action<int> apply;
-
-        private bool typing;
-        private string typed = "";
-        private float idle;
-
-        public TMP_Dropdown Dropdown { get { return dd; } }
-        public bool Typing { get { return typing; } }
-
-        public TypeInDropdown(TMP_Dropdown dropdown, int[] presets, int minValue, int maxValue, string suffixText, System.Action<int> applyValue)
-        {
-            dd = dropdown;
-            min = minValue;
-            max = maxValue;
-            suffix = suffixText;
-            apply = applyValue;
-
-            dd.ClearOptions();
-            var options = new List<TMP_Dropdown.OptionData>();
-            foreach (int v in presets)
-            {
-                values.Add(v);
-                options.Add(new TMP_Dropdown.OptionData(v + suffix));
-            }
-            dd.AddOptions(options);
-            dd.onValueChanged = new TMP_Dropdown.DropdownEvent();
-            dd.onValueChanged.AddListener(OnOptionChanged);
-        }
-
-        //Muestra `value` en el desplegable; si no está en la lista, lo añade.
-        public void SetValue(int value)
-        {
-            if (dd == null) return;
-            if (max > min) value = Mathf.Clamp(value, min, max);
-
-            int idx = values.IndexOf(value);
-            if (idx < 0)
-            {
-                values.Add(value);
-                dd.options.Add(new TMP_Dropdown.OptionData(value + suffix));
-                idx = values.Count - 1;
-            }
-            dd.SetValueWithoutNotify(idx);
-            dd.RefreshShownValue();
-        }
-
-        private void OnOptionChanged(int index)
-        {
-            if (index < 0 || index >= values.Count) return;
-            apply(values[index]);
-        }
-
-        public void BeginTyping()
-        {
-            typing = true;
-            typed = "";
-            idle = 0f;
-        }
-
-        public void Update()
-        {
-            if (dd == null || !typing) return;
-            if (!dd.gameObject.activeInHierarchy || !dd.IsInteractable())
-            {
-                Commit();
-                return;
-            }
-
-            string tecleado = Input.inputString;
-            if (!string.IsNullOrEmpty(tecleado))
-            {
-                foreach (char c in tecleado)
-                {
-                    if (c == '\b')
-                    {
-                        if (typed.Length > 0) typed = typed.Substring(0, typed.Length - 1);
-                    }
-                    else if (c >= '0' && c <= '9' && typed.Length < 5)
-                    {
-                        typed += c;
-                    }
-                }
-                idle = 0f;
-            }
-
-            //Mientras se teclea, el rótulo enseña lo escrito (igual que en los buscadores).
-            RefreshCaption();
-
-            if (typed.Length > 0)
-            {
-                idle += Time.unscaledDeltaTime;
-                if (idle >= TypingIdleSeconds) Commit();
-            }
-        }
-
-        //Al dejar de teclear se adopta el número (dentro del rango, si lo hay). Si no había nada, se
-        //restaura el rótulo con la opción elegida.
-        public void Commit()
-        {
-            bool applied = false;
-            if (typing && typed.Length > 0 && int.TryParse(typed, out int value))
-            {
-                if (max > min) value = Mathf.Clamp(value, min, max);
-                apply(value);
-                applied = true;
-            }
-            typing = false;
-            typed = "";
-            if (!applied) RefreshCaption();
-        }
-
-        //Rótulo: lo tecleado mientras se escribe; si no hay nada escrito, la opción elegida.
-        private void RefreshCaption()
-        {
-            if (dd == null || dd.captionText == null) return;
-            string texto = typed ?? "";
-            if (texto.Length == 0 && dd.value >= 0 && dd.value < dd.options.Count)
-                texto = dd.options[dd.value].text;
-            if (!string.Equals(dd.captionText.text, texto, System.StringComparison.Ordinal))
-                dd.captionText.text = texto;
-        }
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, Input.mousePosition, cam);
     }
 
     public void ChangeLanguage(int lang)
