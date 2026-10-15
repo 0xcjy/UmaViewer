@@ -1041,6 +1041,10 @@ namespace Gallop.Live
                 if (_stageController != null)
                     _stageController.AlterUpdateLaserControllers();
 
+                // Refresca las etiquetas de tiempo del live (tiempo actual / duracion total).
+                if (UI != null)
+                    UI.UpdateTimeLabels(_liveCurrentTime, totalTime);
+
                 LiveRuntimeDiagnostics.RecordFrame(this);
             }
         }
@@ -1064,6 +1068,13 @@ namespace Gallop.Live
         }
 
         DateTime ExitTime;
+        //Punto de entrada publico para salir del live desde la UI (boton de cancelar/salir del live).
+        //Hace exactamente lo mismo que la rama de Esc de Update(): llamar a ExitLive().
+        public void RequestExit()
+        {
+            if (!isExit) ExitLive();
+        }
+
         private void ExitLive()
         {
             isExit = true;
