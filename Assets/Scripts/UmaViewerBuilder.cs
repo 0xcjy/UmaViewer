@@ -70,7 +70,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         Instance = this;
     }
 
-    public IEnumerator LoadUma(CharaEntry chara, string costumeId, bool mini, string haedCostumeId = "", CharaEntry headOverride = null)
+    public IEnumerator LoadUma(CharaEntry chara, string costumeId, bool mini, string haedCostumeId = "", CharaEntry headOverride = null, int colorIndex = 0)
     {
         int id = chara.Id;
         var umaContainer = new GameObject($"Chara_{id}_{costumeId}").AddComponent<UmaContainerCharacter>();
@@ -94,7 +94,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         else
         {
             umaContainer.CharaData = UmaDatabaseController.ReadCharaData(chara);
-            LoadNormalUma(umaContainer, chara, costumeId, true, haedCostumeId, headOverride);
+            LoadNormalUma(umaContainer, chara, costumeId, true, haedCostumeId, headOverride, colorIndex);
         }
 
         yield break;
@@ -136,7 +136,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         }
     }
 
-    private void LoadNormalUma(UmaContainerCharacter umaContainer, CharaEntry chara, string costumeId, bool loadMotion = false, string haedCostumeId = "", CharaEntry headOverride = null)
+    private void LoadNormalUma(UmaContainerCharacter umaContainer, CharaEntry chara, string costumeId, bool loadMotion = false, string haedCostumeId = "", CharaEntry headOverride = null, int colorIndex = 0)
     {
         int id = chara.Id;
         umaContainer.CharaEntry = chara;
@@ -153,6 +153,8 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         UmaDatabaseEntry asset = null;
 
         umaContainer.VarCostumeIdLong = costumeId;
+        // Color del traje comun (0 = el de siempre). Lo usa LoadBody para elegir _00/_01...
+        umaContainer.VarColorIndex = colorIndex < 0 ? 0 : colorIndex;
         if (genericCostume)
         {
             costumeIdShort = costumeId.Remove(costumeId.LastIndexOf('_'));

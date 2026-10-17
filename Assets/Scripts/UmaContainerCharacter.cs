@@ -64,6 +64,10 @@ public class UmaContainerCharacter : UmaContainer
     [Header("Generic")]
     public bool IsGeneric = false;
     public string VarCostumeIdShort, VarCostumeIdLong, VarSkin, VarHeight, VarSocks, VarBust;
+    // Color elegido de un traje COMUN (0 = el de siempre). Algunos comunes traen varios colores
+    // (0015 = camisa blanca/negra; 0006 y 0009 = 4 colores) y cada color es una textura propia
+    // (_00_diff, _01_diff, ...). Lo usa LoadBody para elegir _diff y _shad_c.
+    public int VarColorIndex = 0;
     public TextureList GenericBodyTextures = new TextureList();
 
     [Header("Mini")]
@@ -1817,6 +1821,10 @@ public class UmaContainerCharacter : UmaContainer
 
 
 
+                        // Indice de color del traje comun (0 = el de siempre). Antes iba fijo a "00",
+                        // por eso solo se veia el primer color (p.ej. la camisa blanca del 0015).
+                        string colorIndex = (VarColorIndex < 0 ? 0 : VarColorIndex).ToString("D2");
+
                         switch (costumeIdShort.Split('_')[0]) //costume ID
                         {
                             case "0001":
@@ -1854,8 +1862,10 @@ public class UmaContainerCharacter : UmaContainer
                             case "0006":
                             case "0009":
                             case "0015":
-                                mainTex = $"tex_bdy{costumeIdLong}_{skin}_{bust}_{"00"}_diff";
-                                toonMap = $"tex_bdy{costumeIdLong}_{skin}_{bust}_{"00"}_shad_c";
+                                // (_diff y _shad_c son los unicos que cambian de color; _base/_ctrl
+                                //  solo existen en "00", asi que se quedan fijos.)
+                                mainTex = $"tex_bdy{costumeIdLong}_{skin}_{bust}_{colorIndex}_diff";
+                                toonMap = $"tex_bdy{costumeIdLong}_{skin}_{bust}_{colorIndex}_shad_c";
                                 tripleMap = $"tex_bdy{costumeIdLong}_0_{bust}_00_base";
                                 optionMap = $"tex_bdy{costumeIdLong}_0_{bust}_00_ctrl";
                                 break;

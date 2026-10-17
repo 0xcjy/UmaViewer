@@ -1367,6 +1367,47 @@ public class UmaViewerUI : MonoBehaviour
             }
         }
 
+        // (COLOR) Crea el item de un traje COMUN para un color concreto (0 = el de siempre).
+        // Los colores extra (p.ej. la camisa negra del 0015) van como items aparte, con el icono
+        // propio de ese color, y al pulsarlos se carga el traje con ese indice de color.
+        void AddCommonCostumeItem(string id, CostumeEntry dressdata, Sprite icon, int colorIndex)
+        {
+            var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
+            UIPressScaleFeedback.AddTo(container.gameObject);
+            container.Name = container.name = CostumeColorName(id, dressdata, colorIndex);
+            container.Image.sprite = icon;
+            container.Image.enabled = true;
+            container.Id = id;
+            container.Button.onClick.AddListener(() =>
+            {
+                if (LiveSelectPannel.activeInHierarchy && CurrentSeletChara)
+                {
+                    CurrentSeletChara.SetValue(listChara, id, container.Image.sprite, CurrentHeadCostumeId);
+                }
+                else
+                {
+                    HighlightChildImage(costumeList.content, container);
+                    var list = new List<UmaDatabaseEntry>();
+                    list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath) && a.Name.Contains(listChara.Id.ToString())));
+                    list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.HeadPath) && a.Name.Contains(headChara.Id.ToString())));
+                    var tail_path = getCharaTailPath(headChara);
+                    if (!string.IsNullOrEmpty(tail_path))
+                    {
+                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(tail_path)));
+                    }
+                    list.Add(Main.AbList["3d/animator/drivenkeylocator"]);
+                    var motion_path = $"3d/motion/event/body/chara/chr{listChara.Id}_00/anm_eve_chr{listChara.Id}_00_idle01_loop";
+                    if (!listChara.IsMob && !ModelSettings.IsHeadFix && Main.AbList.TryGetValue(motion_path, out var motion_entry))
+                    {
+                        list.Add(motion_entry);
+                    }
+
+                    Builder.UnloadUma();
+                    UmaAssetManager.PreLoadAndRun(list, delegate { StartCoroutine(Builder.LoadUma(listChara, id, mini, CurrentHeadCostumeId, otherMode ? chara : null, colorIndex)); });
+                }
+            });
+        }
+
         //Common costumes
         List<string> costumes = new List<string>();
         var commonVar = mini ? "pfb_mbdy0" : $"pfb_bdy0";
@@ -1404,43 +1445,21 @@ public class UmaViewerUI : MonoBehaviour
                 if (!Main.AbList.ContainsKey(bodyKey) || CostumeBlacklist.IsBlacklisted(listChara.Id, id)) continue;
             }
 
-            var container = Instantiate(UmaContainerCostumePrefab, costumeList.content).GetComponent<UmaUIContainer>();
-            UIPressScaleFeedback.AddTo(container.gameObject);
-            container.Name = container.name = GetCostumeName(id, (dressdata == null ? id : dressdata.DressName));
-            container.Image.sprite = CustomCostumeIcons.Get(listChara.Id, costumeId, true)
-                ?? (dressdata == null ? CostumeIconDefault : dressdata.Icon);
-            container.Image.enabled = true;
-            container.Id = costumeId;
-            container.Button.onClick.AddListener(() =>
-            {
-                if (LiveSelectPannel.activeInHierarchy && CurrentSeletChara)
-                {
-                    CurrentSeletChara.SetValue(listChara, costumeId, container.Image.sprite, CurrentHeadCostumeId);
-                }
-                else
-                {
-                    HighlightChildImage(costumeList.content, container);
-                    var list = new List<UmaDatabaseEntry>();
-                    list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath) && a.Name.Contains(listChara.Id.ToString())));
-                    list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.HeadPath) && a.Name.Contains(headChara.Id.ToString())));
-                    var tail_path = getCharaTailPath(headChara);
-                    if (!string.IsNullOrEmpty(tail_path))
-                    {
-                        list.AddRange(Main.AbChara.Where(a => a.Name.StartsWith(tail_path)));
-                    }
-                    list.Add(Main.AbList["3d/animator/drivenkeylocator"]);
-                    var motion_path = $"3d/motion/event/body/chara/chr{listChara.Id}_00/anm_eve_chr{listChara.Id}_00_idle01_loop";
-                    if (!listChara.IsMob && !ModelSettings.IsHeadFix && Main.AbList.TryGetValue(motion_path, out var motion_entry))
-                    {
-                        list.Add(motion_entry);
-                    }
+            // El color 0 es el item de toda la vida (icono/nombre de siempre) y los colores
+            // adicionales van justo debajo, con su icono propio (p.ej. la camisa NEGRA del 3.5周年).
+            AddCommonCostumeItem(id, dressdata,
+                CustomCostumeIcons.Get(listChara.Id, costumeId, true) ?? (dressdata == null ? CostumeIconDefault : dressdata.Icon), 0);
 
-                    Builder.UnloadUma();
-                    //UmaAssetManager.UnloadAllBundle(true);
-                    UmaAssetManager.PreLoadAndRun(list, delegate { StartCoroutine(Builder.LoadUma(listChara, costumeId, mini, CurrentHeadCostumeId, otherMode ? chara : null)); });
-                    //StartCoroutine(Builder.LoadUma(listChara, costumeId, mini));
+            // (Solo para personajes normales y fuera del panel de Live: ahi el slot guarda solo el
+            //  id del traje, y los mobs/minis no pasan por la eleccion de color de LoadBody.)
+            if (!mini && !listChara.IsMob && !LiveSelectPannel.activeInHierarchy)
+            {
+                foreach (var colorIcon in EnumerateCostumeColorIcons(dressdata))
+                {
+                    Sprite colorSprite = CustomCostumeIcons.Get(costumeId + "_" + colorIcon.Key.ToString("D2")) ?? colorIcon.Value;
+                    AddCommonCostumeItem(id, dressdata, colorSprite, colorIcon.Key);
                 }
-            });
+            }
         }
 
         if(!chara.IsMob && !mini)
@@ -2936,6 +2955,41 @@ public class UmaViewerUI : MonoBehaviour
         return EsTrajeDeTest(costumeId, dress)
             || costumeId == "0002_00_03"   // School Short Sleeves Big Belly
             || costumeId == "0002_01_03";  // School Long Sleeves Big Belly
+    }
+
+    //--------------------------------------------------------------------------
+    // Colores de los trajes comunes (0015 = camisa blanca/negra; 0006/0009 = 4 colores).
+    // El juego trae un icono por color en outgame/dress/dress_<dressId>_0_<color>, y el color
+    // elige la textura del cuerpo (tex_bdy..._<skin>_<bust>_<color>_diff).
+    //--------------------------------------------------------------------------
+
+    // Iconos de los colores ADICIONALES (1, 2, ...) de un traje comun. El Id del traje de datos ya
+    // es el nombre del icono sin "dress_" (p.ej. "000050_0_00"), asi que los demas colores son
+    // "000050_0_01", "000050_0_02"... Si no hay icono para un color, se corta la lista.
+    List<KeyValuePair<int, Sprite>> EnumerateCostumeColorIcons(CostumeEntry dressdata)
+    {
+        var result = new List<KeyValuePair<int, Sprite>>();
+        if (dressdata == null || string.IsNullOrEmpty(dressdata.Id) || dressdata.Id.Length < 3) return result;
+        if (Main == null || Main.AbList == null) return result;
+
+        string baseName = "outgame/dress/dress_" + dressdata.Id.Substring(0, dressdata.Id.Length - 2);
+        for (int color = 1; color < 16; color++)
+        {
+            UmaDatabaseEntry entry;
+            if (!Main.AbList.TryGetValue(baseName + color.ToString("D2"), out entry)) break;
+            result.Add(new KeyValuePair<int, Sprite>(color, Builder.LoadSprite(entry)));
+        }
+        return result;
+    }
+
+    // Nombre del item de un color de traje. El juego no guarda nombres de color: para el 3.5周年
+    // ("白黒シャツ") el color 1 es la camisa negra; para el resto, un sufijo neutro.
+    static string CostumeColorName(string costumeId, CostumeEntry dressdata, int colorIndex)
+    {
+        string baseName = GetCostumeName(costumeId, dressdata == null ? costumeId : dressdata.DressName);
+        if (colorIndex <= 0) return baseName;
+        if (baseName.Contains("白黒")) return baseName.Replace("白黒", colorIndex == 1 ? "黒" : "白");
+        return baseName + " (" + (colorIndex + 1) + ")";
     }
 
 
