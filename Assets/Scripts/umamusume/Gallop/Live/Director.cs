@@ -198,6 +198,11 @@ namespace Gallop.Live
 
         public bool IsRecordVMD;
 
+        //(Grabación offline) Cuando está activo, el grabador manda: el tiempo lo fija
+        //`OfflineRenderTime` (frame a frame) y el motor no sale solo al llegar al final.
+        public bool IsOfflineRender;
+        public float OfflineRenderTime;
+
         public bool RequireStage = true;
 
         private bool _lateTimelineAppliedThisFrame;
@@ -944,12 +949,28 @@ namespace Gallop.Live
             {
                 _lateTimelineAppliedThisFrame = false;
 
-                if ((!UmaViewerMain.TryConsumeEscapeForFullScreen() && Input.GetKeyDown(KeyCode.Escape)) || _liveCurrentTime >= totalTime)
+                if (!IsOfflineRender &&
+                    ((!UmaViewerMain.TryConsumeEscapeForFullScreen() && Input.GetKeyDown(KeyCode.Escape)) || _liveCurrentTime >= totalTime))
                 {
                     ExitLive();
                 }
 
-                if (_syncTime == false)
+                if (IsOfflineRender)
+                {
+                    //(Grabación offline) El grabador decide en qué instante se renderiza este frame
+                    //(mantenido durante el calentamiento, o avanzando a la cadencia elegida). Se le
+                    //llama ANTES de que la cámara renderice, para que la escena ya esté actualizada.
+                    LiveRecordDirector recorder = LiveRecordDirector.Instance;
+                    if (recorder != null) recorder.AdvanceTimeline(this);
+
+                    float offlineTime = Mathf.Clamp(OfflineRenderTime, 0f, Mathf.Max(0f, totalTime - 0.0001f));
+                    _liveCurrentTime = offlineTime;
+                    if (UI != null && UI.ProgressBar != null && totalTime > 0f)
+                        UI.ProgressBar.SetValueWithoutNotify(offlineTime / totalTime);
+                    OnTimelineUpdate(offlineTime);
+                    ApplyTimelineLateUpdate();
+                }
+                else if (_syncTime == false)
                 {
                     if (liveMusic.sourceList.Count == 0)
                     {

@@ -44,6 +44,10 @@ namespace Gallop.RenderPipeline
 
         public MultiCameraFinalCompositePass()
         {
+            //La composición debe aplicarse ANTES del blit final de URP (que hace la conversión de
+            //espacio de color): si se retrasa a después, los colores de la composición salen lavados
+            //(se mezclan sin convertir). Con la letra renderizada aparte (ver LiveRecordDirector), ya
+            //nada pisa este destino, así que la posición original es la correcta.
             renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.AfterRendering - 1);
         }
 

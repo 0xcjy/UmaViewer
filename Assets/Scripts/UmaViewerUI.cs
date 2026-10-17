@@ -350,6 +350,8 @@ public class UmaViewerUI : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         canvasScaler.referenceResolution = new Vector2(1280, 720);
 #endif
+        //(Grabación del live) Enlaza el botón RECORD del panel de selección del show.
+        WireRecordButton();
         StartCoroutine(ApplyGraphicsSettings());
     }
 
@@ -1110,6 +1112,9 @@ public class UmaViewerUI : MonoBehaviour
     public void PlayLive()
     {
         if (currentLive == null) return;
+        //(Grabación) Un PLAY normal nunca debe arrancar una grabación pendiente que se quedara de un
+        //intento fallido de grabar.
+        LiveRecordSettings.Pending = null;
         PoseManager.SetPoseMode(false);
         var selectlist = LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>();
         if (selectlist != null)
@@ -1119,6 +1124,79 @@ public class UmaViewerUI : MonoBehaviour
             Builder.LoadLive(currentLive, new List<LiveCharacterSelect>(selectlist), VocalMode, VocalCharaIds);
             LiveSelectPannel.SetActive(false);
         }
+    }
+
+    //(Grabación del live) Abre el menú de ajustes de grabación del show seleccionado y, al aceptar,
+    //carga el live en modo grabación: se reproduce frame a frame (no en tiempo real) y cada frame se
+    //renderiza a un RenderTexture para codificarlo a MP4. La grabación en sí la lleva
+    //LiveRecordDirector, que arranca al cargarse la escena del live. Ver LiveRecordSettings.cs.
+    public void RecordLive()
+    {
+        if (LiveRecordPanel.Instance != null) return;   //ya hay un menú abierto
+
+        if (currentLive == null)
+        {
+            ShowMessage("Select a show before recording.", UIMessageType.Warning);
+            return;
+        }
+
+        LiveRecordPanel.Open($"{currentLive.MusicId} {currentLive.SongName}", null, settings =>
+        {
+            var selectlist = LiveSelectList.content.GetComponentsInChildren<LiveCharacterSelect>();
+            if (selectlist == null || selectlist.Length == 0)
+            {
+                ShowMessage("The show has no selected characters.", UIMessageType.Warning);
+                return;
+            }
+
+            LiveRecordSettings.Pending = settings;
+            PoseManager.SetPoseMode(false);
+            LiveTime = true;
+            ModelSettings.SetEyeTrackingEnable(false);
+            Builder.LoadLive(currentLive, new List<LiveCharacterSelect>(selectlist), VocalMode, VocalCharaIds);
+            LiveSelectPannel.SetActive(false);
+        });
+    }
+
+    //(Grabación del live) Cablea el botón RECORD del panel de selección del show. El botón ya existe
+    //en la escena, pero se enlaza aquí para no depender de un binding persistente (traía el "PlayLive"
+    //del botón de reproducir, del que se copió).
+    private void WireRecordButton()
+    {
+        GameObject go = null;
+
+        if (LiveSelectPannel != null)
+        {
+            var found = LiveSelectPannel.transform.Find("RecordButton");
+            if (found != null) go = found.gameObject;
+        }
+
+        if (go == null)
+        {
+            //El panel puede estar inactivo, así que GameObject.Find no sirve; se busca por nombre en
+            //todas las escenas cargadas.
+            foreach (var candidate in Resources.FindObjectsOfTypeAll<Button>())
+            {
+                if (candidate == null || !candidate.gameObject.scene.IsValid()) continue;
+                if (candidate.gameObject.name == "RecordButton") { go = candidate.gameObject; break; }
+            }
+        }
+
+        if (go == null)
+        {
+            Debug.LogWarning("[UmaViewerUI] RecordButton not found; recording cannot be started from the UI.");
+            return;
+        }
+
+        var button = go.GetComponent<Button>();
+        if (button == null)
+        {
+            Debug.LogWarning("[UmaViewerUI] The RecordButton object has no Button component.");
+            return;
+        }
+
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(RecordLive);
     }
 
     void ShowLiveSelectPanel(LiveEntry entry, bool loadPreview = true)

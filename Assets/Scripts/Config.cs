@@ -52,6 +52,9 @@ public class Config
     public string MainPathTip = "Path to game folder, eg. D:/Backup/Cygames/umamusume";
     public string MainPath = "";
 
+    public string FfmpegPathTip = "Optional: full path to ffmpeg.exe used to encode Live recordings to MP4. Leave empty to look next to the project/executable and in the PATH.";
+    public string FfmpegPath = "";
+
     public string WorkModeTip = "Affects how application work, options: 0 - work with game client, 1 - work without game client(slow), Database needs to be updated manually";
     public WorkMode WorkMode = WorkMode.Default;
 

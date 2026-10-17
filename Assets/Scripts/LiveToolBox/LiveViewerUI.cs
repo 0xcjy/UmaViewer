@@ -68,6 +68,10 @@ public class LiveViewerUI : MonoBehaviour
         // Overlay de depuración con los slots de voz del live (qué PJ canta en cada uno y si su
         // pista está sonando), que se enciende y apaga con Ctrl+F8. Ver LiveVocalDebugOverlay.cs.
         LiveVocalDebugOverlay.Ensure();
+
+        //(Grabación del live) Si el panel del viewer dejó una grabación pendiente, aquí se arranca el
+        //grabador offline del show. Ver LiveRecordDirector.cs.
+        LiveRecordDirector.TryStart();
         //TrueProgressBar = (UnityEngine.UIElements.Slider)ProgressBar;
     }
 
@@ -224,7 +228,30 @@ public class LiveViewerUI : MonoBehaviour
 
     private void HideSlider()
     {
-        targetHeight = -height;
+        targetHeight = -HideDistance();
+    }
+
+    //Distancia necesaria para que TODO lo que cuelga de la barra quede por debajo del borde inferior
+    //de la pantalla. No basta con la altura de la propia barra: los textos de tiempo
+    //("CurrentTime"/"TotalTime") son hijos del slider y sobresalen por encima de ella, así que con
+    //sólo '-height' se seguían viendo. Se calcula el borde superior de todos los hijos dentro del
+    //espacio local de la barra (independiente de lo que esté desplazada ahora mismo).
+    private float HideDistance()
+    {
+        if (BottonUITransform == null) return 0f;
+
+        float top = 0f;
+        var rects = BottonUITransform.GetComponentsInChildren<RectTransform>(true);
+        for (int i = 0; i < rects.Length; i++)
+        {
+            var rt = rects[i];
+            if (rt == null || rt == BottonUITransform) continue;
+            Vector3 corner = BottonUITransform.InverseTransformPoint(
+                rt.TransformPoint(new Vector3(rt.rect.xMin, rt.rect.yMax, 0f)));
+            if (corner.y > top) top = corner.y;
+        }
+
+        return top > 0.01f ? top : height;
     }
 
     public void UpdateLyrics(float time)

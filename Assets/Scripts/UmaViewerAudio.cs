@@ -24,6 +24,9 @@ public class UmaViewerAudio
         public int cur_active_source = - 1;
         public AudioSource activeSource;
         public List<AudioSource> sourceList;
+        //(Grabación del live) AWB del que salieron estas pistas. Lo rellena ApplySound y lo usa la
+        //mezcla offline para volver a decodificar el audio sin depender del motor de Unity.
+        public UmaDatabaseEntry awb;
 
         public void SwitchActiveSource(int index, bool forceUpdate = false)
         {
@@ -90,7 +93,8 @@ public class UmaViewerAudio
             enable = false,
             volume = 1,
             pan = 0,
-            sourceList = sourceList
+            sourceList = sourceList,
+            awb = soundInfo.awb
         };
 
         return cute;
@@ -132,23 +136,23 @@ public class UmaViewerAudio
     }
 
     // Original .cctor 0x1b8ea00, GetVolume 0x1b8d670 and GetPartData 0x1b8d290.
-    static readonly float[] DefaultVolumes = { 0f, .79f, .89f, 1f, 1.12f, 1.26f };
-    static readonly float[] DefaultVolumeRates = { 0f, .79f, .79f, .56f, .53f, .47f, .42f, .37f };
-    static readonly int[][] DefaultVolumeIndices = {
+    internal static readonly float[] DefaultVolumes = { 0f, .79f, .89f, 1f, 1.12f, 1.26f };
+    internal static readonly float[] DefaultVolumeRates = { 0f, .79f, .79f, .56f, .53f, .47f, .42f, .37f };
+    internal static readonly int[][] DefaultVolumeIndices = {
         new[] { 0 }, new[] { 5 }, new[] { 2, 2 }, new[] { 3, 5, 3 },
         new[] { 3, 3, 3, 3 }, new[] { 1, 2, 4, 2, 1 },
         new[] { 3, 3, 3, 3, 3, 3 }, new[] { 1, 1, 2, 4, 2, 1, 1 }
     };
-    static readonly float[][] DefaultPans = {
+    internal static readonly float[][] DefaultPans = {
         new[] { 0f }, new[] { 0f }, new[] { -.15f, .15f }, new[] { -.3f, 0f, .3f },
         new[] { -.3f, -.1f, .1f, .3f }, new[] { -.3f, -.15f, 0f, .15f, .3f },
         new[] { -.3f, -.2f, -.1f, .1f, .2f, .3f }, new[] { -.3f, -.2f, -.1f, 0f, .1f, .2f, .3f }
     };
-    static readonly string[] OrderedParts = { "left3", "left2", "left", "center", "right", "right2", "right3" };
+    internal static readonly string[] OrderedParts = { "left3", "left2", "left", "center", "right", "right2", "right3" };
 
     //(Live) Nombre de columna del `_part` → slot (PartForm). El slot es el orden con el que se crean
     //las pistas: center, left, right, left2, right2, left3, right3.
-    static readonly Dictionary<string, int> PartSlot = new Dictionary<string, int>(StringComparer.Ordinal)
+    internal static readonly Dictionary<string, int> PartSlot = new Dictionary<string, int>(StringComparer.Ordinal)
     {
         { "center", (int)PartForm.center }, { "left", (int)PartForm.left }, { "right", (int)PartForm.right },
         { "left2", (int)PartForm.left2 }, { "right2", (int)PartForm.right2 },
@@ -172,19 +176,7 @@ public class UmaViewerAudio
 
         //(Live) Con el flag activo sólo pueden sonar las 3 primeras pistas (en orden de slot) que pida
         //la tabla en este momento; la 4ª y siguientes quedan mudas.
-        for (int i = 0; i < SilencedSlots.Length; i++) SilencedSlots[i] = false;
-        if (capSameVoice && liveVocal.Count > MaxSimultaneousSameVoice)
-        {
-            int allowed = 0;
-            for (int slot = 0; slot < liveVocal.Count && slot < SilencedSlots.Length; slot++)
-            {
-                string partName = ((PartForm)slot).ToString();
-                if (FindVocal(liveVocal, partName) == null) continue;
-                if (PartValue(partInfo, partName, targetIndex, 0f) <= 0f) continue;   // no canta ahora
-                if (allowed >= MaxSimultaneousSameVoice) SilencedSlots[slot] = true;
-                else allowed++;
-            }
-        }
+        ComputeSilencedSlots(capSameVoice, liveVocal, partInfo, targetIndex, SilencedSlots);
 
         int activeCount = 0;
         foreach (string part in OrderedParts)
@@ -218,14 +210,35 @@ public class UmaViewerAudio
         }
     }
 
-    static CuteAudioSource FindVocal(List<CuteAudioSource> vocals, string part)
+    internal static CuteAudioSource FindVocal(List<CuteAudioSource> vocals, string part)
     {
         for (int i = 0; i < vocals.Count; i++)
             if (vocals[i].tag == part) return vocals[i];
         return null;
     }
 
-    static float PartValue(PartEntry data, string column, int row, float fallback)
+    //(Live) Decide qué slots quedan mudos cuando la MISMA voz ocupa muchas pistas (tope
+    //MaxSimultaneousSameVoice). La usan la mezcla en vivo (AlterUpdate) y la mezcla offline de la
+    //grabación, para que ambas coincidan.
+    internal static void ComputeSilencedSlots(bool capSameVoice, List<CuteAudioSource> liveVocal,
+                                              PartEntry partInfo, int targetIndex, bool[] silenced)
+    {
+        for (int i = 0; i < silenced.Length; i++) silenced[i] = false;
+        if (!capSameVoice || partInfo == null || liveVocal == null) return;
+        if (liveVocal.Count <= MaxSimultaneousSameVoice) return;
+
+        int allowed = 0;
+        for (int slot = 0; slot < liveVocal.Count && slot < silenced.Length; slot++)
+        {
+            string partName = ((PartForm)slot).ToString();
+            if (FindVocal(liveVocal, partName) == null) continue;
+            if (PartValue(partInfo, partName, targetIndex, 0f) <= 0f) continue;   // no canta ahora
+            if (allowed >= MaxSimultaneousSameVoice) silenced[slot] = true;
+            else allowed++;
+        }
+    }
+
+    internal static float PartValue(PartEntry data, string column, int row, float fallback)
     {
         return data.PartSettings.TryGetValue(column, out var values) && row < values.Count
             ? values[row] : fallback;

@@ -15,6 +15,10 @@ namespace Gallop.RenderPipeline
     /// </summary>
     public class PostImageEffectFeature : ScriptableRendererFeature
     {
+        //(Grabación del live) Referencia a la instancia activa. La usa el grabador offline para
+        //poder desactivar/activar los postefectos del show sin depender de AssetDatabase.
+        public static PostImageEffectFeature Instance { get; private set; }
+
         private const int INVALID_NAME_ID = -2;
         private const int REGISTER_PASS_SIZE = 12;
         private const string SOURCE_SETUP_POOL_NAME =
@@ -108,6 +112,7 @@ namespace Gallop.RenderPipeline
 
         public override void Create()
         {
+            Instance = this;
             Dispose();
             _loggedEnqueue = false;
             _loggedParameterMissing = false;

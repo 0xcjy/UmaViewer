@@ -102,3 +102,6 @@ global-metadata*.dat
 
 # Handwritten tool project; Unity-generated root IDE projects stay ignored
 !/tools/TargetMethodLookup/TargetMethodLookup.csproj
+
+# Live recordings (salida de la grabacion offline)
+/Recordings/
