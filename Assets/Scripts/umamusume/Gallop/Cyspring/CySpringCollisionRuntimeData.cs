@@ -118,6 +118,10 @@ namespace Gallop
             nativeCollision.Radius = _radius;
             nativeCollision.Type = (int)CollisionType;
             nativeCollision.IsInnerBool = IsInner;
+            // The solver (CySpringPlugin.dll) skips a collider whose IsEnable is 0. The collision
+            // data carries no such flag, so every typed collider is live; without this the cloth
+            // never collides with the body and a skirt folds through a raised thigh.
+            nativeCollision.IsEnable = CollisionType != CySpringCollisionData.CollisionType.None ? 1 : 0;
         }
 
         public void UpdateNativeCollision(
