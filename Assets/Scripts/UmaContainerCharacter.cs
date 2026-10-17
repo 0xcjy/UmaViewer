@@ -203,6 +203,22 @@ public class UmaContainerCharacter : UmaContainer
     public GameObject PhysicsContainer;
     public float BodyScale = 1;
 
+    // (DATAMINE) El motor CySpring es de paso fijo con ramas 30/60 fps (ver docs del datamine
+    // 03-algoritmo-motor.md): a 30 fps la fuerza se multiplica por 3 en vez de 1.5. Simular con
+    // Time.deltaTime variable (p.ej. a 120 fps) da un comportamiento que el solver no espera.
+    // -> Se simula en sub-pasos fijos de 1/60 (coherente con _targetCySpringFpsMode = 60).
+    [Header("CySpring timing (datamine)")]
+    [Tooltip("Paso fijo de simulacion CySpring (s). 1/60 = 60 fps (rama 60 del motor).")]
+    public float CySpringFixedStep = 1.0f / 60.0f;
+    [Tooltip("Sub-pasos maximos por frame (evita espirales si cae el fps).")]
+    public int CySpringMaxSubSteps = 4;
+    [Tooltip("Warm-up (s) al cargar: asienta la cadena antes de mostrarla (oficial: DEFAULT_WARMUPTIME). 0 = off.")]
+    public float CySpringWarmUpTime = 1.0f;
+    [Tooltip("Enrutar el contenedor de CABEZA (pelo) al camino NATIVO CySpring en vez de DynamicBone.")]
+    public bool CySpringHairViaNative = true;
+
+    private float _cySpringAccumulator;
+
     private BipedIK IK;
     private List<Transform> _humanoidBones;
     private UIHandleCharacterRoot handleRoot;
@@ -591,6 +607,11 @@ public class UmaContainerCharacter : UmaContainer
         // recibir DynamicBone.
         var nativeContainers = new List<CySpringDataContainer>();
 
+        // (DATAMINE) El juego lleva por CySpring el pelo y la tela; aquí el "native kind" decide
+        // que contenedores simula el puente nativo y por tanto NO reciben DynamicBone.
+        // kind: 0 = head(pelo) · 1 = body(ropa) · 2 = bust · 3 = tail.
+        System.Func<int, bool> isNativeKind = (k) => k == 1 || k == 2 || (CySpringHairViaNative && k == 0);
+
         for (int i = 0; i < cySpringDataContainers.Count; i++)
         {
             CySpringDataContainer container = cySpringDataContainers[i];
@@ -598,9 +619,9 @@ public class UmaContainerCharacter : UmaContainer
 
             int kind = GuessCySpringContainerKind(container);
 
-            // Los contenedores de ropa los lleva el puente nativo (que ya tiene su propia
-            // colisión), así que no reciben DynamicBone.
-            if (kind == 1 || kind == 2)
+            // Los contenedores de ropa (y, opcionalmente, el pelo) los lleva el puente nativo
+            // (que ya tiene su propia colisión), así que no reciben DynamicBone.
+            if (isNativeKind(kind))
                 nativeContainers.Add(container);
 
             // (P1, COLISIÓN) Los colisores se crean de TODOS los contenedores, no solo de
@@ -632,7 +653,7 @@ public class UmaContainerCharacter : UmaContainer
             if (container == null) continue;
 
             int kind = GuessCySpringContainerKind(container);
-            if (kind == 1 || kind == 2) continue;
+            if (isNativeKind(kind)) continue;
 
             container.InitializePhysics(dbBones, dbColliders);
         }
@@ -707,6 +728,15 @@ public class UmaContainerCharacter : UmaContainer
 
         _cySpringController.Reset();
         _cySpringLoaded = true;
+
+        // (DATAMINE/P1) Warm-up oficial: el juego asienta la cadena antes de mostrarla
+        // (CharaPropController.ReserveWarmingUpCySpring + TryUpdateWarmUp). Sin esto la pose
+        // simulada arranca "clavada" en la de carga.
+        if (CySpringWarmUpTime > 0.0f)
+        {
+            _cySpringController.ReserveWarmingUpCySpring(CySpringWarmUpTime);
+            _cySpringController.TryUpdateWarmUp();
+        }
 
         LinkSkirtControllerToCySpring();
 
@@ -876,6 +906,12 @@ public class UmaContainerCharacter : UmaContainer
         _cySpringController.Reset();
         _cySpringLoaded = true;
         LinkSkirtControllerToCySpring();
+
+        if (CySpringWarmUpTime > 0.0f)
+        {
+            _cySpringController.ReserveWarmingUpCySpring(CySpringWarmUpTime);
+            _cySpringController.TryUpdateWarmUp();
+        }
 
         Debug.Log($"[UmaContainerCharacter] ReloadClothPhysics OK (duplicados={duplicates.Count}).");
     }
@@ -1358,22 +1394,37 @@ public class UmaContainerCharacter : UmaContainer
 
     private void AlterLateUpdateRuntime()
     {
-        // (P1) La ROPA la simula el puente nativo (CySpringController), así que aquí sí hace
-        // falta Begin/EndSimulation. El pelo y la cola los simula DynamicBone por su cuenta y
-        // NO pasan por aquí (meterlos también los deformaba).
+        // (DATAMINE/P3) El motor es de paso FIJO (ramas 30/60 fps; ver datamine 03). En vez de
+        // simular con el Time.deltaTime variable del render (aquí el target es 120 fps), se
+        // acumula y se simulan sub-pasos fijos de CySpringFixedStep. Cada sub-paso va con
+        // Begin+End pareados, que es exactamente el patrón de CySpringController.WarmUpCySpring.
+        // La ROPA (y, si CySpringHairViaNative, el pelo) la lleva el puente nativo.
         if (EnablePhysics && _cySpringLoaded && _cySpringController != null)
         {
-            _cySpringController.BeginSimulation(Time.deltaTime, false);
+            float step = Mathf.Max(0.0001f, CySpringFixedStep);
+            int maxSub = Mathf.Max(1, CySpringMaxSubSteps);
+
+            _cySpringAccumulator += Mathf.Min(Time.deltaTime, 0.25f);
+
+            int steps = 0;
+            while (_cySpringAccumulator >= step && steps < maxSub)
+            {
+                _cySpringController.BeginSimulation(step, false);
+                _cySpringController.EndSimulation();
+                _cySpringAccumulator -= step;
+                steps++;
+            }
+
+            // Si se agotó el cupo de sub-pasos, se descarta el retraso (no acumular backlog).
+            if (steps >= maxSub)
+                _cySpringAccumulator = 0.0f;
         }
     }
 
     private void AlterLateUpdatePostRuntime()
     {
-        // (P1) EndSimulation del puente nativo: cierra la simulación de la ROPA.
-        if (EnablePhysics && _cySpringLoaded && _cySpringController != null)
-        {
-            _cySpringController.EndSimulation();
-        }
+        // (DATAMINE/P3) El EndSimulation va pareado con BeginSimulation en
+        // AlterLateUpdateRuntime (sub-paso a sub-paso), así que aquí ya NO se cierra simulación.
 
         // 官方AlterLateUpdatePost 是 EndSimulation 后 UpdateBodyLightDir / UpdateFaceLight。
         // 现在先补脸部，身体光照后面再看 UpdateBodyLightDir。
