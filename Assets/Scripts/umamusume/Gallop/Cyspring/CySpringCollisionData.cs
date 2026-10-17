@@ -17,16 +17,16 @@ namespace Gallop
     {
         private const string None = "None";
 
-        [SerializeField] public string _collisionName;
-        [SerializeField] public string _targetObjectName;
-        [SerializeField] public bool _isOtherTarget;
-        [SerializeField] public Vector3 _offset;
-        [SerializeField] public Vector3 _offset2;
-        [SerializeField] public float _radius;
-        [SerializeField] public float _distance;
-        [SerializeField] public Vector3 _normal;
-        [SerializeField] public CollisionType _type;
-        [SerializeField] public bool _isInner;
+        [SerializeField] private string _collisionName;
+        [SerializeField] private string _targetObjectName;
+        [SerializeField] private bool _isOtherTarget;
+        [SerializeField] private Vector3 _offset;
+        [SerializeField] private Vector3 _offset2;
+        [SerializeField] private float _radius;
+        [SerializeField] private float _distance;
+        [SerializeField] private Vector3 _normal;
+        [SerializeField] private CollisionType _type;
+        [SerializeField] private bool _isInner;
 
         private CySpringCollisionRuntimeData _runtimeData;
 
@@ -36,9 +36,21 @@ namespace Gallop
             set => _collisionName = value;
         }
 
-        public CySpringCollisionRuntimeData RuntimeData => _runtimeData;
+        //(P1 — port del camino ORIGINAL de física) Los campos son privados porque los consume
+        //el puente nativo (CySpringController). El camino original (DynamicBone) los leía
+        //directamente como públicos. Estos accesores de solo lectura permiten recuperar ese
+        //camino sin abrir los campos ni tocar la serialización.
+        public string TargetObjectName => _targetObjectName;
+        public bool IsOtherTarget => _isOtherTarget;
+        public Vector3 Offset => _offset;
+        public Vector3 Offset2 => _offset2;
+        public float Radius => _radius;
+        public float Distance => _distance;
+        public Vector3 Normal => _normal;
+        public CollisionType Type => _type;
+        public bool IsInner => _isInner;
 
-        public CySpringCollisionData() { }
+        public CySpringCollisionRuntimeData RuntimeData => _runtimeData;
 
         public CySpringCollisionData(
             string collisionName,

@@ -123,10 +123,7 @@ namespace Gallop
             _envCollisionList = new List<CySpringCollisionRuntimeData>(ENV_COLLISION_MAX_NUM);
             _connectedBoneList = new List<ConnectedBonePair>();
             _rootParentWork = new RootParentWork();
-            // 官方 BlendRate < 1.0：PostSpring 中只有 BlendRate < 1.0f 才会执行
-            // 旋转限制(ApplyLimitRotation)与平滑混合。默认 1.0 会导致裙摆/头发
-            // 骨骼没有角度限制，运动时自由翻转(裙子飘起)。
-            _blendRate = 0.5f;
+            _blendRate = 1.0f;
             _stiffnessForceRate = 1.0f;
             _isDeltaTimeZero = true;
             _validEnvCollision = false;
@@ -655,17 +652,6 @@ namespace Gallop
             float mainHipMoveRate = GetHipMoveRate(_springData, hipMoveDistance);
             float addHipMoveRate = GetHipMoveRate(_addData, hipMoveDistance);
 
-            // [CySpringDebug] 周期性输出髋部移动响应率(运动时裙子摆动的直接驱动)
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.Log("[CySpringDebug] UpdateSpring: hipMove=" + hipMoveDistance.ToString("F4") +
-                          " mainRate=" + mainHipMoveRate.ToString("F3") +
-                          " addRate=" + addHipMoveRate.ToString("F3") +
-                          " timescale=" + timescale.ToString("F3") +
-                          " springRate=" + springRate.ToString("F3") +
-                          " calc60FPS=" + calc60FPS);
-            }
-
             if (_rootBoneArray == null)
                 return;
 
@@ -676,38 +662,6 @@ namespace Gallop
                 CySpringRootBone root = _rootBoneArray[i];
                 if (root == null)
                     continue;
-
-                // [CySpringDebug] 裙摆骨骼的弹簧参数与实际姿态
-                if (Time.frameCount % 60 == 0 && root.LinkSkirtIndex >= 0)
-                {
-                    string paramInfo = "n/a";
-                    if (root.NativeArray != null && root.NativeArray.Length > 0)
-                    {
-                        NativeClothWorking n0 = root.NativeArray[0];
-                        paramInfo = "s=" + n0.StiffnessForce.ToString("F4") +
-                                    " d=" + n0.DragForce.ToString("F4") +
-                                    " g=" + n0.Gravity.ToString("F4");
-                    }
-                    Debug.Log("[CySpringDebug] skirtBone " + root.BoneName +
-                              " link=" + root.LinkSkirtIndex +
-                              " count=" + (root.NativeArray != null ? root.NativeArray.Length : 0) +
-                              " blend=" + _blendRate.ToString("F3") +
-                              " " + paramInfo +
-                              " rot=" + root.GameObject.transform.localEulerAngles.ToString("F2"));
-
-                    // [CySpringDebug] 每根骨骼的限制与碰撞数据
-                    if (root.NativeArray != null)
-                    {
-                        for (int b = 0; b < root.NativeArray.Length && b < 4; b++)
-                        {
-                            NativeClothWorking nb = root.NativeArray[b];
-                            Debug.Log("[CySpringDebug]   bone[" + b + "] isLimit=" + nb.IsLimit +
-                                      " limMin=" + nb.LimitRotationMin.ToString("F1") +
-                                      " limMax=" + nb.LimitRotationMax.ToString("F1") +
-                                      " colR=" + nb.CollisionRadius.ToString("F4"));
-                        }
-                    }
-                }
 
                 CySpringNative.UpdateNativeCloth(
                     root.NativeArray,
@@ -742,18 +696,6 @@ namespace Gallop
             float mainHipMoveRate = GetHipMoveRate(_springData, hipMoveDistance);
             float addHipMoveRate = GetHipMoveRate(_addData, hipMoveDistance);
 
-            // [CySpringDebug] 周期性输出含风场路径的髋部响应与风力
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.Log("[CySpringDebug] UpdateSpringHasWind: hipMove=" + hipMoveDistance.ToString("F4") +
-                          " mainRate=" + mainHipMoveRate.ToString("F3") +
-                          " addRate=" + addHipMoveRate.ToString("F3") +
-                          " windPowerRate=" + windPowerRate.ToString("F3") +
-                          " timescale=" + timescale.ToString("F3") +
-                          " springRate=" + springRate.ToString("F3") +
-                          " calc60FPS=" + calc60FPS);
-            }
-
             bool hasAddWind = _addWindControlData != null && _addWindParamData != null;
             NativeRootParentWork[] parentArray = _rootParentWork != null ? _rootParentWork.NativeParentWorkArray : null;
 
@@ -762,38 +704,6 @@ namespace Gallop
                 CySpringRootBone root = _rootBoneArray[i];
                 if (root == null)
                     continue;
-
-                // [CySpringDebug] 裙摆骨骼的弹簧参数与实际姿态(风场路径)
-                if (Time.frameCount % 60 == 0 && root.LinkSkirtIndex >= 0)
-                {
-                    string paramInfo = "n/a";
-                    if (root.NativeArray != null && root.NativeArray.Length > 0)
-                    {
-                        NativeClothWorking n0 = root.NativeArray[0];
-                        paramInfo = "s=" + n0.StiffnessForce.ToString("F4") +
-                                    " d=" + n0.DragForce.ToString("F4") +
-                                    " g=" + n0.Gravity.ToString("F4");
-                    }
-                    Debug.Log("[CySpringDebug] skirtBone " + root.BoneName +
-                              " link=" + root.LinkSkirtIndex +
-                              " count=" + (root.NativeArray != null ? root.NativeArray.Length : 0) +
-                              " blend=" + _blendRate.ToString("F3") +
-                              " " + paramInfo +
-                              " rot=" + root.GameObject.transform.localEulerAngles.ToString("F2"));
-
-                    // [CySpringDebug] 每根骨骼的限制与碰撞数据(风场路径)
-                    if (root.NativeArray != null)
-                    {
-                        for (int b = 0; b < root.NativeArray.Length && b < 4; b++)
-                        {
-                            NativeClothWorking nb = root.NativeArray[b];
-                            Debug.Log("[CySpringDebug]   bone[" + b + "] isLimit=" + nb.IsLimit +
-                                      " limMin=" + nb.LimitRotationMin.ToString("F1") +
-                                      " limMax=" + nb.LimitRotationMax.ToString("F1") +
-                                      " colR=" + nb.CollisionRadius.ToString("F4"));
-                        }
-                    }
-                }
 
                 WindControlData windData = (hasAddWind && root.IsAddSpring) ? _addWindControlData : _mainWindControlData;
                 Vector3 wind = Vector3.zero;

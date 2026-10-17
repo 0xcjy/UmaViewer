@@ -232,6 +232,23 @@ namespace Gallop
 
             for (int i = 0; i < _childBoneList.Count; i++)
                 _childBoneList[i]?.RegistCollisionToCloth();
+
+            // (DIAG T012a) Colisores efectivos por hueso de la cadena nativa. Sirve para ver
+            // si los hijos heredan los de la raíz (falda trasera). Quitar al cerrar T012a.
+            if (RootDataElement != null)
+            {
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < _childBoneList.Count; i++)
+                {
+                    CySpringBoneBase cb = _childBoneList[i];
+                    int cc = (cb != null && cb.CollisionIndexList != null) ? cb.CollisionIndexList.Count : 0;
+                    sb.Append(cb != null ? cb.BoneName : "null").Append('=').Append(cc).Append(' ');
+                }
+
+                Debug.Log(
+                    $"[CySpring][ColNative] {BoneName}: root={CollisionIndexList?.Count ?? 0} hijos: {sb}"
+                );
+            }
         }
 
         private new void RegistCollisionToCloth()

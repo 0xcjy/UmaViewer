@@ -233,10 +233,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
         else
         {
             umaContainer.LoadBody(asset);
-            // Preserve master5's verified thigh/hip skirt collision fallback for winner outfits.
-            const string schoolUniformCollision = "3d/chara/body/bdy0002_00/clothes/pfb_bdy0002_00_cloth00";
-            if (Main.AbList.TryGetValue(schoolUniformCollision, out UmaDatabaseEntry schoolCollisionAsset))
-                umaContainer.LoadSchoolUniformSkirtCollision(schoolCollisionAsset);
 
             //Load Physics
             var asset1 = Main.AbList[UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/clothes/pfb_bdy{id}_{costumeId}_cloth00"];

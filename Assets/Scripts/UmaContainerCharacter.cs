@@ -207,8 +207,12 @@ public class UmaContainerCharacter : UmaContainer
     private List<Transform> _humanoidBones;
     private UIHandleCharacterRoot handleRoot;
 
-    // Physics backend: master5 DynamicBone with skirt surface collision correction.
-
+    // Official CySpring runtime controller.
+    // CySpringDataContainer is only data; CySpringController owns simulation.
+    private CySpringController _cySpringController;
+    private bool _cySpringLoaded;
+    private SkirtController _skirtController;
+    private CySpringOwner _cySpringOwner;
     private List<UmaDatabaseEntry> LoadedAssets = new List<UmaDatabaseEntry>();
 
     public class TextureList
@@ -488,162 +492,837 @@ public class UmaContainerCharacter : UmaContainer
         ;
     }
 
+    private sealed class UmaViewerCySpringOwner : CySpringOwner
+    {
+        private readonly UmaContainerCharacter _chara;
+
+        public UmaViewerCySpringOwner(UmaContainerCharacter chara)
+            : base(null)
+        {
+            _chara = chara;
+        }
+
+        public override bool IsCharaModel()
+        {
+            return true;
+        }
+
+        public override int GetCharaID()
+        {
+            return _chara != null && _chara.CharaEntry != null ? _chara.CharaEntry.Id : 0;
+        }
+
+        public override int GetDressID()
+        {
+            return 0;
+        }
+
+        public override int GetHeadID()
+        {
+            return 0;
+        }
+
+        public override float GetCySpringCorrectScale(bool isHead)
+        {
+            if (_chara == null || _chara.BodyScale <= 0.0f)
+                return 1.0f;
+
+            return _chara.BodyScale;
+        }
+
+        public override float GetBodyScale()
+        {
+            if (_chara == null || _chara.BodyScale <= 0.0f)
+                return 1.0f;
+
+            return _chara.BodyScale;
+        }
+
+        public override float GetTotalScale()
+        {
+            if (_chara == null || _chara.BodyScale <= 0.0f)
+                return 1.0f;
+
+            return _chara.BodyScale;
+        }
+    }
+
     public void LoadPhysics()
     {
-        if (IsMini || PhysicsContainer == null) return;
-        cySpringDataContainers = new List<CySpringDataContainer>(PhysicsContainer.GetComponentsInChildren<CySpringDataContainer>());
-        var bones = new Dictionary<string, Transform>();
+        if (IsMini)
+            return;
+
+        if (PhysicsContainer == null)
+        {
+            Debug.LogWarning("[UmaContainerCharacter] PhysicsContainer is null.");
+            return;
+        }
+
+        cySpringDataContainers = new List<CySpringDataContainer>(
+            PhysicsContainer.GetComponentsInChildren<CySpringDataContainer>(true)
+        );
+
+        if (cySpringDataContainers == null || cySpringDataContainers.Count == 0)
+        {
+            Debug.LogWarning("[UmaContainerCharacter] No CySpringDataContainer found.");
+            return;
+        }
+
+        // (P1) Física de ropa/pelo: DOS vías, una por tipo de prenda.
+        //
+        // - DynamicBone (camino del proyecto ORIGINAL): pelo, orejas y cola. Funciona SIN
+        //   CySpringPlugin.dll. En el original la ROPA tampoco funcionaba por aquí.
+        // - Puente nativo CySpringController + CySpringPlugin.dll (camino del fork): la falda
+        //   y el resto de ropa. Es lo que arregló la ropa al añadir la DLL.
+        //
+        // Se reparten por tipo para que no se peleen por los mismos huesos: DynamicBone se
+        // queda con head (pelo/orejas) y tail (cola); el puente nativo con body (falda) y bust.
+        var dbBones = new Dictionary<string, Transform>();
         foreach (var bone in GetComponentsInChildren<Transform>())
         {
+            if (bone == null || string.IsNullOrEmpty(bone.name)) continue;
+            if (!dbBones.ContainsKey(bone.name))
+                dbBones.Add(bone.name, bone);
+        }
+
+        var dbColliders = new Dictionary<string, Transform>();
+
+        // Contenedores que va a simular el puente nativo (ropa), y que por tanto NO deben
+        // recibir DynamicBone.
+        var nativeContainers = new List<CySpringDataContainer>();
+
+        for (int i = 0; i < cySpringDataContainers.Count; i++)
+        {
+            CySpringDataContainer container = cySpringDataContainers[i];
+            if (container == null) continue;
+
+            int kind = GuessCySpringContainerKind(container);
+
+            // Los contenedores de ropa los lleva el puente nativo (que ya tiene su propia
+            // colisión), así que no reciben DynamicBone.
+            if (kind == 1 || kind == 2)
+                nativeContainers.Add(container);
+
+            // (P1, COLISIÓN) Los colisores se crean de TODOS los contenedores, no solo de
+            // los que simula DynamicBone. Motivo MEDIDO: los dos colisores que la cola
+            // necesita (Col_B_Hip_Tail y Col_B_Chest_Tail) están definidos en el
+            // contenedor de la ROPA (pfb_bdy0002_00_cloth00) y el contenedor de la cola
+            // tiene collisionParam VACÍO (n=0). Antes los contenedores de ropa hacían
+            // `continue` y nunca llegaban a InitiallizeCollider, así que esos dos
+            // colisores no se creaban y la cola se atravesaba el cuerpo y la ropa:
+            // medido 0 colisores en las 5 partículas de la cola. El pelo sí los tenía
+            // (3 por partícula) porque su contenedor sí pasaba por aquí.
+            foreach (var kv in container.InitiallizeCollider(dbBones))
+            {
+                if (!dbColliders.ContainsKey(kv.Key)) dbColliders.Add(kv.Key, kv.Value);
+            }
+        }
+
+        // (DIAG T012a) Banco de colisores realmente creado desde los datos. Sirve para ver si
+        // EXISTE el colisor que falta (p. ej. un glúteo) o si un nombre no resuelve. Quitar
+        // cuando T012a esté cerrada en Play Mode.
+        Debug.Log(
+            $"[CySpring][ColBank] {name}: dbColliders={dbColliders.Count} -> " +
+            string.Join(",", dbColliders.Keys)
+        );
+
+        for (int i = 0; i < cySpringDataContainers.Count; i++)
+        {
+            CySpringDataContainer container = cySpringDataContainers[i];
+            if (container == null) continue;
+
+            int kind = GuessCySpringContainerKind(container);
+            if (kind == 1 || kind == 2) continue;
+
+            container.InitializePhysics(dbBones, dbColliders);
+        }
+
+        _cySpringLoaded = cySpringDataContainers.Count > 0;
+
+        // Puente nativo SOLO para la ropa. Si no hay contenedores de ropa, no se monta (el
+        // pelo ya está cubierto por DynamicBone y no necesita la DLL).
+        if (nativeContainers.Count == 0)
+            return;
+
+        Dictionary<string, Transform> transformCacheDic =
+            BuildCySpringTransformCache(transform, out HashSet<string> duplicateBoneNames);
+
+        if (duplicateBoneNames.Count > 0)
+        {
+            Debug.LogWarning(
+                $"[UmaContainerCharacter] Duplicate bone names detected before CySpring bind: {duplicateBoneNames.Count}\n" +
+                $"{string.Join("\n", duplicateBoneNames.Take(30))}"
+            );
+        }
+
+        Transform hip = FindCySpringTransform(transform, "Hip");
+
+        if (hip == null && UpBodyBone != null)
+            hip = UpBodyBone.transform;
+
+        if (hip == null)
+            hip = transform.Find("Position/Hip");
+
+        if (hip == null)
+        {
+            Debug.LogWarning("[UmaContainerCharacter] Hip bone not found. CySpring will use character root as fallback.");
+            hip = transform;
+        }
+
+        // (P1) Solo la ROPA entra al puente nativo: el pelo y la cola ya los simula DynamicBone
+        // y meterlos aquí también los deformaba.
+        var slots = SplitCySpringContainers(nativeContainers);
+
+        // La falda declara su volumen de sector de cadera (Col_B_Hip_MSkirt_*) SOLO en el hueso
+        // raiz de cada cadena; los huesos hijos, que son los que estan a la altura del gluteo,
+        // nombran unicamente las capsulas del muslo. Sin el volumen de cadera en los hijos la
+        // tela se puede plegar hacia dentro y el cuerpo asoma por detrás. Se unen los nombres
+        // de la raiz a los hijos para que toda la cadena colisione igual.
+        PropagateClothCollisionNames(slots.body);
+
+
+        _cySpringOwner = new UmaViewerCySpringOwner(this);
+        _cySpringController = CySpringController.AddController(gameObject, hip, _cySpringOwner);
+
+        if (_cySpringController == null)
+        {
+            Debug.LogError("[UmaContainerCharacter] Failed to create CySpringController.");
+            _cySpringLoaded = false;
+            return;
+        }
+
+        _cySpringController.LoadFromDataContainers(
+            transformCacheDic,
+            slots.head,
+            slots.body,
+            slots.bust,
+            slots.tail,
+            null,
+            null,
+            null,
+            BodyScale,
+            BodyScale,
+            BodyScale
+        );
+
+        _cySpringController.Reset();
+        _cySpringLoaded = true;
+
+        LinkSkirtControllerToCySpring();
+
+        Debug.Log(
+            "[UmaContainerCharacter] CySpring loaded. " +
+            $"head={(slots.head ? slots.head.name : "null")}, " +
+            $"body={(slots.body ? slots.body.name : "null")}, " +
+            $"bust={(slots.bust ? slots.bust.name : "null")}, " +
+            $"tail={(slots.tail ? slots.tail.name : "null")}"
+        );
+    }
+
+    private Dictionary<string, Transform> BuildCySpringTransformCache(Transform root, out HashSet<string> duplicateBoneNames)
+    {
+        Dictionary<string, Transform> bones = new Dictionary<string, Transform>();
+        duplicateBoneNames = new HashSet<string>();
+
+        if (root == null)
+            return bones;
+
+        Transform[] allBones = root.GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < allBones.Length; i++)
+        {
+            Transform bone = allBones[i];
+
+            if (bone == null || string.IsNullOrEmpty(bone.name))
+                continue;
+
             if (!bones.ContainsKey(bone.name))
+            {
                 bones.Add(bone.name, bone);
-        }
-
-        var colliders = new Dictionary<string, Transform>();
-
-        for (int i = 0; i < cySpringDataContainers.Count; i++)
-        {
-            colliders = UmaUtility.MergeDictionaries(colliders, cySpringDataContainers[i].InitiallizeCollider(bones));
-        }
-
-        for (int i = 0; i < cySpringDataContainers.Count; i++)
-        {
-            cySpringDataContainers[i].InitializePhysics(bones, colliders);
-        }
-
-        SkirtSurfaceCollisionSolver surfaceSolver = GetComponent<SkirtSurfaceCollisionSolver>();
-        if (surfaceSolver == null)
-            surfaceSolver = gameObject.AddComponent<SkirtSurfaceCollisionSolver>();
-        bones.TryGetValue("Hip", out Transform skirtHip);
-        var skirtColliders = new List<DynamicBoneColliderBase>();
-        foreach (Transform transform in colliders.Values)
-        {
-            DynamicBoneColliderBase collider = transform.GetComponent<DynamicBoneColliderBase>();
-            if (collider != null)
+            }
+            else
             {
-                if (IsBodySkirtCollider(collider) && collider.GetComponent<SkirtCollisionVisualizer>() == null)
-                    collider.gameObject.AddComponent<SkirtCollisionVisualizer>();
-                if (IsThighSkirtCollider(collider.ColliderName))
-                    skirtColliders.Add(collider);
+                duplicateBoneNames.Add(bone.name);
             }
         }
-        surfaceSolver.Initialize(GetComponentsInChildren<DynamicBone>(true), skirtHip, skirtColliders);
+
+        return bones;
     }
 
-    private static bool IsBodySkirtCollider(DynamicBoneColliderBase collider)
+    private Transform FindCySpringTransform(Transform root, string boneName)
     {
-        if (collider == null || string.IsNullOrEmpty(collider.ColliderName) ||
-            collider.ColliderName.IndexOf("Skirt", StringComparison.OrdinalIgnoreCase) < 0)
-            return false;
+        if (root == null || string.IsNullOrEmpty(boneName))
+            return null;
 
-        if (collider.ColliderName.IndexOf("Thigh", StringComparison.OrdinalIgnoreCase) >= 0)
-            return true;
+        Transform[] allBones = root.GetComponentsInChildren<Transform>(true);
 
-        DynamicBoneCollider dynamicCollider = collider as DynamicBoneCollider;
-        bool isSideHip = collider.ColliderName.EndsWith("_L", StringComparison.OrdinalIgnoreCase) ||
-            collider.ColliderName.EndsWith("_R", StringComparison.OrdinalIgnoreCase);
-        return collider.ColliderName.IndexOf("Hip", StringComparison.OrdinalIgnoreCase) >= 0 &&
-            isSideHip && (dynamicCollider == null || dynamicCollider.m_Radius <= 0.25f);
-    }
-
-    private static bool IsThighSkirtCollider(string colliderName)
-    {
-        return !string.IsNullOrEmpty(colliderName) &&
-            colliderName.IndexOf("Thigh", StringComparison.OrdinalIgnoreCase) >= 0 &&
-            colliderName.IndexOf("MSkirt", StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    public void LoadSchoolUniformSkirtCollision(UmaDatabaseEntry entry)
-    {
-        if (entry == null)
-            return;
-
-        GameObject source = entry.Get<GameObject>();
-        if (source == null)
-            return;
-
-        if (!PhysicsContainer)
+        for (int i = 0; i < allBones.Length; i++)
         {
-            PhysicsContainer = new GameObject("PhysicsController");
-            PhysicsContainer.transform.SetParent(transform);
+            if (allBones[i] != null && allBones[i].name == boneName)
+                return allBones[i];
         }
 
-        CySpringDataContainer destination = PhysicsContainer.GetComponent<CySpringDataContainer>();
-        if (destination == null)
-            destination = PhysicsContainer.AddComponent<CySpringDataContainer>();
-        if (destination.collisionParam == null)
-            destination.collisionParam = new List<CySpringCollisionData>();
-        if (destination.springParam == null)
-            destination.springParam = new List<CySpringParamDataElement>();
+        return null;
+    }
 
-        foreach (CySpringDataContainer sourceContainer in source.GetComponentsInChildren<CySpringDataContainer>(true))
+    private void LinkSkirtControllerToCySpring()
+    {
+        if (_cySpringController == null || _skirtController == null)
+            return;
+
+    _cySpringController.CreateLinkSkirtController(_skirtController);
+    }
+
+    /// <summary>
+    /// Une a cada hijo de una cadena de falda los nombres de colision que declara la raiz.
+    /// La raiz nombra el volumen de su sector de cadera ademas de las capsulas del muslo; los
+    /// hijos solo nombran las capsulas, asi que la tela podia plegarse hacia dentro en el
+    /// gluteo. Con la herencia, todos los huesos de la cadena colisionan contra el mismo set.
+    /// </summary>
+    private static void PropagateClothCollisionNames(CySpringDataContainer container)
+    {
+        if (container == null || container.springParam == null)
+            return;
+
+        for (int i = 0; i < container.springParam.Count; i++)
         {
-            foreach (CySpringCollisionData collision in sourceContainer.collisionParam)
+            Gallop.CySpringParamDataElement spring = container.springParam[i];
+            if (spring == null || spring._boneName == null || spring._collisionNameList == null)
+                continue;
+
+            if (spring._boneName.IndexOf("MSkirt", StringComparison.OrdinalIgnoreCase) < 0)
+                continue;
+
+            if (spring._childElements == null)
+                continue;
+
+            for (int j = 0; j < spring._childElements.Count; j++)
             {
-                if (!IsSchoolUniformSkirtCollider(collision))
+                Gallop.CySpringParamDataChildElement child = spring._childElements[j];
+                if (child == null)
                     continue;
-                destination.collisionParam.Add(CloneCollisionData(collision));
+
+                if (child._collisionNameList == null)
+                    child._collisionNameList = new List<string>();
+
+                for (int k = 0; k < spring._collisionNameList.Count; k++)
+                {
+                    string name = spring._collisionNameList[k];
+                    if (string.IsNullOrEmpty(name))
+                        continue;
+                    if (!child._collisionNameList.Contains(name))
+                        child._collisionNameList.Add(name);
+                }
             }
         }
     }
 
-    private static bool IsSchoolUniformSkirtCollider(CySpringCollisionData collision)
+    /// <summary>
+    /// Reconstruye SOLO el puente nativo de tela (falda y ropa) sin recrear el personaje.
+    /// Permite aplicar en caliente datos de colision cambiados.
+    /// </summary>
+    public void ReloadClothPhysics()
     {
-        if (collision == null)
-            return false;
+        CySpringDataContainer[] containers = GetComponentsInChildren<CySpringDataContainer>(true);
+        var nativeContainers = new List<CySpringDataContainer>();
 
-        return string.Equals(collision._collisionName, "Col_B_Thigh_L_MSkirt_L", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(collision._collisionName, "Col_B_Thigh_R_MSkirt_R", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(collision._collisionName, "Col_B_Hip_MSkirt_L", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(collision._collisionName, "Col_B_Hip_MSkirt_R", StringComparison.OrdinalIgnoreCase);
+        for (int i = 0; i < containers.Length; i++)
+        {
+            CySpringDataContainer container = containers[i];
+            if (container == null)
+                continue;
+
+            int kind = GuessCySpringContainerKind(container);
+            if (kind == 1 || kind == 2)
+                nativeContainers.Add(container);
+        }
+
+        if (nativeContainers.Count == 0)
+        {
+            Debug.LogWarning("[UmaContainerCharacter] ReloadClothPhysics: no hay contenedores nativos de ropa.");
+            return;
+        }
+
+        Dictionary<string, Transform> cache = BuildCySpringTransformCache(transform, out HashSet<string> duplicates);
+
+        Transform hip = FindCySpringTransform(transform, "Hip");
+        if (hip == null && UpBodyBone != null)
+            hip = UpBodyBone.transform;
+        if (hip == null)
+            hip = transform.Find("Position/Hip");
+        if (hip == null)
+            hip = transform;
+
+        var slots = SplitCySpringContainers(nativeContainers);
+
+        PropagateClothCollisionNames(slots.body);
+
+        if (_cySpringController == null)
+        {
+            _cySpringOwner = new UmaViewerCySpringOwner(this);
+            _cySpringController = CySpringController.AddController(gameObject, hip, _cySpringOwner);
+        }
+
+        if (_cySpringController == null)
+        {
+            Debug.LogError("[UmaContainerCharacter] ReloadClothPhysics: no se pudo crear el controller.");
+            return;
+        }
+
+        _cySpringController.LoadFromDataContainers(
+            cache, slots.head, slots.body, slots.bust, slots.tail, null, null, null,
+            BodyScale, BodyScale, BodyScale);
+
+        _cySpringController.Reset();
+        _cySpringLoaded = true;
+        LinkSkirtControllerToCySpring();
+
+        Debug.Log($"[UmaContainerCharacter] ReloadClothPhysics OK (duplicados={duplicates.Count}).");
     }
 
-    private static CySpringCollisionData CloneCollisionData(CySpringCollisionData source)
+    private void LoadSkirtController(UmaDatabaseEntry bodyEntry)
     {
-        return new CySpringCollisionData
+        if (IsMini || Body == null || bodyEntry == null)
+            return;
+
+        SkirtParamDataAsset skirtParam = LoadBestSkirtParamAsset(bodyEntry);
+        if (skirtParam == null)
         {
-            _collisionName = source._collisionName,
-            _targetObjectName = source._targetObjectName,
-            _isOtherTarget = source._isOtherTarget,
-            _offset = source._offset,
-            _offset2 = source._offset2,
-            _radius = source._radius,
-            _distance = source._distance,
-            _normal = source._normal,
-            _type = source._type,
-            _isInner = source._isInner
-        };
+            Debug.LogWarning($"[UmaContainerCharacter] No SkirtParamDataAsset found for {bodyEntry.Name}.");
+            return;
+        }
+
+        _skirtController = GetComponent<SkirtController>();
+        if (_skirtController == null)
+            _skirtController = gameObject.AddComponent<SkirtController>();
+
+        _skirtController.CharaId = CharaEntry != null ? CharaEntry.Id : 0;
+        _skirtController.ModelScale = BodyScale > 0f ? BodyScale : 1f;
+        _skirtController.Create(skirtParam);
+
+        if (_cySpringController != null)
+            LinkSkirtControllerToCySpring();
+
+        Debug.Log(
+            $"[UmaContainerCharacter] SkirtController loaded param={skirtParam.name}, " +
+            $"charaId={_skirtController.CharaId}, body={bodyEntry.Name}");
+    }
+
+    private SkirtParamDataAsset LoadBestSkirtParamAsset(UmaDatabaseEntry bodyEntry)
+    {
+        List<UmaDatabaseEntry> candidates = FindSkirtParamEntries(bodyEntry).ToList();
+        if (candidates.Count == 0)
+            return null;
+
+        int charaId = CharaEntry != null ? CharaEntry.Id : 0;
+        SkirtParamDataAsset best = null;
+        int bestScore = -1;
+        bool bestHasCharaOverride = false;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            UmaDatabaseEntry entry = candidates[i];
+            if (entry == null)
+                continue;
+
+            AssetBundle bundle = UmaAssetManager.LoadAssetBundle(entry, false, true);
+            if (bundle == null)
+                continue;
+
+            SkirtParamDataAsset asset = LoadSkirtParamAssetFromBundle(bundle, entry);
+            if (asset == null)
+            {
+                Debug.LogWarning($"[UmaContainerCharacter] Skirt AB has no SkirtParamDataAsset: {entry.Name}");
+                continue;
+            }
+
+            int score = ScoreSkirtParamAsset(asset);
+            bool hasCharaOverride = charaId > 0 && asset.GetOverrideData(charaId) != null;
+
+            if (score > bestScore || (score == bestScore && hasCharaOverride && !bestHasCharaOverride))
+            {
+                best = asset;
+                bestScore = score;
+                bestHasCharaOverride = hasCharaOverride;
+            }
+
+            Debug.Log(
+                $"[UmaContainerCharacter] Skirt candidate {asset.name}: " +
+                $"score={score}, charaOverride={hasCharaOverride}, entry={entry.Name}");
+        }
+
+        return best;
+    }
+
+    private IEnumerable<UmaDatabaseEntry> FindSkirtParamEntries(UmaDatabaseEntry bodyEntry)
+    {
+        if (Main == null || Main.AbChara == null || bodyEntry == null)
+            yield break;
+
+        HashSet<string> bodyTokens = GetSkirtBodyTokens(bodyEntry);
+        if (bodyTokens.Count == 0)
+            yield break;
+
+        foreach (UmaDatabaseEntry entry in Main.AbChara)
+        {
+            if (entry == null || !entry.IsAssetBundle)
+                continue;
+
+            string assetName = Path.GetFileName(entry.Name);
+            if (string.IsNullOrEmpty(assetName))
+                continue;
+
+            string lower = assetName.ToLowerInvariant();
+            if (!lower.Contains("_skirt"))
+                continue;
+
+            foreach (string bodyToken in bodyTokens)
+            {
+                string expectedPrefix = "ast_" + bodyToken.ToLowerInvariant() + "_skirt";
+                if (lower.StartsWith(expectedPrefix))
+                {
+                    yield return entry;
+                    break;
+                }
+            }
+        }
+    }
+
+    private HashSet<string> GetSkirtBodyTokens(UmaDatabaseEntry bodyEntry)
+    {
+        HashSet<string> result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        string prefabName = Path.GetFileName(bodyEntry.Name);
+        if (!string.IsNullOrEmpty(prefabName) && prefabName.StartsWith("pfb_", StringComparison.OrdinalIgnoreCase))
+        {
+            string token = prefabName.Substring(4);
+            AddBodyTokenVariants(result, token);
+        }
+
+        string directoryName = Path.GetFileName(Path.GetDirectoryName(bodyEntry.Name));
+        AddBodyTokenVariants(result, directoryName);
+
+        return result;
+    }
+
+    private void AddBodyTokenVariants(HashSet<string> result, string token)
+    {
+        if (result == null || string.IsNullOrEmpty(token))
+            return;
+
+        if (!token.StartsWith("bdy", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        result.Add(token);
+
+        string[] parts = token.Split('_');
+        if (parts.Length >= 2)
+            result.Add(parts[0] + "_" + parts[1]);
+    }
+
+    private SkirtParamDataAsset LoadSkirtParamAssetFromBundle(AssetBundle bundle, UmaDatabaseEntry entry)
+    {
+        if (bundle == null)
+            return null;
+
+        //(P1) ANTES se intentaba bundle.LoadAsset<SkirtParamDataAsset>(nombreDelAsset) y, si
+        //fallaba, se cogía allAssets[0] a ciegas. La búsqueda por nombre NO puede funcionar:
+        //el asset viene del juego con el GUID de script ORIGINAL, que no existe en este
+        //proyecto, así que Unity no puede asociarlo a nuestro tipo y avisa
+        //"No script asset for SkirtParamDataAsset". Además Cogear el primero a ciegas puede
+        //elegir un asset que no corresponde a este cuerpo, y de ahí el "poco peso".
+        //Ahora: se carga por TIPO y se puntúa el que más huesos de falda resuelva.
+        SkirtParamDataAsset[] allAssets = bundle.LoadAllAssets<SkirtParamDataAsset>();
+
+        if (allAssets == null || allAssets.Length == 0)
+            return null;
+
+        if (allAssets.Length == 1)
+            return allAssets[0];
+
+        SkirtParamDataAsset best = null;
+        int bestScore = -1;
+
+        for (int i = 0; i < allAssets.Length; i++)
+        {
+            SkirtParamDataAsset candidate = allAssets[i];
+            if (candidate == null) continue;
+
+            int score = ScoreSkirtParamAsset(candidate);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+
+        return best != null ? best : allAssets[0];
+    }
+
+    private int ScoreSkirtParamAsset(SkirtParamDataAsset asset)
+    {
+        if (asset == null || asset._skirtBone == null || Body == null)
+            return 0;
+
+        int score = 0;
+        Transform root = Body.transform;
+
+        for (int i = 0; i < asset._skirtBone.Count; i++)
+        {
+            SkirtParamDataElement element = asset._skirtBone[i];
+            if (element == null)
+                continue;
+
+            if (FindCySpringTransform(root, element._rootBoneName) != null &&
+                FindCySpringTransform(root, element._childBoneName) != null)
+            {
+                score++;
+            }
+        }
+
+        return score;
+    }
+
+    private (
+        CySpringDataContainer head,
+        CySpringDataContainer body,
+        CySpringDataContainer bust,
+        CySpringDataContainer tail
+    ) SplitCySpringContainers(List<CySpringDataContainer> containers)
+    {
+        CySpringDataContainer head = null;
+        CySpringDataContainer body = null;
+        CySpringDataContainer bust = null;
+        CySpringDataContainer tail = null;
+
+        if (containers == null)
+            return (head, body, bust, tail);
+
+        for (int i = 0; i < containers.Count; i++)
+        {
+            CySpringDataContainer container = containers[i];
+
+            if (container == null)
+                continue;
+
+            int kind = GuessCySpringContainerKind(container);
+
+            switch (kind)
+            {
+                case 0:
+                    if (head == null)
+                        head = container;
+                    else
+                        Debug.LogWarning($"[UmaContainerCharacter] Extra head CySpringDataContainer ignored: {container.name}");
+                    break;
+
+                case 1:
+                    if (body == null)
+                        body = container;
+                    else
+                        Debug.LogWarning($"[UmaContainerCharacter] Extra body CySpringDataContainer ignored: {container.name}");
+                    break;
+
+                case 2:
+                    if (bust == null)
+                        bust = container;
+                    else
+                        Debug.LogWarning($"[UmaContainerCharacter] Extra bust CySpringDataContainer ignored: {container.name}");
+                    break;
+
+                case 3:
+                    if (tail == null)
+                        tail = container;
+                    else
+                        Debug.LogWarning($"[UmaContainerCharacter] Extra tail CySpringDataContainer ignored: {container.name}");
+                    break;
+            }
+        }
+
+        if (body == null && containers.Count == 1)
+            body = containers[0];
+
+        return (head, body, bust, tail);
+    }
+
+    /// <summary>
+    /// (FIX cabello) Decide a qué parte (head=0, body=1, bust=2, tail=3) pertenece un
+    /// contenedor. La fuente PRIMARIA son los HUESOS de sus resortes (prefijos del juego:
+    /// `Sp_He_Hair`, `Sp_Hi_Tail`, `Sp_Ch_Bust`, `Sp_Hi_MSkirt`…). El nombre del
+    /// GameObject/prefab NO basta: el pelo vive en `pfb_chr…_cloth00`, cuyo path contiene
+    /// "cloth" y por eso la versión anterior lo casaba como "body" ANTES de mirar los
+    /// huesos → el pelo se descartaba como "Extra body ignored" y quedaba RÍGIDO. Ahora se
+    /// miran los huesos primero (autoritativos) y el path sólo sirve de apoyo si no hay
+    /// huesos reconocibles.
+    /// </summary>
+    private int GuessCySpringContainerKind(CySpringDataContainer container)
+    {
+        if (container == null)
+            return 1;
+
+        // 1) Huesos: fuente autoritativa.
+        if (container.springParam != null)
+        {
+            for (int i = 0; i < container.springParam.Count; i++)
+            {
+                //(Fase 0.5: fully-qualified. Hay DOS clases llamadas CySpringParamDataElement: la de
+                //namespace Gallop (Gallop\Cyspring\CySpringParamDataElement.cs) y la del namespace
+                //global (Gallop\StageScript\CySpring\CySpringParamDataElement.cs). Con 'using Gallop;'
+                //gana la del namespace global, y container.springParam es List<Gallop.CySpring…> →
+                //CS0029. container es CySpringDataContainer (Gallop), así que el tipo correcto es el
+                //de Gallop. Sin este cambio: error CS0029 en la línea 848.)
+                Gallop.CySpringParamDataElement element = container.springParam[i];
+
+                if (element == null)
+                    continue;
+
+                int kind = GuessCySpringBoneKind(element._boneName);
+
+                if (kind >= 0)
+                    return kind;
+
+                if (element._childElements == null)
+                    continue;
+
+                for (int j = 0; j < element._childElements.Count; j++)
+                {
+                    //(Fase 0.5: mismo choque que en la línea 848, una línea más abajo. Hay DOS
+                    //clases CySpringParamDataChildElement: Gallop\Cyspring\… (namespace Gallop) y
+                    //Gallop\StageScript\CySpring\… (namespace global). Con 'using Gallop;' gana la
+                    //global, y element._childElements es List<Gallop.…> → CS0029. Sin este cambio:
+                    //error CS0029 en la línea 869.)
+                    Gallop.CySpringParamDataChildElement child = element._childElements[j];
+
+                    if (child == null)
+                        continue;
+
+                    kind = GuessCySpringBoneKind(child._boneName);
+
+                    if (kind >= 0)
+                        return kind;
+                }
+            }
+        }
+
+        // 2) Sin huesos reconocibles: nombre del GameObject/prefab como apoyo.
+        string path = GetTransformPath(container.transform).ToLowerInvariant();
+
+        if (path.Contains("tail"))
+            return 3;
+
+        if (path.Contains("bust") || path.Contains("breast") || path.Contains("mune"))
+            return 2;
+
+        if (path.Contains("head") || path.Contains("hair") || path.Contains("ear"))
+            return 0;
+
+        if (path.Contains("body") || path.Contains("cloth") || path.Contains("skirt"))
+            return 1;
+
+        return 1;
+    }
+
+    private int GuessCySpringBoneKind(string boneName)
+    {
+        if (string.IsNullOrEmpty(boneName))
+            return -1;
+
+        string name = boneName.ToLowerInvariant();
+
+        if (name.Contains("tail"))
+            return 3;
+
+        if (name.Contains("bust") || name.Contains("breast") || name.Contains("mune"))
+            return 2;
+
+        if (name.Contains("head") || name.Contains("hair") || name.Contains("ear"))
+            return 0;
+
+        if (name.Contains("skirt") || name.Contains("cloth") || name.Contains("body"))
+            return 1;
+
+        return -1;
+    }
+
+    private string GetTransformPath(Transform t)
+    {
+        if (t == null)
+            return string.Empty;
+
+        string path = t.name;
+        Transform parent = t.parent;
+
+        while (parent != null)
+        {
+            path = parent.name + "/" + path;
+            parent = parent.parent;
+        }
+
+        return path;
     }
 
     public void SetDynamicBoneEnable(bool isOn)
     {
-        if (IsMini) return;
+        if (IsMini)
+            return;
+
         EnablePhysics = isOn;
-        var surfaceSolver = GetComponent<SkirtSurfaceCollisionSolver>();
-        if (surfaceSolver != null) surfaceSolver.enabled = isOn;
-        if (cySpringDataContainers == null) return;
-        foreach (CySpringDataContainer cySpring in cySpringDataContainers)
+
+        // (P1 — port del camino ORIGINAL) El original conmuta la física ventana a ventana
+        // sobre el CySpringDataContainer, que a su vez activa los DynamicBone que creó.
+        // Antes este método solo llegaba al puente nativo (CySpringController), que ya no
+        // se usa para el pelo.
+        if (cySpringDataContainers != null)
         {
-            cySpring.EnablePhysics(isOn);
+            foreach (CySpringDataContainer cySpring in cySpringDataContainers)
+            {
+                //(P1) EnablePhysics solo afecta a los DynamicBone que creó el camino original
+                //(pelo/orejas/cola). Los contenedores de ropa los lleva el puente nativo y se
+                //gobiernan con SetEnableAllCySpringBones, más abajo.
+                if (cySpring != null && cySpring.DynamicBones != null && cySpring.DynamicBones.Count > 0)
+                    cySpring.EnablePhysics(isOn);
+            }
+        }
+
+        if (_cySpringController != null)
+        {
+            _cySpringController.SetEnableAllCySpringBones(isOn);
+
+            if (isOn)
+                _cySpringController.Reset();
         }
     }
 
     public void ConfigureLivePhysics()
     {
         if (!IsLive || IsMini || cySpringDataContainers == null) return;
-        var profile = GetComponent<Gallop.Live.Master5LivePhysicsProfile>();
-        if (profile == null) profile = gameObject.AddComponent<Gallop.Live.Master5LivePhysicsProfile>();
-        profile.ApplyToNewPhysics();
+
+        // (P1 — port del camino ORIGINAL) En el live la física va con las DOS vías: los
+        // DynamicBone del pelo/orejas/cola y el puente nativo de la ropa.
+        EnablePhysics = true;
+        SetDynamicBoneEnable(true);
     }
 
     public void ResetDynamicBone()
     {
-        if (IsMini) return;
-        if (cySpringDataContainers == null) return;
-        foreach (CySpringDataContainer cySpring in cySpringDataContainers)
+        if (IsMini)
+            return;
+
+        // (P1 — port del camino ORIGINAL) Reset sobre los DynamicBone de cada contenedor.
+        if (cySpringDataContainers != null)
         {
-            cySpring.ResetPhysics();
+            foreach (CySpringDataContainer cySpring in cySpringDataContainers)
+            {
+                //(P1) ResetPhysics solo afecta a los DynamicBone (pelo/orejas/cola).
+                if (cySpring != null && cySpring.DynamicBones != null && cySpring.DynamicBones.Count > 0)
+                    cySpring.ResetPhysics();
+            }
         }
+
+        //(P1) La ropa (puente nativo) también se reinicia.
+        if (_cySpringController != null)
+            _cySpringController.Reset();
     }
 
     public void SetEyeTracking(bool isOn)
@@ -679,12 +1358,24 @@ public class UmaContainerCharacter : UmaContainer
 
     private void AlterLateUpdateRuntime()
     {
+        // (P1) La ROPA la simula el puente nativo (CySpringController), así que aquí sí hace
+        // falta Begin/EndSimulation. El pelo y la cola los simula DynamicBone por su cuenta y
+        // NO pasan por aquí (meterlos también los deformaba).
+        if (EnablePhysics && _cySpringLoaded && _cySpringController != null)
+        {
+            _cySpringController.BeginSimulation(Time.deltaTime, false);
+        }
     }
 
     private void AlterLateUpdatePostRuntime()
     {
+        // (P1) EndSimulation del puente nativo: cierra la simulación de la ROPA.
+        if (EnablePhysics && _cySpringLoaded && _cySpringController != null)
+        {
+            _cySpringController.EndSimulation();
+        }
 
-        // 官方 AlterLateUpdatePost 是 EndSimulation 后 UpdateBodyLightDir / UpdateFaceLight。
+        // 官方AlterLateUpdatePost 是 EndSimulation 后 UpdateBodyLightDir / UpdateFaceLight。
         // 现在先补脸部，身体光照后面再看 UpdateBodyLightDir。
         UpdateFaceLightRuntime();
     }
@@ -1001,8 +1692,7 @@ public class UmaContainerCharacter : UmaContainer
             UpBodyBone = Body.GetComponent<AssetHolder>()._assetTable["upbody_ctrl"] as GameObject;
         }
 
-        // Physics uses the master5 DynamicBone + surface-collision backend.
-        // Do not create a second SkirtController that writes the same skeleton.
+        LoadSkirtController(entry);
 
         if (IsGeneric)
         {

@@ -426,10 +426,25 @@ namespace Gallop
             if (_dataChildElement != null)
             {
                 List<string> collisionNames = _dataChildElement.CollisionNameList;
-                if (collisionNames != null && _root != null)
+                bool hasOwnCollision = collisionNames != null && collisionNames.Count > 0 && _root != null;
+
+                if (hasOwnCollision)
                 {
                     for (int i = 0; i < collisionNames.Count; i++)
                         AddCollisionIndex(collisionNames[i]);
+                }
+                else if (_rootBone != null && _rootBone.CollisionIndexList != null)
+                {
+                    // (P1, COLISIÓN - T012a) Un hijo que declara un `_childElement` pero con la
+                    // lista de colisiones VACÍA no heredaba los colisores del hueso raíz: el
+                    // `return` de abajo lo dejaba con CERO colisiones. Es el MISMO defecto que en
+                    // DynamicBone (donde el colisor se ataba solo a la partícula raíz, que va
+                    // fijada). En la falda, la raíz `Sp_Hi_MSkirt0_B_00` sí declara sus colisores
+                    // (`Col_B_Hip_MSkirt_B`, etc.) y las partículas hijas se quedaban sin ellos →
+                    // el glúteo sobresalía por detrás. Si el hijo no nombra colisores propios,
+                    // hereda los de la raíz, igual que el camino "sin child element" de abajo.
+                    for (int i = 0; i < _rootBone.CollisionIndexList.Count; i++)
+                        AddCollisionIndex(_rootBone.CollisionIndexList[i]);
                 }
 
                 bool checkEnv = _dataChildElement.CheckEnvCollision;

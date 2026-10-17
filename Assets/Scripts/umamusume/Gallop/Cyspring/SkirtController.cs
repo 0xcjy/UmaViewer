@@ -44,35 +44,7 @@ namespace Gallop
 
         [SerializeField] private SkirtData[] _skirtDataArray;
 
-        private Transform _cachedTransform;
-        private bool _isInitialized;
-        private bool _isEnableSkirt = true;
-        private Func<bool> _isEnableCySpringFunc;
-
-        private static readonly Vector3 SkirtNormal = Vector3.up;
-        private static readonly Vector3 RotAxis = Vector3.left;
-
-        public float KneeColliderRadius
-        {
-            get { return _kneeColliderRadius; }
-        }
-
-        public float AnkleColliderRadius
-        {
-            get { return _ankleColliderRadius; }
-        }
-
-        public float InfluenceAngle
-        {
-            get { return _influenceAngle; }
-        }
-
-        public float InfluenceMaxAngle
-        {
-            get { return _influenceMaxAngle; }
-        }
-
-        // PMX 导出只读取已经解析完成的裙摆拓扑与腿部碰撞骨，不修改运行时状态。
+        // Read-only accessors used by the PMX skirt-physics export tooling.
         public SkirtData[] SkirtDataArray
         {
             get { return _skirtDataArray; }
@@ -101,6 +73,34 @@ namespace Gallop
         public Transform AnkleRBone
         {
             get { return _ankleR; }
+        }
+
+        private Transform _cachedTransform;
+        private bool _isInitialized;
+        private bool _isEnableSkirt = true;
+        private Func<bool> _isEnableCySpringFunc;
+
+        private static readonly Vector3 SkirtNormal = Vector3.up;
+        private static readonly Vector3 RotAxis = Vector3.left;
+
+        public float KneeColliderRadius
+        {
+            get { return _kneeColliderRadius; }
+        }
+
+        public float AnkleColliderRadius
+        {
+            get { return _ankleColliderRadius; }
+        }
+
+        public float InfluenceAngle
+        {
+            get { return _influenceAngle; }
+        }
+
+        public float InfluenceMaxAngle
+        {
+            get { return _influenceMaxAngle; }
         }
 
 
@@ -448,20 +448,6 @@ namespace Gallop
             NativeArg.InfluenceAngle = _influenceAngle;
             NativeArg.InfluenceMaxAngle = _influenceMaxAngle;
 
-            // [SkirtDebug] 周期性输出裙摆碰撞与影响参数
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.Log("[SkirtDebug] NativeArg: kneeR=" + NativeArg.KneeColliderRadius.ToString("F4") +
-                          " ankleR=" + NativeArg.AnkleColliderRadius.ToString("F4") +
-                          " infAng=" + NativeArg.InfluenceAngle.ToString("F1") +
-                          " infMaxAng=" + NativeArg.InfluenceMaxAngle.ToString("F1") +
-                          " center=" + NativeArg.CenterPos.ToString("F3") +
-                          " kneeL=" + NativeArg.KneeLPos.ToString("F3") +
-                          " kneeR=" + NativeArg.KneeRPos.ToString("F3") +
-                          " ankleL=" + NativeArg.AnkleLPos.ToString("F3") +
-                          " ankleR=" + NativeArg.AnkleRPos.ToString("F3"));
-            }
-
             if (_skirtDataArray == null)
                 return;
 
@@ -608,15 +594,6 @@ namespace Gallop
 
             NativeSkirtWorking work = NativeWorkingArray[i];
 
-            // [SkirtDebug] 周期性输出每列裙摆的模拟旋转量与当前骨骼角度
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.Log("[SkirtDebug] update skirt[" + i + "] " + skirtData.SkirtRoot.name +
-                          ": eval=" + work.Evaluation.ToString("F3") +
-                          " offset=" + work.OffsetAngle.ToString("F1") +
-                          " rootEuler=" + skirtData.SkirtRoot.localEulerAngles.ToString("F2"));
-            }
-
             if (work.Evaluation > 0.0f)
             {
                 skirtData.SkirtRoot.Rotate(
@@ -758,19 +735,6 @@ namespace Gallop
 
                 skirtData.CySpringRoot = null;
                 skirtData.IsUpdate = true;
-            }
-
-            // [SkirtDebug] 一次性输出裙摆初始化数据
-            for (int i = 0; i < _skirtDataArray.Length; i++)
-            {
-                SkirtData skirtData = _skirtDataArray[i];
-                if (skirtData == null) continue;
-                Debug.Log("[SkirtDebug] init skirt[" + i + "] root=" +
-                          (skirtData.SkirtRoot != null ? skirtData.SkirtRoot.name : "null") +
-                          " child=" + (skirtData.SkirtChild != null ? skirtData.SkirtChild.name : "null") +
-                          " checkL=" + skirtData.IsCheckLeftLeg + " checkR=" + skirtData.IsCheckRightLeg +
-                          " rootInitRot=" + skirtData.RootInitRotation.eulerAngles.ToString("F2") +
-                          " childInitLocalPos=" + skirtData.ChildInitLocalPosition.ToString("F2"));
             }
         }
 

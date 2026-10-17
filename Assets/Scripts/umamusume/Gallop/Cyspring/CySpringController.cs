@@ -897,21 +897,6 @@ namespace Gallop
 
             bool is60FpsPhysics = _targetCySpringFpsMode == 1;
 
-            // [CySpringDebug] 周期性输出物理全局参数
-            if (Time.frameCount % 60 == 0)
-            {
-                string hipPath = _hipTransform != null ? _hipTransform.name : "NULL";
-                Transform hipParent = _hipTransform != null ? _hipTransform.parent : null;
-                while (hipParent != null)
-                {
-                    hipPath = hipParent.name + "/" + hipPath;
-                    hipParent = hipParent.parent;
-                }
-                Debug.Log("[CySpringDebug] UpdateSpringThread: timescale=" + _timescale.ToString("F3") +
-                          " fps60=" + is60FpsPhysics + " hipMoveDistance=" + _hipMoveDistance.ToString("F4") +
-                          " hip=" + hipPath);
-            }
-
             for (int i = 0; i < PARTS_NUM; i++)
             {
                 CySpring spring = _springArray[i];
@@ -921,13 +906,6 @@ namespace Gallop
                 float partSpringRate = GetSpringRate((Parts)i);
                 bool hasWind = _hasWindArray[i];
                 float windRate = GetWindPowerRate((Parts)i);
-
-                // [CySpringDebug] 周期性输出各部位弹簧率与风场参数
-                if (Time.frameCount % 60 == 0)
-                {
-                    Debug.Log("[CySpringDebug] parts[" + i + "]: springRate=" + partSpringRate.ToString("F3") +
-                              " hasWind=" + hasWind + " windRate=" + windRate.ToString("F3"));
-                }
 
                 if (hasWind) // 官方这里先不要加 || _isEnableDummyWind
                 {

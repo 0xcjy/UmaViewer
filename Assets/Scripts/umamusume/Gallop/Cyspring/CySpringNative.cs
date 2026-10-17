@@ -23,6 +23,38 @@ namespace Gallop
             set { isNative = value; }
         }
 
+        //(AÑADIDO — CySpringPlugin es una DLL NATIVA que NO viene con el proyecto. En esta
+        //maquina no esta en Assets/Plugins, asi que los tres [DllImport] lanzan
+        //DllNotFoundException. Y como isNative valia true a pelo, las guardas de
+        //UpdateNativeCloth (`:120`), UpdateNativeClothNoSkirt (`:390`) y
+        //UpdateSkirtNativePluginOne (`:438`) NO lo detenian: se medieron 8370 excepciones en una
+        //sola sesion de live, todas desde UmaContainerCharacter.LateUpdate. Eso inundaba el log
+        //(imposible diagnosticar nada) y gasta CPU cada frame.
+        //
+        //Aqui no se "comprueba" la DLL por adelantado, porque la unica forma fiable en Mono seria
+        //llamar a un simbolo real y no se sabe cual es innocuo. En su lugar se atrapa el primer
+        //fallo, se baja isNative a false —con lo que las tres guardas cortan ya TODAS las
+        //llamadas siguientes— y se avisa UNA vez. Resultado: 1 excepcion en vez de 8370, aviso
+        //claro, y el resto del proyecto deja de arrastrar la excepcion. Sin este cambio, el
+        //sintoma (faldas y muelle rigidos) es EXACTAMENTE el mismo que antes: la llamada nativa
+        //ya fallaba siempre.)
+        private static bool _nativeUnavailableLogged = false;
+
+        private static void DisableNativePluginOnce(string entryPoint)
+        {
+            isNative = false;
+
+            if (_nativeUnavailableLogged) return;
+            _nativeUnavailableLogged = true;
+
+            Debug.LogWarning(
+                $"[CySpring] La DLL nativa 'CySpringPlugin' no esta disponible " +
+                $"(fallo en '{entryPoint}'). Se desactiva la fisica de tela/muelle: faldas, pelo y " +
+                $"ropa se quedaran rigidos. Es una limitacion del entorno, no del personaje " +
+                $"(tambien ocurre con el codigo original sin modificar). Para recuperarla hay que " +
+                $"poner CySpringPlugin.dll en Assets/Plugins/x86_64. El aviso sale una sola vez.");
+        }
+
         public static int TargetFrameRate
         {
             get
@@ -208,24 +240,31 @@ namespace Gallop
                 if (clothPin.Ptr == IntPtr.Zero)
                     return;
 
-                NativeClothUpdate(
-                    clothPin.Ptr,
-                    nClothWorking,
-                    collisionPin.Ptr,
-                    parentPin.Ptr,
-                    stiffnessForceRate,
-                    dragForceRate,
-                    gravityRate,
-                    windX,
-                    windY,
-                    windZ,
-                    windStrength,
-                    bCollisionSwitch,
-                    timescale,
-                    is60FPS,
-                    moveRate,
-                    addMoveRate,
-                    springRate);
+                //(AÑADIDO — ver DisableNativePluginOnce.)
+                try
+                {
+                    NativeClothUpdate(
+                        clothPin.Ptr,
+                        nClothWorking,
+                        collisionPin.Ptr,
+                        parentPin.Ptr,
+                        stiffnessForceRate,
+                        dragForceRate,
+                        gravityRate,
+                        windX,
+                        windY,
+                        windZ,
+                        windStrength,
+                        bCollisionSwitch,
+                        timescale,
+                        is60FPS,
+                        moveRate,
+                        addMoveRate,
+                        springRate);
+                }
+                catch (DllNotFoundException) { DisableNativePluginOnce("NativeClothUpdate"); }
+                catch (EntryPointNotFoundException) { DisableNativePluginOnce("NativeClothUpdate"); }
+                catch (BadImageFormatException) { DisableNativePluginOnce("NativeClothUpdate"); }
             }
             finally
             {
@@ -294,26 +333,34 @@ namespace Gallop
                 if (clothPtr == IntPtr.Zero || workingPtr == IntPtr.Zero || argPtr == IntPtr.Zero)
                     return;
 
-                NativeClothSkirtUpdate(
-                    clothPtr,
-                    nClothWorking,
-                    collisionPtr,
-                    workingPtr,
-                    argPtr,
-                    parentPtr,
-                    stiffnessForceRate,
-                    dragForceRate,
-                    gravityRate,
-                    windX,
-                    windY,
-                    windZ,
-                    windStrength,
-                    bCollisionSwitch,
-                    timescale,
-                    is60FPS,
-                    moveRate,
-                    addMoveRate,
-                    springRate);
+                //(AÑADIDO — ver DisableNativePluginOnce. Primer fallo real de la DLL nativa: se corta
+                //la simulacion en vez de propagar la excepcion cada frame.)
+                try
+                {
+                    NativeClothSkirtUpdate(
+                        clothPtr,
+                        nClothWorking,
+                        collisionPtr,
+                        workingPtr,
+                        argPtr,
+                        parentPtr,
+                        stiffnessForceRate,
+                        dragForceRate,
+                        gravityRate,
+                        windX,
+                        windY,
+                        windZ,
+                        windStrength,
+                        bCollisionSwitch,
+                        timescale,
+                        is60FPS,
+                        moveRate,
+                        addMoveRate,
+                        springRate);
+                }
+                catch (DllNotFoundException) { DisableNativePluginOnce("NativeClothSkirtUpdate"); }
+                catch (EntryPointNotFoundException) { DisableNativePluginOnce("NativeClothSkirtUpdate"); }
+                catch (BadImageFormatException) { DisableNativePluginOnce("NativeClothSkirtUpdate"); }
 
                 arg = argPin.Value;
             }
@@ -410,11 +457,18 @@ namespace Gallop
                 if (workingPtr == IntPtr.Zero || argPtr == IntPtr.Zero)
                     return;
 
-                NativeSkirtUpdate(
-                    workingPtr,
-                    argPtr);
+                //(AÑADIDO — ver DisableNativePluginOnce.)
+                try
+                {
+                    NativeSkirtUpdate(
+                        workingPtr,
+                        argPtr);
 
-                arg = argPin.Value;
+                    arg = argPin.Value;
+                }
+                catch (DllNotFoundException) { DisableNativePluginOnce("NativeSkirtUpdate"); }
+                catch (EntryPointNotFoundException) { DisableNativePluginOnce("NativeSkirtUpdate"); }
+                catch (BadImageFormatException) { DisableNativePluginOnce("NativeSkirtUpdate"); }
             }
             finally
             {
