@@ -371,19 +371,29 @@ namespace Gallop
 
         private void LoadHeadCollisionParamSequence(Dictionary<string, Transform> transformCacheDic, float headScale, float bodyScale)
         {
-            if (_headDataContainerAsset == null)
+            // Sin CABEZA (pelo simulado por DynamicBone) el BUSTO no puede perderse: la ropa
+            // interior vive en el contenedor de bust, y en el flujo oficial llega como asset
+            // SECUNDARIO de esta secuencia. Si no hay head, el busto pasa a ser el principal y
+            // se carga igual (colisores + resortes) para que la ropa interior tenga fisica.
+            if (_headDataContainerAsset == null && _bustDataContainerAsset == null)
                 return;
 
-            CySpringCollisionDataAsset main = ToCollisionAsset(_headDataContainerAsset);
+            bool headAsMain = _headDataContainerAsset != null;
+
+            CySpringCollisionDataAsset main = ToCollisionAsset(headAsMain ? _headDataContainerAsset : _bustDataContainerAsset);
             CySpringCollisionDataAsset add = null;
             float addScale = headScale;
 
-            if (_bustDataContainerAsset != null)
+            if (headAsMain && _bustDataContainerAsset != null)
             {
                 add = ToCollisionAsset(_bustDataContainerAsset);
                 _isCalcCorrectScale = _bustDataContainerAsset.UseCorrectScaleCalc;
                 if (_isCalcCorrectScale)
                     addScale = bodyScale;
+            }
+            else if (!headAsMain && _bustDataContainerAsset != null)
+            {
+                _isCalcCorrectScale = _bustDataContainerAsset.UseCorrectScaleCalc;
             }
 
             LoadCollisionParam(Parts.Head, main, add, headScale, addScale, transformCacheDic);
@@ -396,13 +406,17 @@ namespace Gallop
 
         private void LoadHeadSpringParamSequence(CySpringCollisionRuntimeData[] envCollisionArray, float headScale, float bodyScale)
         {
-            if (_headDataContainerAsset == null)
+            // Igual que en la secuencia de colisores: sin CABEZA el BUSTO entra como asset
+            // PRINCIPAL, no como secundario, para no quedarse sin fisica de ropa interior.
+            if (_headDataContainerAsset == null && _bustDataContainerAsset == null)
                 return;
+
+            bool headAsMain = _headDataContainerAsset != null;
 
             LoadSpringParam(
                 Parts.Head,
-                ToSpringAsset(_headDataContainerAsset),
-                ToSpringAsset(_bustDataContainerAsset),
+                ToSpringAsset(headAsMain ? _headDataContainerAsset : _bustDataContainerAsset),
+                headAsMain ? ToSpringAsset(_bustDataContainerAsset) : null,
                 headScale,
                 bodyScale,
                 _ignoredCySpringRootBoneArray,
@@ -1535,6 +1549,17 @@ namespace Gallop
                 else
                     _springArray[i].DisableAllCySpringBones();
             }
+        }
+
+        // (TEST) Refresca SOLO la posicion/radio de los colisores de un part desde su runtime, sin
+        // recrear el array nativo ni re-registrar los parent works (y por tanto sin el log del
+        // re-registro). Lo usa la herramienta de prueba de colisores movibles.
+        public void RefreshNativeCollisionPositions(int index)
+        {
+            if (_springArray == null || index < 0 || index >= _springArray.Length)
+                return;
+
+            _springArray[index]?.UpdateNativeCollision(1.0f);
         }
 
         // El motor lee radios y posiciones de colision del array NATIVO, que solo se construye en el
