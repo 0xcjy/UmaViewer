@@ -973,10 +973,10 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                             {
                                 if (key.TextureId >= 0 && !key.UseMonitorMovie())
                                     liveAssetPaths.Add(group.ContentType == 1
-                                        ? Director.GetMirrorBallProjectionTexturePath(key.TextureId)
-                                        : Director.GetLightProjectionTexturePath(key.TextureId));
+                                        ? Director.GetMirrorBallProjectionTexturePath(key.TextureId, live)
+                                        : Director.GetLightProjectionTexturePath(key.TextureId, live));
                                 if (key.AnimationParam != null && key.AnimationParam.TextureId >= 0)
-                                    liveAssetPaths.Add(Director.GetLightProjectionTexturePath(key.AnimationParam.TextureId));
+                                    liveAssetPaths.Add(Director.GetLightProjectionTexturePath(key.AnimationParam.TextureId, live));
                             }
                         }
                     }

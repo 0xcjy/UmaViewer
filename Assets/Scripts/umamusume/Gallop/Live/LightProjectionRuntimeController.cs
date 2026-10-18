@@ -139,16 +139,27 @@ namespace Gallop.Live
                 Report(binding, "content:" + info.group.ContentType, "Unknown authored ContentType " + info.group.ContentType + ".");
                 return;
             }
+            // The key's TextureId is an id into the per-song projector table published by
+            // `livesettings` (row type 11: id -> texture asset name), resolved by the Director when it
+            // loads the asset. It is NOT the texture's file number: song 1001 maps id 1 to
+            // `tex_env_live_cmn_projector000`, while song 1005 maps 1/2/3 to 004/001/002. A group is
+            // only an instance, so two groups may share a gobo; song 1001 stores id 1 on all eighteen
+            // keys, so every instance projects the same texture.
+            int textureId = a.TextureId;
             if (a.IsEnable)
             {
-                Texture texture = (info.group.ContentType == 0 ? _textureResolver : _mirrorTextureResolver)?.Invoke(a.TextureId);
+                Texture texture = (info.group.ContentType == 0 ? _textureResolver : _mirrorTextureResolver)?.Invoke(textureId);
                 if (texture == null)
                 {
-                    projector.enabled = false;
-                    Report(binding, "texture:" + a.TextureId, "Authored projector texture " + a.TextureId + " is unavailable.");
-                    return;
+                    // Native only writes the texture when the table has one; without it the authored
+                    // (unassigned) LightTex stays, which Unity renders as white instead of removing
+                    // the projector from the stage.
+                    Report(binding, "texture:" + textureId, "Authored projector texture " + textureId + " is unavailable.");
                 }
-                material.SetTexture(ShaderManager.GetPropertyId(ShaderManager.PropertyId._LightTex), texture);
+                else
+                {
+                    material.SetTexture(ShaderManager.GetPropertyId(ShaderManager.PropertyId._LightTex), texture);
+                }
             }
             if (binding.projection.IsAnimationProjection && !ApplyAnimation(binding, a, b, t, info.time))
             {

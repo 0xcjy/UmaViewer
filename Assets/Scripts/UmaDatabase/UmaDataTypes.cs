@@ -103,6 +103,32 @@ public class LiveEntry
         }
         BackGroundId = LiveSettings[1][2];
     }
+
+    private Dictionary<int, string> _projectorTextureNames;
+
+    // `livesettings` row type 11 is the per-song projector texture table: texture id -> texture
+    // asset name. A LightProjection key's TextureId is an id into this table, so the asset name
+    // cannot be derived from the number (song 1001: id 1 -> tex_env_live_cmn_projector000;
+    // song 1005: id 1/2/3 -> tex_env_live_cmn_projector004/001/002).
+    public bool TryGetProjectorTextureName(int textureId, out string name)
+    {
+        if (_projectorTextureNames == null)
+        {
+            _projectorTextureNames = new Dictionary<int, string>();
+            if (LiveSettings != null)
+            {
+                foreach (var row in LiveSettings)
+                {
+                    if (row == null || row.Length <= 3 || row[1].Trim() != "11") continue;
+                    int id;
+                    if (!int.TryParse(row[3].Trim(), System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture, out id)) continue;
+                    _projectorTextureNames[id] = row[2].Trim();
+                }
+            }
+        }
+        return _projectorTextureNames.TryGetValue(textureId, out name);
+    }
 }
 
 public class PartEntry

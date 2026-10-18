@@ -58,11 +58,38 @@ namespace Gallop.Live
             System.Globalization.CultureInfo.InvariantCulture,
             "3d/env/live/common/projectormirrorball/tex_env_live_cmn_projector_mirrorball{0:000}", textureId);
 
+        // The timeline TextureId is an id into the per-song projector table published by
+        // `livesettings` (row type 11: id -> texture asset name), not the texture's file number.
+        // Song 1001 maps id 1 to `tex_env_live_cmn_projector000`, while song 1005 maps 1/2/3 to
+        // 004/001/002. Fall back to the number when the song has no table (or no such id).
+        public static string GetLightProjectionTexturePath(int textureId, LiveEntry entry) =>
+            ResolveProjectorTexturePath(textureId, entry, false);
+
+        public static string GetMirrorBallProjectionTexturePath(int textureId, LiveEntry entry) =>
+            ResolveProjectorTexturePath(textureId, entry, true);
+
+        private static string ResolveProjectorTexturePath(int textureId, LiveEntry entry, bool mirrorBall)
+        {
+            string name;
+            if (entry != null && entry.TryGetProjectorTextureName(textureId, out name) &&
+                !string.IsNullOrEmpty(name))
+            {
+                bool tableMirror = name.IndexOf("mirrorball", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (tableMirror == mirrorBall)
+                    return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                        mirrorBall ? "3d/env/live/common/projectormirrorball/{0}"
+                                   : "3d/env/live/common/projector/{0}", name);
+            }
+            return mirrorBall
+                ? GetMirrorBallProjectionTexturePath(textureId)
+                : GetLightProjectionTexturePath(textureId);
+        }
+
         private Texture ResolveMirrorBallProjectionTexture(int textureId)
         {
             if (textureId < 0) return null;
             if (_mirrorBallProjectionTextures.TryGetValue(textureId, out var texture)) return texture;
-            texture = LiveFlashResourceUtility.LoadOnView<Texture>(GetMirrorBallProjectionTexturePath(textureId));
+            texture = LiveFlashResourceUtility.LoadOnView<Texture>(GetMirrorBallProjectionTexturePath(textureId, live));
             _mirrorBallProjectionTextures.Add(textureId, texture);
             return texture;
         }
@@ -71,7 +98,7 @@ namespace Gallop.Live
         {
             if (textureId < 0) return null;
             if (_lightProjectionTextures.TryGetValue(textureId, out var texture)) return texture;
-            texture = LiveFlashResourceUtility.LoadOnView<Texture>(GetLightProjectionTexturePath(textureId));
+            texture = LiveFlashResourceUtility.LoadOnView<Texture>(GetLightProjectionTexturePath(textureId, live));
             _lightProjectionTextures.Add(textureId, texture);
             return texture;
         }
