@@ -17,7 +17,7 @@ namespace Gallop.RenderPipeline
             public int NameHash;
             public Material Material;
             public MeshRenderer Renderer;
-            public bool HasColorPower, HasMulColor0;
+            public bool HasColorPower, HasMulColor0, HasBlinkLightColor;
             public Color ColorFactor = Color.white;
             public float BrightnessFactor = 1f;
             public bool AutoBrightness = true;
@@ -35,6 +35,7 @@ namespace Gallop.RenderPipeline
         private readonly float _under;
         private readonly int _colorPowerId;
         private readonly int _mulColor0Id;
+        private readonly int _blinkLightColorId;
 
         public RecoveredLensFlareController(Transform root, float standard, float under,
             string nameSuffixToken = "")
@@ -43,6 +44,7 @@ namespace Gallop.RenderPipeline
             _under = under;
             _colorPowerId = ShaderManager.GetPropertyId(ShaderManager.PropertyId._ColorPower);
             _mulColor0Id = ShaderManager.GetPropertyId(ShaderManager.PropertyId._MulColor0);
+            _blinkLightColorId = ShaderManager.GetPropertyId(ShaderManager.PropertyId._BlinkLightColor);
             AddSources(root, nameSuffixToken);
         }
 
@@ -64,7 +66,8 @@ namespace Gallop.RenderPipeline
                     Material = material,
                     Renderer = renderer,
                     HasColorPower = material != null && material.HasProperty(_colorPowerId),
-                    HasMulColor0 = material != null && material.HasProperty(_mulColor0Id)
+                    HasMulColor0 = material != null && material.HasProperty(_mulColor0Id),
+                    HasBlinkLightColor = material != null && material.HasProperty(_blinkLightColorId)
                 };
                 _targets.Add(target);
                 _bySource.Add(flare, target);
@@ -159,10 +162,7 @@ namespace Gallop.RenderPipeline
                         if (_lightProperties.isEmpty)
                             target.Renderer.GetPropertyBlock(_lightProperties);
                     }
-                    Color materialColor = target.HasBlinkColor ? target.BlinkColor : target.HasMulColor0
-                        ? _lightProperties.HasColor(_mulColor0Id)
-                            ? _lightProperties.GetColor(_mulColor0Id) : target.Material.GetColor(_mulColor0Id)
-                        : Color.white;
+                    Color materialColor = ResolveMaterialColor(target);
                     float colorPower = target.HasColorPower
                         ? _lightProperties.HasFloat(_colorPowerId)
                             ? _lightProperties.GetFloat(_colorPowerId) : target.Material.GetFloat(_colorPowerId)
@@ -191,6 +191,25 @@ namespace Gallop.RenderPipeline
                 target.Flare.ApplyTimeline(brightness > 0f, false, Vector3.zero,
                     color, brightness, target.Flare.FadeSpeed);
             }
+        }
+
+        // The stage's lamp renderers carry their colour and power in the per-renderer property block
+        // (the blink driver writes them there: _BlinkLightColor / _ColorPower). The native
+        // UnityLensFlareController reads the same values out of the renderer's material, so read
+        // the block first and fall back to the material.
+        private Color ResolveMaterialColor(Target target)
+        {
+            if (target.HasBlinkColor) return target.BlinkColor;
+            if (target.HasBlinkLightColor) return ReadLampColor(target, _blinkLightColorId);
+            if (target.HasMulColor0) return ReadLampColor(target, _mulColor0Id);
+            return Color.white;
+        }
+
+        private Color ReadLampColor(Target target, int propertyId)
+        {
+            return _lightProperties.HasColor(propertyId)
+                ? _lightProperties.GetColor(propertyId)
+                : target.Material.GetColor(propertyId);
         }
 
         // FitOnScreen 0x1aaa870 uses localPosition directly against world frustum planes.

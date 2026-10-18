@@ -1,27 +1,40 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 namespace Gallop.RenderPipeline
 {
+    /// <summary>
+    /// Flare host of the live stage lights (`*flarelight*`). The asset it points at (LensFlareData)
+    /// is the in-house copy of Unity's legacy Flare: one texture atlas plus a list of elements
+    /// strung out along the line that runs from this object through the screen centre (Position 0 =
+    /// this object, 1 = screen centre, values above 1 go past the centre).
+    ///
+    /// URP never renders `UnityEngine.LensFlare`, so each element is drawn here as one camera-facing
+    /// quad that samples its own slice of the atlas (UVs baked into the mesh, tint per element via a
+    /// property block). The per-frame state (on/off, colour, brightness, fade speed) is written by
+    /// `RecoveredLensFlareController`, the port of the native `UnityLensFlareController`
+    /// (AlterUpdate / UpdateInfo), so the engine's rules live in a single place.
+    ///
+    /// The serialized field names are part of the bundle layout: they must not be renamed.
+    /// </summary>
     [DisallowMultipleComponent]
     public class CustomLensFlare : MonoBehaviour
     {
-        public static float RuntimeStrength = 1f;
-        public static float RuntimeScale = 1f;
-        public static float RuntimeAttenuationDistance = 500f;
-        // Diagnostic A/B switch. The legacy IgnoreLayers contract is not equivalent
-        // to SRP depth occlusion, which can reject a source placed inside its lamp mesh.
-        public static bool RuntimeOcclusion = true;
-        // Legacy Flare sizes are authored in a different screen-space convention
-        // than URP LensFlareDataSRP. A direct 1.0 mapping produces a near-full
-        // frame white disc on several live stages.
-        private const float kMaxElementScale = 1f;
-        private const float kMaxIntensity = 1f;
-        private const string kRuntimeSourceName = "__RuntimeLensFlare";
+        private const string kShaderName = "Hidden/UmaViewer/LensFlareAdditive";
+        private static readonly int sColorId = Shader.PropertyToID("_Color");
 
+        /// <summary>Global brightness multiplier, for A/B against a reference capture.</summary>
+        public static float RuntimeStrength = 1f;
+
+        /// <summary>
+        /// The built-in flare is hidden by any collider between the flare and the camera. The
+        /// stage's own lamp colliders sit at the flare source itself, so the raycast is opt-in
+        /// (it always ignores <see cref="IgnoreLayers"/> either way).
+        /// </summary>
+        public static bool RuntimeOcclusion = false;
+
+        // ---- Serialized fields of the authored flare host (do not rename) ----
         public LensFlareData Flare;
         public float Brightness = 1f;
         public float FadeSpeed = 1f;
@@ -29,366 +42,509 @@ namespace Gallop.RenderPipeline
         public LayerMask IgnoreLayers;
         public bool IsDirectional;
 
-        private LensFlareComponentSRP _component;
-        private LensFlareDataSRP _runtimeData;
-        private float _lastRuntimeStrength = -1f;
-        private float _lastRuntimeScale = -1f;
-        private float _lastRuntimeAttenuationDistance = -1f;
-        private bool _lastRuntimeOcclusion;
-        private LensFlareData _cachedAtlasData;
+        // ---- Render tuning (absent from the authored assets, so the initializers apply) ----
+        [Header("Render")]
+        [Tooltip("Fraction of the screen height covered by an element whose Size is 1. " +
+                 "The authored assets use Size 3 and 6, so 0.02 draws them at 6% and 12% of the " +
+                 "screen height. This is the one knob to calibrate against a reference capture: " +
+                 "the flare asset stores the element size in an arbitrary unit.")]
+        public float elementSizeScale = 0.02f;
+        [Tooltip("Scale an element grows from while it is fading in (Zoom elements only).")]
+        public float zoomMinScale = 0.35f;
 
-        private sealed class AtlasCacheEntry
+        private sealed class ElementQuad
         {
-            public Texture[] textures;
-            public int references;
+            public Transform Transform;
+            public MeshRenderer Renderer;
+            public LensFlareElement Element;
+            public MaterialPropertyBlock Properties;
         }
 
-        private static readonly Dictionary<LensFlareData, AtlasCacheEntry> sAtlasCache =
-            new Dictionary<LensFlareData, AtlasCacheEntry>();
-        private static readonly HashSet<Texture> sLoggedTextureSamples = new HashSet<Texture>();
+        private readonly List<ElementQuad> _elements = new List<ElementQuad>();
+        private LensFlareData _builtData;
+        private Transform _root;
+        private Light _light;
+        private bool _builtLight;
+        private int _layer = -1;
+        private bool _enabled = true;
+        private float _fade;
 
-        private void OnEnable()
+        private static Shader sShader;
+        private static bool sShaderMissing;
+        private static readonly Dictionary<LensFlareData, Mesh[]> sMeshCache = new Dictionary<LensFlareData, Mesh[]>();
+        private static readonly Dictionary<Texture, Material> sMaterialCache = new Dictionary<Texture, Material>();
+
+        // ---- State written by RecoveredLensFlareController ----
+
+        /// <summary>
+        /// Native `UnityLensFlareController.UpdateInfo`: the timeline hands the flare its tint,
+        /// brightness and fade speed, and turns it on or off. Positioning is applied by the caller
+        /// (it owns the authored local position and the group fallback).
+        /// </summary>
+        public void ApplyTimeline(bool enabled, bool overridePosition, Vector3 offset,
+            Color color, float brightness, float fadeSpeed)
         {
-            BuildRuntimeFlare();
-            ApplyRuntimeParameters();
-            if (_component != null) _component.enabled = true;
+            _enabled = enabled;
+            // The authored tint carries alpha 0 by convention (it is not opacity), and the timeline
+            // colour replaces it, exactly like LensFlare.color did natively.
+            Color = color;
+            Brightness = Mathf.Max(0f, brightness);
+            FadeSpeed = Mathf.Max(0f, fadeSpeed);
         }
 
-        private void Update()
-        {
-            if (_runtimeData == null || _component == null) return;
-            if (!Mathf.Approximately(_lastRuntimeStrength, RuntimeStrength) ||
-                !Mathf.Approximately(_lastRuntimeScale, RuntimeScale) ||
-                !Mathf.Approximately(_lastRuntimeAttenuationDistance, RuntimeAttenuationDistance) ||
-                _lastRuntimeOcclusion != RuntimeOcclusion)
-                ApplyRuntimeParameters();
-        }
+        // ---- Rendering ----
 
         private void OnDisable()
         {
-            if (_component != null) _component.enabled = false;
+            // The controller deactivates the host when the timeline says so: take the quads with it.
+            ClearElements();
         }
 
         private void OnDestroy()
         {
-            if (_component != null)
-            {
-                _component.enabled = false;
-                _component.lensFlareData = null;
-                Destroy(_component.gameObject);
-            }
-            if (_runtimeData != null) Destroy(_runtimeData);
-            ReleaseAtlas();
+            ClearElements();
         }
 
-        public void ApplyTimeline(bool enabled, bool overridePosition, Vector3 offset,
-            Color color, float brightness, float fadeSpeed)
+        private void LateUpdate()
         {
-            if (_component == null || _runtimeData == null) BuildRuntimeFlare();
-            if (_component != null)
-                _component.transform.localPosition = overridePosition ? offset : Vector3.zero;
-            Color = color;
-            Brightness = Mathf.Max(0f, brightness);
-            FadeSpeed = Mathf.Max(0f, fadeSpeed);
-            ApplyRuntimeParameters();
-            if (_component != null) _component.enabled = enabled;
-        }
-
-        private void BuildRuntimeFlare()
-        {
-            // Missing authored resources must remain missing, never become a procedural flare.
-            if (Flare == null || Flare.Texture == null) return;
-            Transform runtimeSource = transform.Find(kRuntimeSourceName);
-            if (runtimeSource == null)
+            if (!EnsureElements())
             {
-                var sourceObject = new GameObject(kRuntimeSourceName);
-                runtimeSource = sourceObject.transform;
-                runtimeSource.SetParent(transform, false);
-            }
-            runtimeSource.gameObject.layer = gameObject.layer;
-            _component = runtimeSource.GetComponent<LensFlareComponentSRP>();
-            if (_component == null) _component = runtimeSource.gameObject.AddComponent<LensFlareComponentSRP>();
-
-            // AddComponent invokes LensFlareComponentSRP.OnEnable immediately. At that
-            // point lensFlareData is still null, so URP removes this component from
-            // LensFlareCommonSRP. Disable it before assigning data; the caller enables
-            // it after setup, making OnEnable register the completed component.
-            _component.enabled = false;
-
-            if (_runtimeData != null) Destroy(_runtimeData);
-            _runtimeData = ScriptableObject.CreateInstance<LensFlareDataSRP>();
-
-            var source = Flare.ElementArray ?? Array.Empty<LensFlareElement>();
-            var elements = new LensFlareDataElementSRP[source.Length];
-            for (int i = 0; i < source.Length; i++)
-            {
-                LensFlareElement item = source[i] ?? new LensFlareElement();
-                var element = new LensFlareDataElementSRP
-                {
-                    flareType = SRPLensFlareType.Image,
-                    lensFlareTexture = GetElementTexture(item.ImageIndex),
-                    position = item.Position,
-                    uniformScale = Mathf.Clamp(item.Size, 0.001f, kMaxElementScale),
-                    sizeXY = Vector2.one,
-                    tint = ComposeTint(item.Color),
-                    autoRotate = item.Rotate,
-                    modulateByLightColor = item.UseLightColor,
-                    blendMode = SRPLensFlareBlendMode.Additive,
-                    preserveAspectRatio = true
-                };
-                elements[i] = element;
-            }
-
-            _runtimeData.elements = elements;
-            _component.lensFlareData = _runtimeData;
-            _component.useOcclusion = RuntimeOcclusion;
-            _component.allowOffScreen = false;
-            _component.attenuationByLightShape = false;
-            // Do not shrink the flare with distance. The previous double fade
-            // attenuated both area and brightness and made the authored starburst
-            // disappear into the lamp mesh. Retain intensity falloff only.
-            _component.distanceAttenuationCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f);
-            _component.scaleByDistanceCurve = AnimationCurve.Constant(0f, 1f, 1f);
-        }
-
-        private void ApplyRuntimeParameters()
-        {
-            if (_component == null || _runtimeData == null) return;
-            _component.intensity = Mathf.Min(kMaxIntensity, Mathf.Max(0f, Brightness)) *
-                                   Mathf.Clamp(RuntimeStrength, 0f, 2f);
-            _lastRuntimeStrength = RuntimeStrength;
-            _component.maxAttenuationDistance = Mathf.Clamp(RuntimeAttenuationDistance, 10f, 1000f);
-            _lastRuntimeAttenuationDistance = RuntimeAttenuationDistance;
-            _component.useOcclusion = RuntimeOcclusion;
-            _lastRuntimeOcclusion = RuntimeOcclusion;
-            for (int i = 0; i < _runtimeData.elements.Length; i++)
-            {
-                LensFlareElement source = Flare != null && Flare.ElementArray != null && i < Flare.ElementArray.Length
-                    ? Flare.ElementArray[i]
-                    : null;
-                Color sourceColor = source != null ? source.Color : UnityEngine.Color.white;
-                _runtimeData.elements[i].tint = ComposeTint(sourceColor);
-                float sourceScale = source != null ? source.Size : 1f;
-                _runtimeData.elements[i].uniformScale =
-                    Mathf.Clamp(sourceScale, 0.001f, kMaxElementScale) * Mathf.Clamp(RuntimeScale, 0.1f, 3f);
-            }
-            _lastRuntimeScale = RuntimeScale;
-        }
-
-        public static void LogRuntimeDiagnostics(Camera camera)
-        {
-            var pipelineAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
-            CustomLensFlare[] flares = UnityEngine.Object.FindObjectsOfType<CustomLensFlare>(true);
-            int activeHosts = 0, validAssets = 0, validTextures = 0, validComponents = 0;
-            int enabledComponents = 0, positiveIntensity = 0, inFront = 0, inViewport = 0;
-            int occlusionEnabled = 0, elementCount = 0, cameraLayerVisible = 0;
-            int positiveDistanceAttenuation = 0, positiveScreenAttenuation = 0;
-            float minSourceBrightness = float.PositiveInfinity, maxSourceBrightness = float.NegativeInfinity;
-            float minSourceSize = float.PositiveInfinity, maxSourceSize = float.NegativeInfinity;
-            var imageIndexCounts = new Dictionary<int, int>();
-            var samples = new List<string>();
-
-            foreach (CustomLensFlare flare in flares)
-            {
-                if (flare == null) continue;
-                minSourceBrightness = Mathf.Min(minSourceBrightness, flare.Brightness);
-                maxSourceBrightness = Mathf.Max(maxSourceBrightness, flare.Brightness);
-                if (flare.Flare != null && flare.Flare.ElementArray != null)
-                {
-                    foreach (LensFlareElement sourceElement in flare.Flare.ElementArray)
-                    {
-                        if (sourceElement == null) continue;
-                        minSourceSize = Mathf.Min(minSourceSize, sourceElement.Size);
-                        maxSourceSize = Mathf.Max(maxSourceSize, sourceElement.Size);
-                        imageIndexCounts.TryGetValue(sourceElement.ImageIndex, out int count);
-                        imageIndexCounts[sourceElement.ImageIndex] = count + 1;
-                    }
-                }
-                if (flare.gameObject.activeInHierarchy) activeHosts++;
-                if (flare.Flare != null) validAssets++;
-                if (flare.Flare != null && flare.Flare.Texture != null) validTextures++;
-                if (flare._component != null)
-                {
-                    validComponents++;
-                    if (flare._component.enabled && flare._component.gameObject.activeInHierarchy) enabledComponents++;
-                    if (flare._component.intensity > 0f) positiveIntensity++;
-                    if (flare._component.useOcclusion) occlusionEnabled++;
-                    if (camera != null && (camera.cullingMask & (1 << flare._component.gameObject.layer)) != 0)
-                        cameraLayerVisible++;
-                }
-                if (flare._runtimeData != null && flare._runtimeData.elements != null)
-                    elementCount += flare._runtimeData.elements.Length;
-
-                Vector3 viewport = camera != null
-                    ? camera.WorldToViewportPoint(flare._component != null
-                        ? flare._component.transform.position
-                        : flare.transform.position)
-                    : Vector3.zero;
-                if (camera != null && viewport.z > 0f)
-                {
-                    inFront++;
-                    if (viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f)
-                        inViewport++;
-                }
-                float distance = camera != null && flare._component != null
-                    ? Vector3.Distance(camera.transform.position, flare._component.transform.position)
-                    : -1f;
-                float distanceAttenuation = flare._component != null && distance >= 0f
-                    ? flare._component.distanceAttenuationCurve.Evaluate(
-                        distance / Mathf.Max(0.00001f, flare._component.maxAttenuationDistance))
-                    : 0f;
-                float radius = Mathf.Max(Mathf.Abs(viewport.x * 2f - 1f), Mathf.Abs(viewport.y * 2f - 1f));
-                float screenAttenuation = flare._component != null && camera != null
-                    ? flare._component.radialScreenAttenuationCurve.Evaluate(radius)
-                    : 0f;
-                if (distanceAttenuation > 0f) positiveDistanceAttenuation++;
-                if (screenAttenuation > 0f) positiveScreenAttenuation++;
-                if (samples.Count < 3)
-                {
-                    LensFlareDataElementSRP firstElement = flare._runtimeData != null &&
-                        flare._runtimeData.elements != null && flare._runtimeData.elements.Length > 0
-                        ? flare._runtimeData.elements[0]
-                        : null;
-                    Texture texture = firstElement != null ? firstElement.lensFlareTexture : null;
-                    string elementInfo = firstElement != null
-                        ? $":localIntensity={firstElement.localIntensity:0.###}:count={firstElement.count}:tint={firstElement.tint}"
-                        : string.Empty;
-                    if (texture != null && sLoggedTextureSamples.Add(texture))
-                        LogTextureSample(texture);
-                    samples.Add($"{flare.name}:active={flare.gameObject.activeInHierarchy}" +
-                                $":enabled={(flare._component != null && flare._component.enabled)}" +
-                                $":intensity={(flare._component != null ? flare._component.intensity : -1f):0.###}" +
-                                $":viewport=({viewport.x:0.##},{viewport.y:0.##},{viewport.z:0.##})" +
-                                $":distance={distance:0.##}:distanceAtten={distanceAttenuation:0.###}" +
-                                $":screenAtten={screenAttenuation:0.###}" +
-                                $":elementScale={(firstElement != null ? firstElement.uniformScale : -1f):0.###}" +
-                                $":texture={(texture != null ? texture.name + "@" + texture.width + "x" + texture.height : "<none>")}" + elementInfo);
-                }
-            }
-
-        }
-
-        private static string FormatImageIndexCounts(Dictionary<int, int> counts)
-        {
-            if (counts == null || counts.Count == 0) return "<none>";
-            var values = new List<string>();
-            foreach (var pair in counts)
-                values.Add($"{pair.Key}:{pair.Value}");
-            return string.Join(",", values);
-        }
-
-        private static void LogTextureSample(Texture texture)
-        {
-            try
-            {
-                var rt = RenderTexture.GetTemporary(8, 8, 0, RenderTextureFormat.ARGB32,
-                    RenderTextureReadWrite.Default);
-                Graphics.Blit(texture, rt);
-                RenderTexture previous = RenderTexture.active;
-                RenderTexture.active = rt;
-                var probe = new Texture2D(8, 8, TextureFormat.RGBA32, false, true);
-                probe.ReadPixels(new Rect(0, 0, 8, 8), 0, 0, false);
-                probe.Apply(false, false);
-                Color32[] pixels = probe.GetPixels32();
-                byte minAlpha = 255, maxAlpha = 0;
-                float maxLuma = 0f;
-                foreach (Color32 pixel in pixels)
-                {
-                    minAlpha = System.Math.Min(minAlpha, pixel.a);
-                    maxAlpha = System.Math.Max(maxAlpha, pixel.a);
-                    maxLuma = Mathf.Max(maxLuma, (pixel.r + pixel.g + pixel.b) / (255f * 3f));
-                }
-                UnityEngine.Object.Destroy(probe);
-                RenderTexture.active = previous;
-                RenderTexture.ReleaseTemporary(rt);
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        private Color ComposeTint(Color elementColor)
-        {
-            // Legacy flare assets use alpha=0 for their single-image layout.
-            // It is not an opacity channel there: live10102's 163 flare
-            // components and both referenced flare assets all carry zero alpha.
-            // URP LensFlareDataSRP does use tint alpha for compositing, so retain
-            // the authored RGB modulation while supplying the required opacity.
-            return new Color(elementColor.r * Color.r, elementColor.g * Color.g,
-                elementColor.b * Color.b, 1f);
-        }
-
-        private Texture GetElementTexture(int imageIndex)
-        {
-            if (Flare == null || Flare.Texture == null || Flare.TextureLayout != 0)
-                return Flare != null ? Flare.Texture : null;
-
-            if (_cachedAtlasData != Flare)
-            {
-                ReleaseAtlas();
-                if (!sAtlasCache.TryGetValue(Flare, out var entry))
-                {
-                    entry = new AtlasCacheEntry { textures = SliceOneLargeFourSmall(Flare.Texture) };
-                    sAtlasCache.Add(Flare, entry);
-                }
-                entry.references++;
-                _cachedAtlasData = Flare;
-            }
-
-            AtlasCacheEntry cached = sAtlasCache[Flare];
-            return imageIndex >= 0 && imageIndex < cached.textures.Length
-                ? cached.textures[imageIndex]
-                : Flare.Texture;
-        }
-
-        private static Texture[] SliceOneLargeFourSmall(Texture source)
-        {
-            int largeWidth = Mathf.Max(1, source.width);
-            int largeHeight = Mathf.Max(1, source.height / 2);
-            int smallWidth = Mathf.Max(1, source.width / 2);
-            int smallHeight = Mathf.Max(1, source.height / 4);
-            return new Texture[]
-            {
-                CreateSlice(source, largeWidth, largeHeight, new Vector2(1f, 0.5f), new Vector2(0f, 0.5f), 0),
-                CreateSlice(source, smallWidth, smallHeight, new Vector2(0.5f, 0.25f), new Vector2(0f, 0.25f), 1),
-                CreateSlice(source, smallWidth, smallHeight, new Vector2(0.5f, 0.25f), new Vector2(0.5f, 0.25f), 2),
-                CreateSlice(source, smallWidth, smallHeight, new Vector2(0.5f, 0.25f), Vector2.zero, 3),
-                CreateSlice(source, smallWidth, smallHeight, new Vector2(0.5f, 0.25f), new Vector2(0.5f, 0f), 4)
-            };
-        }
-
-        private static RenderTexture CreateSlice(Texture source, int width, int height,
-            Vector2 scale, Vector2 offset, int imageIndex)
-        {
-            var texture = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Default)
-            {
-                name = source.name + "_FlareImage" + imageIndex,
-                filterMode = source.filterMode,
-                wrapMode = TextureWrapMode.Clamp,
-                hideFlags = HideFlags.DontSave
-            };
-            texture.Create();
-            Graphics.Blit(source, texture, scale, offset);
-            return texture;
-        }
-
-        private void ReleaseAtlas()
-        {
-            if (_cachedAtlasData == null || !sAtlasCache.TryGetValue(_cachedAtlasData, out var entry))
-            {
-                _cachedAtlasData = null;
+                SetAllQuadsActive(false);
                 return;
             }
 
-            entry.references--;
-            if (entry.references <= 0)
+            Camera camera = ResolveCamera();
+            if (camera == null)
             {
-                foreach (Texture texture in entry.textures)
-                    if (texture != null) Destroy(texture);
-                sAtlasCache.Remove(_cachedAtlasData);
+                SetAllQuadsActive(false);
+                return;
             }
-            _cachedAtlasData = null;
+
+            int layer = ResolveLayer(camera);
+            if (_layer != layer)
+            {
+                _layer = layer;
+                SetRootLayer(_layer);
+            }
+
+            // On screen and in front of the camera, like the flare renderer required.
+            Vector3 viewport = camera.WorldToViewportPoint(transform.position);
+            bool visible = viewport.z > 0f &&
+                           viewport.x >= 0f && viewport.x <= 1f &&
+                           viewport.y >= 0f && viewport.y <= 1f;
+            if (visible && RuntimeOcclusion && IsOccluded(camera))
+                visible = false;
+
+            float target = (_enabled && Brightness > 0f && visible) ? 1f : 0f;
+            _fade = Mathf.MoveTowards(_fade, target, Mathf.Max(0.0001f, FadeSpeed) * Time.deltaTime);
+
+            Vector3 sourceScreen = camera.WorldToScreenPoint(transform.position);
+            if (_fade <= 0.001f || sourceScreen.z <= 0.0001f)
+            {
+                SetAllQuadsActive(false);
+                return;
+            }
+
+            // The authored tints carry alpha 0 by convention: only RGB counts.
+            float tintR = Color.r;
+            float tintG = Color.g;
+            float tintB = Color.b;
+            float tintBrightness = Mathf.Max(0f, Brightness) * RuntimeStrength;
+
+            float screenHeight = camera.pixelHeight;
+            Vector2 center = new Vector2(camera.pixelWidth * 0.5f, screenHeight * 0.5f);
+            // Size 1 covers `elementSizeScale` of the screen height; ScreenToWorldPoint wants a
+            // world size, and a pixel at that depth measures this much:
+            float worldPerScreenHeight = 2f * sourceScreen.z * Mathf.Tan(camera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            Quaternion cameraRotation = camera.transform.rotation;
+            bool useLightColor = HasLightColor();
+
+            for (int i = 0; i < _elements.Count; i++)
+            {
+                ElementQuad quad = _elements[i];
+                LensFlareElement element = quad.Element;
+                if (element == null)
+                {
+                    SetQuadActive(quad, false);
+                    continue;
+                }
+
+                // "Fade": the element fades in and out with the flare instead of popping.
+                float elementFade = element.Fade ? _fade : (visible ? 1f : 0f);
+                if (elementFade <= 0.001f)
+                {
+                    SetQuadActive(quad, false);
+                    continue;
+                }
+
+                Vector2 elementScreen = Vector2.LerpUnclamped(sourceScreen, center, element.Position);
+                float size = Mathf.Max(0f, element.Size) * elementSizeScale * worldPerScreenHeight;
+                // "Zoom": the element scales up while it becomes visible.
+                if (element.Zoom)
+                    size *= Mathf.Lerp(zoomMinScale, 1f, elementFade);
+                if (size <= 0f)
+                {
+                    SetQuadActive(quad, false);
+                    continue;
+                }
+
+                Quaternion rotation = cameraRotation;
+                if (element.Rotate)
+                {
+                    // "Rotate": the bottom of the element always faces the screen centre.
+                    Vector2 direction = elementScreen - center;
+                    float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
+                    rotation *= Quaternion.AngleAxis(angle, Vector3.forward);
+                }
+
+                Transform quadTransform = quad.Transform;
+                quadTransform.SetPositionAndRotation(
+                    camera.ScreenToWorldPoint(new Vector3(elementScreen.x, elementScreen.y, sourceScreen.z)),
+                    rotation);
+                quadTransform.localScale = new Vector3(size, size, 1f);
+
+                Color elementColor = element.Color;
+                float lightR = 1f, lightG = 1f, lightB = 1f;
+                if (element.UseLightColor && useLightColor)
+                {
+                    // The authored hosts have no Light component, so this stays neutral and the
+                    // lamp colour keeps coming from the controller (it folds the renderer's
+                    // _BlinkLightColor / _MulColor0 * _ColorPower * 2 into the timeline colour).
+                    lightR = _light.color.r;
+                    lightG = _light.color.g;
+                    lightB = _light.color.b;
+                }
+
+                float strength = tintBrightness * elementFade;
+                Color finalColor = new Color(
+                    elementColor.r * tintR * lightR * strength,
+                    elementColor.g * tintG * lightG * strength,
+                    elementColor.b * tintB * lightB * strength,
+                    1f);
+
+                quad.Renderer.GetPropertyBlock(quad.Properties);
+                quad.Properties.SetColor(sColorId, finalColor);
+                quad.Renderer.SetPropertyBlock(quad.Properties);
+                SetQuadActive(quad, true);
+            }
+        }
+
+        // ---- Element construction ----
+
+        private bool EnsureElements()
+        {
+            if (Flare == null || !Flare.HasTexture || Flare.ElementCount == 0)
+            {
+                // Missing authored resources stay missing: never invent a flare.
+                if (_builtData != null)
+                    ClearElements();
+                return false;
+            }
+
+            if (_builtData == Flare)
+                return _elements.Count > 0;
+
+            ClearElements();
+
+            Mesh[] meshes = GetElementMeshes(Flare);
+            Material material = GetMaterial(Flare.Texture);
+            if (meshes == null || material == null)
+                return false;
+
+            var rootObject = new GameObject("LensFlareQuads_" + name);
+            _root = rootObject.transform;
+
+            // World-space quads: keeping them outside the host avoids inheriting its (possibly
+            // scaled) transform, which would distort the per-element screen size.
+            _root.SetParent(null, false);
+            _layer = -1;
+
+            for (int i = 0; i < Flare.ElementCount; i++)
+            {
+                LensFlareElement element = Flare.ElementArray[i];
+                if (element == null)
+                    continue;
+
+                var quadObject = new GameObject("flare_" + name + "_" + i);
+                quadObject.transform.SetParent(_root, false);
+
+                var filter = quadObject.AddComponent<MeshFilter>();
+                filter.sharedMesh = meshes[i];
+
+                var renderer = quadObject.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                renderer.lightProbeUsage = LightProbeUsage.Off;
+                renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+                renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                renderer.allowOcclusionWhenDynamic = false;
+
+                quadObject.SetActive(false);
+                _elements.Add(new ElementQuad
+                {
+                    Transform = quadObject.transform,
+                    Renderer = renderer,
+                    Element = element,
+                    Properties = new MaterialPropertyBlock()
+                });
+            }
+
+            CacheLight();
+            _builtData = Flare;
+            return _elements.Count > 0;
+        }
+
+        private void ClearElements()
+        {
+            _elements.Clear();
+            _builtData = null;
+            _layer = -1;
+            if (_root != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(_root.gameObject);
+                else
+                    DestroyImmediate(_root.gameObject);
+                _root = null;
+            }
+        }
+
+        private void CacheLight()
+        {
+            if (_builtLight)
+                return;
+            _builtLight = true;
+            _light = GetComponent<Light>();
+        }
+
+        private bool HasLightColor()
+        {
+            CacheLight();
+            return _light != null;
+        }
+
+        private bool IsOccluded(Camera camera)
+        {
+            Vector3 target = Vector3.Lerp(camera.transform.position, transform.position, 0.98f);
+            int mask = ~(int)IgnoreLayers;
+            return Physics.Linecast(camera.transform.position, target, mask, QueryTriggerInteraction.Ignore);
+        }
+
+        private void SetRootLayer(int layer)
+        {
+            if (_root == null)
+                return;
+            Transform[] children = _root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+                children[i].gameObject.layer = layer;
+        }
+
+        private int ResolveLayer(Camera camera)
+        {
+            int layer = gameObject.layer;
+            if ((camera.cullingMask & (1 << layer)) == 0)
+                layer = 0;
+            return layer;
+        }
+
+        private static Camera ResolveCamera()
+        {
+            Gallop.Live.Director director = Gallop.Live.Director.instance;
+            if (director != null && director.MainRenderCamera != null)
+                return director.MainRenderCamera;
+
+            return Camera.main;
+        }
+
+        private void SetAllQuadsActive(bool active)
+        {
+            for (int i = 0; i < _elements.Count; i++)
+                SetQuadActive(_elements[i], active);
+        }
+
+        private static void SetQuadActive(ElementQuad quad, bool active)
+        {
+            if (quad == null || quad.Transform == null)
+                return;
+            GameObject quadObject = quad.Transform.gameObject;
+            if (quadObject.activeSelf != active)
+                quadObject.SetActive(active);
+        }
+
+        // ---- Shared render resources ----
+
+        private static Mesh[] GetElementMeshes(LensFlareData data)
+        {
+            if (sMeshCache.TryGetValue(data, out Mesh[] cached) &&
+                cached != null && cached.Length == data.ElementCount && cached[0] != null)
+                return cached;
+
+            PruneSharedResources();
+
+            var meshes = new Mesh[data.ElementCount];
+            for (int i = 0; i < meshes.Length; i++)
+            {
+                LensFlareElement element = data.ElementArray[i];
+                Rect uv = new Rect(0f, 0f, 1f, 1f);
+                if (element != null)
+                    data.TryGetImageUvRect(element.ImageIndex, out uv);
+                meshes[i] = BuildQuadMesh(uv, data.Texture);
+            }
+
+            sMeshCache[data] = meshes;
+            return meshes;
+        }
+
+        private static Mesh BuildQuadMesh(Rect uv, Texture source)
+        {
+            var mesh = new Mesh
+            {
+                name = "LensFlareQuad_" + (source != null ? source.name : "none") + "_" + uv.x + "_" + uv.y,
+                hideFlags = HideFlags.DontSave
+            };
+            mesh.vertices = new[]
+            {
+                new Vector3(-0.5f, -0.5f, 0f),
+                new Vector3(-0.5f,  0.5f, 0f),
+                new Vector3( 0.5f,  0.5f, 0f),
+                new Vector3( 0.5f, -0.5f, 0f)
+            };
+            mesh.uv = new[]
+            {
+                new Vector2(uv.xMin, uv.yMin),
+                new Vector2(uv.xMin, uv.yMax),
+                new Vector2(uv.xMax, uv.yMax),
+                new Vector2(uv.xMax, uv.yMin)
+            };
+            mesh.colors = new[] { Color.white, Color.white, Color.white, Color.white };
+            mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        private static Material GetMaterial(Texture texture)
+        {
+            if (texture == null)
+                return null;
+
+            if (sMaterialCache.TryGetValue(texture, out Material cached) && cached != null)
+                return cached;
+
+            if (sShader == null && !sShaderMissing)
+            {
+                sShader = Shader.Find(kShaderName);
+                if (sShader == null)
+                {
+                    sShaderMissing = true;
+                    Debug.LogWarning($"[CustomLensFlare] shader no encontrado: {kShaderName}");
+                }
+            }
+            if (sShader == null)
+                return null;
+
+            PruneSharedResources();
+
+            var material = new Material(sShader)
+            {
+                name = "mat_lensflare_" + texture.name,
+                hideFlags = HideFlags.DontSave
+            };
+            material.SetTexture("_MainTex", texture);
+            material.SetColor("_Color", Color.white);
+            material.SetVector("_MainTex_ST", new Vector4(1f, 1f, 0f, 0f));
+            material.renderQueue = (int)RenderQueue.Transparent + 100;
+            sMaterialCache[texture] = material;
+            return material;
+        }
+
+        // The static caches live across stage loads; a new stage destroys the previous bundle
+        // assets, which turns their keys into destroyed objects. Drop those entries (and their
+        // meshes/materials) whenever a cache miss happens.
+        private static void PruneSharedResources()
+        {
+            var deadData = new List<LensFlareData>();
+            foreach (KeyValuePair<LensFlareData, Mesh[]> entry in sMeshCache)
+                if (entry.Key == null)
+                    deadData.Add(entry.Key);
+            for (int i = 0; i < deadData.Count; i++)
+            {
+                if (sMeshCache.TryGetValue(deadData[i], out Mesh[] meshes) && meshes != null)
+                    for (int m = 0; m < meshes.Length; m++)
+                        if (meshes[m] != null)
+                            DestroyShared(meshes[m]);
+                sMeshCache.Remove(deadData[i]);
+            }
+
+            var deadTextures = new List<Texture>();
+            foreach (KeyValuePair<Texture, Material> entry in sMaterialCache)
+                if (entry.Key == null)
+                    deadTextures.Add(entry.Key);
+            for (int i = 0; i < deadTextures.Count; i++)
+            {
+                if (sMaterialCache.TryGetValue(deadTextures[i], out Material material) && material != null)
+                    DestroyShared(material);
+                sMaterialCache.Remove(deadTextures[i]);
+            }
+        }
+
+        private static void DestroyShared(Object shared)
+        {
+            if (shared == null)
+                return;
+            if (Application.isPlaying)
+                Destroy(shared);
+            else
+                DestroyImmediate(shared);
+        }
+
+        // ---- Diagnostics ----
+
+        /// <summary>
+        /// Prints how many flare hosts exist, how many resolved their authored asset and how many
+        /// are actually drawn. Used to check the live stage from the console.
+        /// </summary>
+        public static void LogRuntimeDiagnostics(Camera camera)
+        {
+            CustomLensFlare[] flares = FindObjectsOfType<CustomLensFlare>(true);
+            int active = 0, withData = 0, quads = 0, drawn = 0, fadedIn = 0, occlusionOn = 0;
+            string sample = string.Empty;
+
+            for (int i = 0; i < flares.Length; i++)
+            {
+                CustomLensFlare flare = flares[i];
+                if (flare == null)
+                    continue;
+
+                if (flare.gameObject.activeInHierarchy)
+                    active++;
+                if (flare.Flare != null)
+                    withData++;
+                if (flare.Flare != null && flare.Flare.Texture != null && RuntimeOcclusion)
+                    occlusionOn++;
+                int drawnHere = 0;
+                for (int q = 0; q < flare._elements.Count; q++)
+                {
+                    quads++;
+                    if (flare._elements[q].Transform != null && flare._elements[q].Transform.gameObject.activeSelf)
+                        drawnHere++;
+                }
+                drawn += drawnHere;
+                if (flare._fade > 0.5f)
+                    fadedIn++;
+                if (sample.Length == 0 && flare.Flare != null)
+                    sample = flare.name + ":elements=" + flare.Flare.ElementCount +
+                             ":layout=" + flare.Flare.TextureLayout +
+                             ":brightness=" + flare.Brightness.ToString("0.###") +
+                             ":quads=" + flare._elements.Count +
+                             ":drawn=" + drawnHere +
+                             ":fade=" + flare._fade.ToString("0.###");
+            }
+
+            Debug.Log($"[CustomLensFlare] hosts={flares.Length} active={active} withData={withData} " +
+                      $"quads={quads} drawn={drawn} fadedIn={fadedIn} occlusion={occlusionOn}" +
+                      (camera != null ? $" camera={camera.name}" : string.Empty) +
+                      (sample.Length > 0 ? " sample=" + sample : string.Empty));
         }
     }
 }
