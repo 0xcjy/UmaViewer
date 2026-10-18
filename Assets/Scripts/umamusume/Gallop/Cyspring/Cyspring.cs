@@ -490,7 +490,7 @@ namespace Gallop
         /// Rebuilds the native collision array in the official order:
         /// [0..charaCount-1] chara collisions, then [charaCount..] env collisions.
         /// </summary>
-        private void InitNativeCollisions()
+        public void InitNativeCollisions()
         {
             int charaCount = _charaCollisionArray != null ? _charaCollisionArray.Length : 0;
             int envCount = _envCollisionArray != null ? _envCollisionArray.Length : 0;
@@ -525,6 +525,17 @@ namespace Gallop
                     ref CurrentCharaPosition,
                     parentArray);
             }
+        }
+
+        /// <summary>
+        /// Reconstruye el array nativo de colisiones Y vuelve a repartir los indices de colision a
+        /// cada hueso de la cadena (es lo que hace SetNativeCollision). El motor (CySpringPlugin.dll)
+        /// lee radios y posiciones del array NATIVO, que solo se construye en el bind: sin esto, mover
+        /// o redimensionar un colisor no surte efecto hasta recargar el personaje.
+        /// </summary>
+        public void RebuildNativeCollisions()
+        {
+            SetNativeCollision();
         }
 
         private void SetNativeCollision()
@@ -883,6 +894,67 @@ namespace Gallop
 
             for (int i = 0; i < _rootBoneArray.Length; i++)
                 _rootBoneArray[i]?.PostAllSpring();
+        }
+
+        // (DIAG) Comprueba la coherencia del "reposo" de cada cadena nativa.
+        // El motor (CySpring_SolveBone @180009760, verificado en el decompilado) hace:
+        //     qg  = ParentRotation * InitLocalRotation
+        //     Aim = qg * BoneAxis
+        //     FinalRotation = quatFromTo(Aim, dir) * qg     (dir = normalize(p - SelfPosition))
+        // Por construccion deberia cumplirse  Aim ~= normalize(hijo.pos - hueso.pos).
+        // Si NO se cumple, el solver arranca con la cadena TORCIDA (sidelocks inclinados) y
+        // ninguna colision lo arregla.
+        public void DiagLogRestCoherence(string tag)
+        {
+            if (_rootBoneArray == null)
+                return;
+
+            for (int i = 0; i < _rootBoneArray.Length; i++)
+            {
+                CySpringRootBone root = _rootBoneArray[i];
+                if (root == null)
+                    continue;
+
+                List<CySpringBoneBase> bones = new List<CySpringBoneBase>();
+                bones.Add(root);
+                if (root.ChildBoneList != null)
+                    bones.AddRange(root.ChildBoneList);
+
+                float worst = 0f;
+                string worstName = "-";
+                int limitCount = 0;
+                string limitSample = "-";
+                for (int b = 0; b + 1 < bones.Count; b++)
+                {
+                    CySpringBoneBase bone = bones[b];
+                    CySpringBoneBase child = bones[b + 1];
+                    if (bone == null || child == null || bone.GameObject == null || child.GameObject == null)
+                        continue;
+
+                    NativeClothWorking nwB = bone.NativeState;
+                    if (nwB.IsLimit != 0)
+                    {
+                        limitCount++;
+                        if (limitSample == "-")
+                            limitSample = bone.BoneName + " min=" + nwB.LimitRotationMin.ToString("0.#") +
+                                          " max=" + nwB.LimitRotationMax.ToString("0.#");
+                    }
+
+                    Vector3 d = child.GameObject.transform.position - bone.GameObject.transform.position;
+                    if (d.sqrMagnitude < 1e-10f)
+                        continue;
+
+                    Quaternion qg = nwB.ParentRotation * nwB.InitLocalRotation;
+                    float err = Vector3.Angle(qg * nwB.BoneAxis, d.normalized);
+                    if (err > worst)
+                    {
+                        worst = err;
+                        worstName = bone.BoneName;
+                    }
+                }
+
+                Debug.Log($"[DiagPelo] {tag} {root.BoneName}: Aim_vs_hueso->hijo errMax={worst:F1}deg ({worstName})  IsLimit={limitCount} [{limitSample}]");
+            }
         }
 
         public void ResetNativeCloth()

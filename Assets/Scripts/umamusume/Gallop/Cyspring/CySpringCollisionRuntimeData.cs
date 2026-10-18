@@ -284,6 +284,17 @@ namespace Gallop
             UpdateNativeCollisionEnv(ref nativeCollision, ref characterPosition, rootParentWorkArray);
         }
 
+        /// <summary>
+        /// El motor recalcula radio y posicion de cada colisor a partir de sus valores POR DEFECTO
+        /// (ScaleParams_*) cuando cambia la escala del personaje. Para que un ajuste hecho en
+        /// caliente no se pierda en ese recalculo, hay que mover tambien el valor por defecto.
+        /// </summary>
+        public void SetDefaultParams(float radius, Vector3 offset)
+        {
+            _defaultRadius = radius;
+            _defaultOffset = offset;
+        }
+
         public void ScaleParams(float legacyScale)
         {
             if (Gallop.Math.IsFloatEqualLight(legacyScale, 0.0f))

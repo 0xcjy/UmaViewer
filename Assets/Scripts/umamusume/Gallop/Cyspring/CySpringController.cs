@@ -1032,6 +1032,15 @@ namespace Gallop
             }
         }
 
+        // (DIAG) Acceso de solo lectura a la cadena de un part (0=Head, 1=Body, 2=Tail).
+        public CySpring GetSpringArray(int index)
+        {
+            if (_springArray == null || index < 0 || index >= _springArray.Length)
+                return null;
+
+            return _springArray[index];
+        }
+
         public void Reset()
         {
             _resetFlag = true;
@@ -1526,6 +1535,34 @@ namespace Gallop
                 else
                     _springArray[i].DisableAllCySpringBones();
             }
+        }
+
+        // El motor lee radios y posiciones de colision del array NATIVO, que solo se construye en el
+        // bind (InitNativeCollisions). Para que un cambio surta efecto EN CALIENTE hay que
+        // reconstruirlo... y ADEMAS volver a recolectar los ParentWork: InitNativeCollisions crea un
+        // array NUEVO y deja ParentWorkIndex=0 en TODAS las colisiones, asi que sin la recoleccion
+        // las esferas se resolverian desde el primer padre del modelo (el pelo recibia empujes de la
+        // nada). EndLoad() ya hace esta misma secuencia.
+        public void RefreshNativeCollisions()
+        {
+            if (_springArray == null)
+                return;
+
+            for (int i = 0; i < _springArray.Length; i++)
+                _springArray[i]?.RebuildNativeCollisions();
+
+            SetupSpringParentWork();
+        }
+
+        // (INTENTO 20) El motor NO usa el radio del asset (CySpringCollisionData) sino el RUNTIME
+        // (CySpringCollisionRuntimeData, copiado en el bind). Este accesor permite tocar el runtime.
+        public System.Collections.Generic.List<CySpringCollisionRuntimeData> GetCollisionRuntimeList(int index)
+        {
+            if (_collisionArray == null || index < 0 || index >= _collisionArray.Length)
+                return null;
+
+            CySpringCollision collisions = _collisionArray[index];
+            return collisions != null ? collisions.RuntimeDataList : null;
         }
 
         public void SetEnableCySpringCollision(string name, bool isEnable)

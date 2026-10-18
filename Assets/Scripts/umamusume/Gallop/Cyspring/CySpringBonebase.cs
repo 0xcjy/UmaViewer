@@ -53,11 +53,30 @@ namespace Gallop
         public bool Exist { get => _exist; set => _exist = value; }
         public bool IsAddSpring => _isAddSpring;
         public bool NeedSimulateEndBone => _needSimulateEndBone;
+
+        // (DIAG) Acceso de solo lectura al estado nativo de este hueso (para diagnosticos del
+        // cargador: coherencia de Aim = (ParentRotation * InitLocalRotation) * BoneAxis).
+        public NativeClothWorking NativeState
+        {
+            get { return GetNative(); }
+        }
         public List<int> CollisionIndexList => _collisionIndexList;
 
         public float StiffnessForce => GetNative().StiffnessForce;
         public float DragForce => GetNative().DragForce;
-        public float CollisionRadius => GetNative().CollisionRadius;
+        public float CollisionRadius
+        {
+            get => GetNative().CollisionRadius;
+            set
+            {
+                if (_rootBone == null || _rootBone.NativeArray == null || (uint)Index >= (uint)_rootBone.NativeArray.Length)
+                    return;
+
+                NativeClothWorking native = _rootBone.NativeArray[Index];
+                native.CollisionRadius = value;
+                _rootBone.NativeArray[Index] = native;
+            }
+        }
         public float Gravity => GetNative().Gravity;
         public float VerticalWindRateSlow => GetNative().VerticalWindRateSlow;
         public float VerticalWindRateFast => GetNative().VerticalWindRateFast;

@@ -45,6 +45,14 @@ namespace Gallop
         public Vector3 Offset => _offset;
         public Vector3 Offset2 => _offset2;
         public float Radius => _radius;
+
+        // (INTENTO 3b) Permite ajustar el radio desde el cargador (p. ej. anular un colisor
+        // concreto antes del bind). El pinchazo del puente nativo construye el array de colisiones
+        // desde este dato, asi que el cambio debe hacerse ANTES de LoadFromDataContainers.
+        public void SetRadius(float radius)
+        {
+            _radius = radius;
+        }
         public float Distance => _distance;
         public Vector3 Normal => _normal;
         public CollisionType Type => _type;
