@@ -190,6 +190,25 @@ namespace Gallop.Live.Cutt
             }
         }
 
+        private void AlterUpdate_Projector(LiveTimelineWorkSheet sheet, float frame)
+        {
+            var handler = OnUpdateProjector;
+            if (handler == null || sheet == null || sheet.projecterList == null) return;
+            foreach (var group in sheet.projecterList)
+            {
+                if (group == null) continue;
+                LiveProjectorTimeline.UpdateInfo info;
+                if (sheet.enableAtRuntime)
+                    LiveProjectorTimeline.TryEvaluate(group, frame, _playMode, out info);
+                else
+                {
+                    info = default;
+                    info.group = group;
+                }
+                handler(ref info);
+            }
+        }
+
         private void AlterUpdate_LightShafts(LiveTimelineWorkSheet sheet, float frame)
         {
             if (OnUpdateLightShafts == null || sheet.lightShaftsKeysLine == null) return;
@@ -313,6 +332,7 @@ namespace Gallop.Live.Cutt
         public event BgColor2UpdateInfoDelegate OnUpdateBgColor2;
         public event LensFlareUpdateInfoDelegate OnUpdateLensFlare;
         public event LightProjectionUpdateInfoDelegate OnUpdateLightProjection;
+        public event ProjectorUpdateInfoDelegate OnUpdateProjector;
 
         public event TransformUpdateInfoDelegate OnUpdateTransform;
 
@@ -526,7 +546,11 @@ namespace Gallop.Live.Cutt
         {
             if (data?.worksheetList == null) return;
             foreach (var sheet in data.worksheetList)
-                if (sheet != null) sheet.InitializeLightProjection(this);
+            {
+                if (sheet == null) continue;
+                sheet.InitializeLightProjection(this);
+                sheet.InitializeProjector(this);
+            }
         }
 
         private static Transform EnsureMotionTransform(Transform parent, string name)
@@ -725,6 +749,7 @@ namespace Gallop.Live.Cutt
             // Blink is dispatched above in this port's late-update loop; sample its current
             // frame before projection color sync. No key-change gate: paused seeks also apply.
             AlterLateUpdate_LightProjection(camSheet, _currentFrame);
+            AlterUpdate_Projector(camSheet, _currentFrame);
 
             //BgColor2灞炰簬鍏ㄥ眬鑸炲彴棰滆壊鎺у埗锛屽彧浣跨敤涓?worksheet銆?
             //涓嶉亶鍘嗘墍鏈?worksheet,閬垮厤鍚屽悕LaserA/LaserB杞ㄩ亾鍦ㄥ悓涓€甯т簰鐩歌鐩栥€?

@@ -43,6 +43,7 @@ namespace Gallop.Live
         private MaterialPropertyBlock _characterLightingBlock;
         private Gallop.RenderPipeline.RecoveredLensFlareController _stageFlares;
         private LightProjectionRuntimeController _lightProjectionController;
+        private MirrorScanLightRuntime _mirrorScanLightRuntime;
         private FootLightRuntime _footLightRuntime;
         private LivePropsController _livePropsController;
         private readonly Dictionary<int, Texture> _lightProjectionTextures = new Dictionary<int, Texture>();
@@ -543,6 +544,22 @@ namespace Gallop.Live
                 if (monitorDriver != null)
                     _lightProjectionController.ConfigureMovieFrames(monitorDriver.TryGetProjectionMovieFrame);
             }
+            if (_mirrorScanLightRuntime != null)
+            {
+                _liveTimelineControl.OnUpdateProjector -= _mirrorScanLightRuntime.Apply;
+                _mirrorScanLightRuntime.Dispose();
+                _mirrorScanLightRuntime = null;
+            }
+            if (_stageController != null)
+            {
+                _mirrorScanLightRuntime = new MirrorScanLightRuntime();
+                _mirrorScanLightRuntime.Initialize(_stageController.transform,
+                    _liveTimelineControl.GetWorkSheetBySheetIndex(LiveTimelineDefine.SheetIndex.MainLive)?.projecterList,
+                    path => LiveFlashResourceUtility.LoadOnView<GameObject>(path),
+                    id => LiveFlashResourceUtility.LoadOnView<Material>(MirrorScanLightRuntime.GetMaterialPath(id)));
+                _liveTimelineControl.OnUpdateProjector += _mirrorScanLightRuntime.Apply;
+            }
+
             var footRoots = new List<Transform>(CharaContainerScript.Count);
             for (int i = 0; i < CharaContainerScript.Count; i++)
                 footRoots.Add(ResolveEffectCharacter(i));
@@ -1697,6 +1714,8 @@ namespace Gallop.Live
             _effectController?.Dispose();
             _spotlightRuntime?.Dispose();
             _lightProjectionController?.Dispose();
+            _mirrorScanLightRuntime?.Dispose();
+            _mirrorScanLightRuntime = null;
             _mirrorBallProjectionTextures.Clear();
             _effectStageObjects.Clear();
 

@@ -980,6 +980,14 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                             }
                         }
                     }
+                    foreach (var sheet in director._liveTimelineControl.data.worksheetList)
+                    {
+                        if (sheet?.projecterList == null || sheet.projecterList.Count == 0) continue;
+                        liveAssetPaths.Add(MirrorScanLightRuntime.ControllerPath);
+                        for (int i = 0; i < 5; i++)
+                            liveAssetPaths.Add(MirrorScanLightRuntime.GetMaterialPath(i));
+                        break;
+                    }
                     var effectEntries = new List<UmaDatabaseEntry>();
                     foreach (var path in liveAssetPaths)
                     {

@@ -422,6 +422,7 @@ namespace Gallop.Live.Cutt
         [SerializeField] public List<LiveTimelineUVScrollLightData> uvScrollLightList;
         [SerializeField] public List<LiveTimelineLensFlareData> lensFlareList;
         [SerializeField] public List<LiveTimelineLightProjectionData> lightProjectionList;
+        [SerializeField] public List<LiveTimelineProjectorData> projecterList;
 
         [SerializeField] public List<LiveTimelineTransformData> transformList;
         [SerializeField] public List<LiveTimelineObjectData> objectList;
@@ -431,6 +432,7 @@ namespace Gallop.Live.Cutt
         private void OnEnable()
         {
             InitializeLightProjection(null);
+            InitializeProjector(null);
             InitializeProps(null);
         }
 
@@ -438,6 +440,19 @@ namespace Gallop.Live.Cutt
         {
             if (lightProjectionList == null) return;
             foreach (var group in lightProjectionList)
+            {
+                if (group == null) continue;
+                group.UpdateStatus();
+                if (group.keys == null) continue;
+                for (int i = 0; i < group.keys.Count; ++i)
+                    group.keys[i]?.OnLoad(control);
+            }
+        }
+
+        public void InitializeProjector(LiveTimelineControl control)
+        {
+            if (projecterList == null) return;
+            foreach (var group in projecterList)
             {
                 if (group == null) continue;
                 group.UpdateStatus();
