@@ -713,6 +713,7 @@ namespace Gallop.Live.Cutt
 
                 AlterUpdate_TransformControl(ws, _currentFrame);
                 AlterUpdate_ObjectControl(ws, _currentFrame);
+                AlterUpdate_AnimationControl(ws, Mathf.RoundToInt(_currentFrame));
                 AlterUpdate_MobControl(ws, _currentFrame);
                 AlterUpdate_CyalumeControl(ws, _currentFrame);
                 AlterUpdate_BlinkLight(ws, _currentFrame);

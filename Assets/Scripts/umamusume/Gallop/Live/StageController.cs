@@ -178,6 +178,14 @@ namespace Gallop.Live
         private readonly Dictionary<int, MirrorReflection> _mirrorByTimelineHash = new Dictionary<int, MirrorReflection>();
         private LiveTimelineControl _boundTimelineControl;
 
+        // `animationList` -> `OnUpdateAnimation`: stage objects that carry the game's
+        // AnimationObjectController (the `blinklight_wash_*` wash lights). Their legacy Animation
+        // ships without a default clip, so nothing moves until the timeline picks a clip.
+        private readonly List<AnimationObjectController> _animationObjects = new List<AnimationObjectController>();
+        private bool _animationObjectsBuilt;
+        private int _animationObjectsScanAttempts;
+        private const int AnimationObjectsScanAttemptLimit = 600;
+
         private const int MirrorCharacterSlotCount = 20;
         private sealed class MirrorCameraTarget
         {
@@ -523,6 +531,7 @@ namespace Gallop.Live
             ctl.OnEnvironmentMirror -= UpdateEnvironemntMirror;
             ctl.OnUpdateMirrorReflection -= UpdateMirrorReflection;
             ctl.OnUpdateLaser -= UpdateLaser;
+            ctl.OnUpdateAnimation -= UpdateAnimation;
 
             ctl.OnUpdateTransform += UpdateTransform;
             ctl.OnUpdateObject += UpdateObject;
@@ -531,6 +540,7 @@ namespace Gallop.Live
             ctl.OnEnvironmentMirror += UpdateEnvironemntMirror;
             ctl.OnUpdateMirrorReflection += UpdateMirrorReflection;
             ctl.OnUpdateLaser += UpdateLaser;
+            ctl.OnUpdateAnimation += UpdateAnimation;
 
             _laserSetupDone = false;
             _laserSetupTimelineControl = ctl;
@@ -1124,6 +1134,59 @@ namespace Gallop.Live
             ctl.OnEnvironmentMirror -= UpdateEnvironemntMirror;
             ctl.OnUpdateMirrorReflection -= UpdateMirrorReflection;
             ctl.OnUpdateLaser -= UpdateLaser;
+            ctl.OnUpdateAnimation -= UpdateAnimation;
+        }
+
+        // Routes the `animationList` track (`OnUpdateAnimation`) to the stage's
+        // AnimationObjectControllers, like the game's StageController.UpdateAnimationObjectOld.
+        private void UpdateAnimation(ref AnimationUpdateInfo updateInfo)
+        {
+            EnsureAnimationObjects();
+
+            for (int i = 0; i < _animationObjects.Count; i++)
+            {
+                var controller = _animationObjects[i];
+                if (controller != null)
+                    controller.UpdateStatus(ref updateInfo);
+            }
+        }
+
+        // Collects the stage's animated objects once. Only the objects that carry the game's
+        // AnimationObjectController are timeline-driven; a plain Animation with a default clip
+        // already plays itself and is left alone.
+        private void EnsureAnimationObjects()
+        {
+            if (_animationObjectsBuilt)
+                return;
+
+            if (_animationObjectsScanAttempts >= AnimationObjectsScanAttemptLimit)
+                return;
+            _animationObjectsScanAttempts++;
+
+            Transform root = Director.instance != null ? Director.instance.transform : transform;
+            var animations = root.GetComponentsInChildren<Animation>(true);
+            if (animations == null || animations.Length == 0)
+                return;
+
+            _animationObjectsBuilt = true;
+
+            for (int i = 0; i < animations.Length; i++)
+            {
+                var animation = animations[i];
+                if (animation == null)
+                    continue;
+
+                var controller = animation.GetComponent<AnimationObjectController>();
+                if (controller == null)
+                    continue;
+
+                controller.Initialize();
+                if (!_animationObjects.Contains(controller))
+                    _animationObjects.Add(controller);
+            }
+
+            if (_animationObjects.Count > 0)
+                Debug.Log("[StageController] animation objects = " + _animationObjects.Count);
         }
 
         private void AutoAttachMirrorReflectionComponents()
