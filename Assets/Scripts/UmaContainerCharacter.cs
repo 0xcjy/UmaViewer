@@ -230,7 +230,14 @@ public class UmaContainerCharacter : UmaContainer
     // Colisores GENERADOS del pelo: prefijo de los nombres reservados + estado del ultimo ajuste,
     // para poder recolocar/redimensionar las esferas EN CALIENTE desde el Inspector.
     private const string CySpringHairArmCollisionPrefix = "Col_HairArm_";
+    private const string DynamicBoneArmColliderPrefix = "Col_HairArmDb_";
+    private const string DynamicBoneChestColliderPrefix = "Col_HairChestDb_";
     private readonly List<string> _generatedHairCollisionNames = new List<string>();
+    // Esferas hombro->codo del camino DynamicBone y cadenas de pelo a las que van enganchadas.
+    // Se refrescan cada frame porque la inicialización del pelo puede reconstruir las partículas
+    // (SetupParticles las borra) después de haberlas enganchado.
+    private readonly List<DynamicBoneCollider> _dynamicBoneArmColliders = new List<DynamicBoneCollider>();
+    private readonly List<DynamicBone> _dynamicBoneHairChains = new List<DynamicBone>();
     private System.Collections.Generic.List<CySpringCollisionRuntimeData> _hairRuntimeCollisions;
     private float _lastArmRadius = -1.0f;
     private int _lastArmCount = -1;
@@ -246,9 +253,15 @@ public class UmaContainerCharacter : UmaContainer
              "(delantero Y trasero). Sustituye el mecanismo anterior (lista blanca + una unica escala\n" +
              "para todos los colisores del juego), que aplicaba el mismo radio a geometrias distintas.")]
     public bool CySpringArmColliderEnabled = true;
+    [Header("DynamicBone - colisores generados: GIZMOS (solo editor)")]
+    [Tooltip("Dibuja en la SCENE VIEW las esferas generadas (brazo y pecho). Apagado por defecto:\n" +
+             "no se ve nada mientras se usa el viewer. No afecta a la física.")]
+    public bool DynamicBoneColliderGizmos = false;
+
     [Tooltip("Radio de cada esfera, en metros. Aproximadamente el grosor del brazo.\n" +
-             "Referencia: el colisor de brazo del propio juego (Col_Arm_L_Hair) usa 0.04.")]
-    public float CySpringArmColliderRadius = 0.03f;
+             "Referencia: el colisor de brazo del propio juego (Col_Arm_L_Hair) usa 0.04.\n" +
+             "El radio se multiplica por la escala del traje, como el resto de colisores.")]
+    public float CySpringArmColliderRadius = 0.035f;
     [Tooltip("Esferas por brazo. 0 = AUTOMATICO (las justas para cubrir el tramo sin dejar huecos).\n" +
              "POR ENCIMA DEL RESERVADO no surte efecto sin recargar la escena.")]
     public int CySpringArmColliderCount = 0;
@@ -272,8 +285,45 @@ public class UmaContainerCharacter : UmaContainer
     [Tooltip("Sufijos de lado. El nombre del hueso es <base>_<sufijo>.")]
     public string[] CySpringArmColliderSides = new string[] { "L", "R" };
     [Tooltip("(TEMP) Dibuja en la SCENE VIEW los colisores generados y el radio propio de cada hueso\n" +
-             "de pelo. Solo editor: apagarlo cuando el ajuste este cerrado.")]
-    public bool CySpringHairColliderGizmos = true;
+             "de pelo. Solo editor y APAGADO por defecto: encenderlo solo para ajustar.")]
+    public bool CySpringHairColliderGizmos = false;
+
+    [Header("DynamicBone - colisores del PELO (esferas hombro -> codo)")]
+    [Tooltip("Genera la MISMA rejilla de esferas hombro->codo que el camino nativo y la engancha a\n" +
+             "TODAS las cadenas de pelo que simula DynamicBone. Radio, cantidad (0 = automática),\n" +
+             "solape y arranque salen de 'CySpring - colisores del PELO', así que los dos caminos\n" +
+             "dan la misma geometría. El asset del juego solo trae una esfera pequeña en el codo\n" +
+             "(radio x0.3), por eso el mechón atravesaba el brazo. No afecta al camino nativo.")]
+    public bool DynamicBoneArmColliderEnabled = true;
+
+    [Header("DynamicBone - esferas del PECHO (bloque central)")]
+    [Tooltip("Añade filas horizontales de esferas delante del pecho para que el pelo no se hunda en\n" +
+             "la ropa. La primera fila va en la línea de la clavícula y las demás caen hacia abajo,\n" +
+             "centradas en el cuerpo.")]
+    public bool DynamicBoneChestColliderEnabled = true;
+    [Tooltip("Radio (m) de las esferas del pecho. Va aparte del radio de los brazos a propósito.")]
+    public float DynamicBoneChestColliderRadius = 0.03f;
+    [Tooltip("Número de filas, de arriba hacia abajo. 3 = clavícula + dos debajo.")]
+    public int DynamicBoneChestColliderRows = 3;
+    [Tooltip("Esferas por fila. 0 = AUTOMÁTICO: las que quepan en el ancho, una pegada a la siguiente.")]
+    public int DynamicBoneChestColliderCount = 0;
+    [Tooltip("Solape entre esferas contiguas: 1 = la siguiente empieza justo donde acaba la anterior.")]
+    public float DynamicBoneChestColliderOverlap = 1f;
+    [Tooltip("Separación (m) entre filas, hacia abajo.")]
+    public float DynamicBoneChestColliderSpacing = 0.05f;
+    [Tooltip("ANCHO (m) de la fila, de un lado al otro del pecho. Se multiplica por el BodyScale.")]
+    public float DynamicBoneChestColliderWidth = 0.24f;
+    [Tooltip("Opcional: si tiene DOS huesos válidos, el ancho se mide entre ellos en vez de usar\n" +
+             "'Width' (p. ej. Arm_L/Arm_R = ancho de hombros).")]
+    public string[] DynamicBoneChestColliderSpanBones = new string[0];
+    [Tooltip("Filas EXTRA de profundidad a cada lado (una adelante y otra atrás). 1 = una fila por\n" +
+             "lado (perfil de 3); 2 = dos filas por lado.")]
+    public int DynamicBoneChestColliderSideRows = 1;
+    [Tooltip("Distancia (m) de cada fila lateral respecto a la fila frontal, en profundidad.")]
+    public float DynamicBoneChestColliderSideOffset = 0.05f;
+    [Tooltip("Nivel a partir del cual se añaden las filas laterales (0 = la de la clavícula).\n" +
+             "1 = solo los dos niveles de abajo, como en el dibujo.")]
+    public int DynamicBoneChestColliderSideFromRow = 1;
 
     [Header("CySpring - colisores del CUERPO (clavicula y espalda)")]
     [Tooltip("Genera las esferas del CUERPO para que el pelo no entre en el (ni en la ropa pegada):\n" +
@@ -297,8 +347,7 @@ public class UmaContainerCharacter : UmaContainer
              "Arm_L/Arm_R cubre toda la anchura de los hombros.")]
     public string[] CySpringBodyColliderRowBones = new string[] { "Shoulder_L", "Shoulder_R" };
 
-    private readonly List<string> _generatedBodyCollisionNames = new List<string>();
-    private readonly List<string> _generatedBodyColumnNames = new List<string>();
+    private readonly List<string> _generatedBodyCollisionNames = new List<string>();    private readonly List<string> _generatedBodyColumnNames = new List<string>();
     private readonly List<string> _generatedBodyRowNames = new List<string>();
     private float _lastBodyColliderRadius = -1.0f;
     private const string CySpringHairBodyPrefix = "Col_HairBody_";
@@ -848,6 +897,12 @@ public class UmaContainerCharacter : UmaContainer
 
             container.InitializePhysics(dbBones, dbColliders);
         }
+
+        // (DynamicBone) El pelo que simula DynamicBone solo recibía los colisores del asset, y para
+        // el brazo es una esfera pequeña en el codo: el tramo hombro->codo no empujaba el mechón.
+        // Se monta el "tubo" del brazo aquí, después de crear las cadenas, para poder engancharlo
+        // a todas sus partículas.
+        BuildDynamicBoneArmColliders(cySpringDataContainers, dbBones);
 
         _cySpringLoaded = cySpringDataContainers.Count > 0;
 
@@ -1938,6 +1993,449 @@ public class UmaContainerCharacter : UmaContainer
 
     }
 
+    // =========================================================================================
+    // (DYNAMICBONE) ESFERAS DEL BRAZO PARA EL PELO
+    //
+    // El pelo que simula DynamicBone solo recibía los colisores que declara el asset del juego, y
+    // para el brazo es una esfera pequeña en el codo (radio x0.3): el tramo hombro->codo no empuja
+    // nada y el mechón lo atraviesa. Aquí se genera la MISMA rejilla de esferas que usa el camino
+    // nativo (radio, cantidad automática, solape y desplazamiento de arranque salen de los campos
+    // "CySpring - colisores del PELO"), repartida hombro->codo, y se engancha a TODAS las
+    // partículas de las cadenas de pelo (la raíz incluida; el solver de DynamicBone empieza en la
+    // partícula 1, así que la raíz no colisiona pero tampoco estorba).
+    // =========================================================================================
+    private void BuildDynamicBoneArmColliders(
+        List<CySpringDataContainer> containers,
+        Dictionary<string, Transform> bones)
+    {
+        if (containers == null || bones == null)
+            return;
+
+        if (CySpringArmColliderSides == null || CySpringArmColliderSides.Length == 0)
+            return;
+
+        // Restos de una carga anterior (recarga de traje): se borran antes de decidir nada, para
+        // que apagar el interruptor también deje el brazo limpio.
+        RemoveDynamicBoneArmColliders();
+        _dynamicBoneArmColliders.Clear();
+        _dynamicBoneHairChains.Clear();
+
+        if (!DynamicBoneArmColliderEnabled)
+            return;
+
+        var hairChains = new List<DynamicBone>();
+        for (int i = 0; i < containers.Count; i++)
+        {
+            CySpringDataContainer container = containers[i];
+            if (container == null || container.DynamicBones == null)
+                continue;
+
+            if (GuessCySpringContainerKind(container) != 0)
+                continue;   // 0 = head (pelo/orejas); la cola no llega a los brazos
+
+            for (int b = 0; b < container.DynamicBones.Count; b++)
+            {
+                DynamicBone chain = container.DynamicBones[b];
+                if (chain != null)
+                    hairChains.Add(chain);
+            }
+        }
+
+        // Sin cadenas de DynamicBone (p. ej. con el pelo en el camino nativo) no hay a quién
+        // engancharlas: ese camino ya monta sus propias esferas.
+        if (hairChains.Count == 0)
+            return;
+
+        _dynamicBoneHairChains.AddRange(hairChains);
+
+        float radius = Mathf.Max(0.001f, CySpringArmColliderRadius);
+        float overlap = Mathf.Clamp(CySpringArmColliderOverlap, 0.1f, 1.0f);
+        int arms = 0;
+
+        for (int s = 0; s < CySpringArmColliderSides.Length; s++)
+        {
+            string side = CySpringArmColliderSides[s];
+            if (string.IsNullOrEmpty(side))
+                continue;
+
+            string startName = CySpringArmColliderStartBone + "_" + side;
+            string endName = CySpringArmColliderEndBone + "_" + side;
+
+            if (!bones.TryGetValue(startName, out Transform start) || start == null ||
+                !bones.TryGetValue(endName, out Transform end) || end == null)
+            {
+                Debug.LogWarning($"[PeloCol] DynamicBone: falta '{startName}' o '{endName}'.");
+                continue;
+            }
+
+            Vector3 startWorld = start.position;
+            Vector3 endWorld = end.position;
+            float length = Vector3.Distance(startWorld, endWorld);
+
+            if (length <= 0.0001f)
+                continue;
+
+            // Mismo reparto que ApplyArmColliderLayout: desde el arranque (inset) hasta el codo.
+            float inset = Mathf.Clamp01(CySpringArmColliderStartOffset / length);
+            float coveredLength = length * (1f - inset);
+            int perSide = Mathf.Clamp(
+                CountArmCollidersFor(CySpringArmColliderCount, coveredLength, radius, overlap), 1, 16);
+
+            for (int i = 0; i < perSide; i++)
+            {
+                float frac = perSide <= 1 ? 0.5f : (float)i / (perSide - 1);
+                float t = Mathf.Lerp(inset, 1f, frac);
+                Vector3 world = Vector3.Lerp(startWorld, endWorld, t);
+
+                // Prefijo propio: el camino nativo usa "Col_HairArm_<lado>_<i>" como NOMBRE DE
+                // COLISIÓN del asset, y los dos caminos no deben compartir nombres.
+                string colliderName = DynamicBoneArmColliderPrefix + side + "_" + i.ToString("00");
+                CreateGeneratedSphere(colliderName, start, world, radius, hairChains);
+                arms++;
+            }
+        }
+
+        int chest = DynamicBoneChestColliderEnabled ? BuildDynamicBoneChestColliders(bones, hairChains) : 0;
+
+        CySpringColliderVisualizer.CollidersEnabled = CySpringHairColliderGizmos;
+
+        if (arms > 0 || chest > 0)
+        {
+            Debug.Log($"[PeloCol] DynamicBone: {arms} esfera(s) hombro->codo + {chest} del pecho " +
+                      $"enganchadas a {hairChains.Count} cadenas de pelo (radio {radius:0.###} m).");
+        }
+    }
+
+    // =========================================================================================
+    // (DYNAMICBONE) FILAS DEL PECHO
+    //
+    // Filas horizontales delante del pecho para que el mechón no se hunda en la ropa cuando el
+    // pelo cae por delante. La primera fila va en la línea de la clavícula y las demás caen hacia
+    // abajo. Las esferas van UNA PEGADA A LA SIGUIENTE (paso = 2 x radio) y el ancho es fijo
+    // ('Width', en metros, escalado por BodyScale); si 'SpanBones' tiene dos huesos válidos, el
+    // ancho se mide entre ellos. Se anclan al hueso del pecho: no siguen a los brazos.
+    // =========================================================================================
+    private int BuildDynamicBoneChestColliders(
+        Dictionary<string, Transform> bones,
+        List<DynamicBone> hairChains)
+    {
+        float radius = Mathf.Max(0.001f, DynamicBoneChestColliderRadius);
+        float overlap = Mathf.Clamp(DynamicBoneChestColliderOverlap, 0.1f, 1f);
+
+        // Ancla: hueso del pecho (o la columna, si no hay). Así la barrera se queda en el cuerpo.
+        Transform anchor = null;
+        string[] anchorCandidates = new string[] { CySpringBodyColliderTopBone, "Chest", "Spine" };
+        for (int i = 0; i < anchorCandidates.Length && anchor == null; i++)
+        {
+            if (!string.IsNullOrEmpty(anchorCandidates[i]) &&
+                bones.TryGetValue(anchorCandidates[i], out Transform candidate))
+                anchor = candidate;
+        }
+
+        Transform spanA = null;
+        Transform spanB = null;
+        if (DynamicBoneChestColliderSpanBones != null && DynamicBoneChestColliderSpanBones.Length >= 2)
+        {
+            bones.TryGetValue(DynamicBoneChestColliderSpanBones[0], out spanA);
+            bones.TryGetValue(DynamicBoneChestColliderSpanBones[1], out spanB);
+        }
+
+        // Altura de referencia: el punto medio de los huesos del ancho, si los hay; si no, la línea
+        // de la clavícula (Shoulder_L/R); si tampoco, el propio ancla.
+        float clavicleY;
+        if (spanA != null && spanB != null)
+            clavicleY = (spanA.position.y + spanB.position.y) * 0.5f;
+        else if (bones.TryGetValue("Shoulder_L", out Transform shoulderL) &&
+                 bones.TryGetValue("Shoulder_R", out Transform shoulderR) &&
+                 shoulderL != null && shoulderR != null)
+            clavicleY = (shoulderL.position.y + shoulderR.position.y) * 0.5f;
+        else if (anchor != null)
+            clavicleY = anchor.position.y;
+        else
+            return 0;
+
+        if (anchor == null)
+            anchor = spanA != null ? spanA : transform;
+
+        float width;
+        Vector3 right;
+
+        if (spanA != null && spanB != null)
+        {
+            // Ancho = separación entre los dos huesos, proyectada al plano horizontal para que la
+            // fila quede recta aunque la pose esté torcida.
+            Vector3 span = spanB.position - spanA.position;
+            span.y = 0f;
+            width = span.magnitude;
+            right = width > 0.0001f ? span / width : anchor.right;
+        }
+        else
+        {
+            width = Mathf.Max(0.0001f, DynamicBoneChestColliderWidth) * Mathf.Max(0.0001f, BodyScale);
+            // Derecha del cuerpo: el eje X del ancla, aplanado al horizontal.
+            Vector3 flatRight = anchor.right;
+            flatRight.y = 0f;
+            right = flatRight.sqrMagnitude > 0.0001f ? flatRight.normalized : Vector3.right;
+        }
+
+        int rows = Mathf.Clamp(DynamicBoneChestColliderRows, 1, 8);
+        float spacing = Mathf.Max(0f, DynamicBoneChestColliderSpacing);
+
+        int perRow = Mathf.Clamp(
+            CountArmCollidersFor(DynamicBoneChestColliderCount, width, radius, overlap), 1, 16);
+
+        // Profundidad: filas EXTRA a cada lado (adelante y atrás) desde cierto nivel hacia abajo.
+        // Visto de perfil, cada nivel pasa de 1 a 1 + SideRows esferas.
+        int sideRows = Mathf.Clamp(DynamicBoneChestColliderSideRows, 0, 4);
+        int sideFromRow = Mathf.Max(0, DynamicBoneChestColliderSideFromRow);
+        float sideOffset = Mathf.Max(0f, DynamicBoneChestColliderSideOffset);
+        Vector3 forward = Vector3.Cross(Vector3.up, right);
+        if (forward.sqrMagnitude > 0.0001f)
+            forward.Normalize();
+
+        int created = 0;
+
+        for (int r = 0; r < rows; r++)
+        {
+            float rowY = clavicleY - r * spacing;
+            bool withSides = sideRows > 0 && sideOffset > 0f && r >= sideFromRow;
+
+            for (int i = 0; i < perRow; i++)
+            {
+                float frac = perRow <= 1 ? 0.5f : (float)i / (perRow - 1);
+                float x = (frac - 0.5f) * width;
+
+                Vector3 world = anchor.position;
+                world.x += right.x * x;
+                world.z += right.z * x;
+                world.y = rowY;
+
+                string colliderName = DynamicBoneChestColliderPrefix + r.ToString("00") + "_" + i.ToString("00");
+                CreateGeneratedSphere(colliderName, anchor, world, radius, hairChains);
+                created++;
+
+                if (!withSides)
+                    continue;
+
+                for (int k = 1; k <= sideRows; k++)
+                {
+                    CreateGeneratedSphere(
+                        colliderName + "_a" + k, anchor, world + forward * (k * sideOffset),
+                        radius, hairChains);
+                    CreateGeneratedSphere(
+                        colliderName + "_b" + k, anchor, world - forward * (k * sideOffset),
+                        radius, hairChains);
+                    created += 2;
+                }
+            }
+        }
+
+        return created;
+    }
+
+    // Crea una esfera generada (objeto + DynamicBoneCollider) colgada de `anchor`, la engancha a
+    // todas las cadenas de pelo y la apunta para el re-enganche por frame.
+    private void CreateGeneratedSphere(
+        string colliderName,
+        Transform anchor,
+        Vector3 world,
+        float radius,
+        List<DynamicBone> hairChains)
+    {
+        var colliderObject = new GameObject(colliderName);
+        colliderObject.transform.SetParent(anchor, false);
+        colliderObject.transform.position = world;
+        colliderObject.transform.rotation = Quaternion.identity;
+
+        var collider = colliderObject.AddComponent<DynamicBoneCollider>();
+        collider.ColliderName = colliderName;
+        collider.m_Direction = DynamicBoneColliderBase.Direction.Z;
+        collider.m_Bound = DynamicBoneColliderBase.Bound.Outside;
+        collider.m_Center = Vector3.zero;
+        collider.m_Radius = radius;   // DynamicBone lo multiplica por la escala del traje
+        collider.m_Height = 0f;       // esfera, no cápsula
+        _dynamicBoneArmColliders.Add(collider);
+
+        // Gizmo SOLO si se pide (por defecto NO: el viewer se ve limpio). Es andamiaje de ajuste.
+        if (DynamicBoneColliderGizmos)
+        {
+            var visualizer = colliderObject.AddComponent<CySpringColliderVisualizer>();
+            visualizer.IsBone = false;
+            visualizer.ColliderSource = null;
+            visualizer.IsCapsule = false;
+            visualizer.Radius = radius;
+            visualizer.Color = new Color(1f, 0.55f, 0.1f, 1f);
+        }
+
+        for (int c = 0; c < hairChains.Count; c++)
+        {
+            DynamicBone chain = hairChains[c];
+            for (int p = 0; p < chain.Particles.Count; p++)
+            {
+                DynamicBone.Particle particle = chain.Particles[p];
+                if (particle == null)
+                    continue;
+
+                if (particle.m_Colliders == null)
+                    particle.m_Colliders = new List<DynamicBoneColliderBase>();
+
+                if (!particle.m_Colliders.Contains(collider))
+                    particle.m_Colliders.Add(collider);
+            }
+        }
+    }
+
+    // Quita las esferas generadas de una carga anterior (recarga de traje).
+    private void RemoveDynamicBoneArmColliders()
+    {
+        var all = GetComponentsInChildren<Transform>(true);
+        for (int i = all.Length - 1; i >= 0; i--)
+        {
+            Transform candidate = all[i];
+            if (candidate == null || candidate == transform)
+                continue;
+
+            bool generated = candidate.name.StartsWith(DynamicBoneArmColliderPrefix, StringComparison.Ordinal) ||
+                             candidate.name.StartsWith(DynamicBoneChestColliderPrefix, StringComparison.Ordinal);
+            if (!generated)
+                continue;
+
+            if (Application.isPlaying)
+                Destroy(candidate.gameObject);
+            else
+                DestroyImmediate(candidate.gameObject);
+        }
+    }
+
+    // La inicialización del pelo puede reconstruir las partículas (SetupParticles las borra y las
+    // vuelve a crear) DESPUÉS de haberlas enganchado, y entonces las esferas se quedan sin efecto.
+    // Es barato: unas pocas decenas de esferas por cada partícula de pelo, y solo hace trabajo la
+    // primera vez que ve una partícula sin ellas.
+    private void EnsureDynamicBoneArmCollidersAttached()
+    {
+        if (_dynamicBoneArmColliders.Count == 0)
+            AdoptGeneratedColliders();
+
+        if (_dynamicBoneArmColliders.Count == 0)
+            return;
+
+        RefreshDynamicBoneHairChains();
+        if (_dynamicBoneHairChains.Count == 0)
+            return;
+
+        for (int c = 0; c < _dynamicBoneHairChains.Count; c++)
+        {
+            DynamicBone chain = _dynamicBoneHairChains[c];
+            if (chain == null)
+                continue;
+
+            for (int p = 0; p < chain.Particles.Count; p++)
+            {
+                DynamicBone.Particle particle = chain.Particles[p];
+                if (particle == null)
+                    continue;
+
+                if (particle.m_Colliders == null)
+                    particle.m_Colliders = new List<DynamicBoneColliderBase>();
+
+                if (particle.m_Colliders.Contains(_dynamicBoneArmColliders[0]))
+                    continue;
+
+                for (int a = 0; a < _dynamicBoneArmColliders.Count; a++)
+                {
+                    DynamicBoneCollider armCollider = _dynamicBoneArmColliders[a];
+                    if (armCollider != null && !particle.m_Colliders.Contains(armCollider))
+                        particle.m_Colliders.Add(armCollider);
+                }
+            }
+        }
+    }
+
+    // El contenedor que va a simular el pelo puede NO ser el que creó las esferas (el cargador
+    // renueva el componente al cambiar de traje y las esferas se quedan colgadas de los huesos),
+    // así que si la lista está vacía se ADOPTAN las que ya existen en la jerarquía.
+    private void AdoptGeneratedColliders()
+    {
+        var all = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            Transform candidate = all[i];
+            if (candidate == null || candidate == transform)
+                continue;
+
+            bool generated = candidate.name.StartsWith(DynamicBoneArmColliderPrefix, StringComparison.Ordinal) ||
+                             candidate.name.StartsWith(DynamicBoneChestColliderPrefix, StringComparison.Ordinal);
+            if (!generated)
+                continue;
+
+            var collider = candidate.GetComponent<DynamicBoneCollider>();
+            if (collider != null && !_dynamicBoneArmColliders.Contains(collider))
+                _dynamicBoneArmColliders.Add(collider);
+        }
+    }
+
+    // La lista de cadenas se reconstruye si está vacía o si alguna desapareció (recarga de pelo).
+    private void RefreshDynamicBoneHairChains()
+    {
+        bool stale = _dynamicBoneHairChains.Count == 0;
+        if (!stale)
+        {
+            for (int i = 0; i < _dynamicBoneHairChains.Count; i++)
+            {
+                if (_dynamicBoneHairChains[i] == null)
+                {
+                    stale = true;
+                    break;
+                }
+            }
+        }
+
+        if (!stale)
+            return;
+
+        _dynamicBoneHairChains.Clear();
+
+        if (cySpringDataContainers != null)
+        {
+            for (int i = 0; i < cySpringDataContainers.Count; i++)
+            {
+                CySpringDataContainer container = cySpringDataContainers[i];
+                if (container == null || container.DynamicBones == null)
+                    continue;
+
+                if (GuessCySpringContainerKind(container) != 0)
+                    continue;
+
+                for (int b = 0; b < container.DynamicBones.Count; b++)
+                {
+                    DynamicBone chain = container.DynamicBones[b];
+                    if (chain != null)
+                        _dynamicBoneHairChains.Add(chain);
+                }
+            }
+        }
+
+        if (_dynamicBoneHairChains.Count > 0)
+            return;
+
+        // Plan B: los contenedores de ESTE componente no tienen las cadenas (el pelo lo montó otro
+        // contenedor). Se recogen de la jerarquía: pelo y orejas, nunca la cola.
+        var found = GetComponentsInChildren<DynamicBone>(true);
+        for (int i = 0; i < found.Length; i++)
+        {
+            DynamicBone chain = found[i];
+            if (chain == null || chain.m_Root == null)
+                continue;
+
+            string rootName = chain.m_Root.name;
+            if (rootName.IndexOf("Hair", StringComparison.Ordinal) < 0 &&
+                rootName.IndexOf("Ear", StringComparison.Ordinal) < 0)
+                continue;
+
+            _dynamicBoneHairChains.Add(chain);
+        }
+    }
+
     // Nombres que le corresponden a una cadena: si el hueso declara lado (_L / _R) solo las esferas
     // de SU brazo; si no declara lado (cadenas centrales) las de todos los brazos.
     private List<string> GeneratedColliderNamesForBone(string boneName)
@@ -2824,6 +3322,10 @@ public class UmaContainerCharacter : UmaContainer
         // Inspector enciende/apaga las esferas al momento, sin esperar a que cambie un valor.
         CySpringColliderVisualizer.CollidersEnabled = CySpringHairColliderGizmos;
         CySpringColliderVisualizer.BonesEnabled = CySpringHairColliderGizmos;
+
+        // (DynamicBone) Si el pelo reconstruyó sus partículas después de engancharlas, se vuelven a
+        // enganchar aquí. Sin esferas creadas (pelo nativo) esto sale en la primera línea.
+        EnsureDynamicBoneArmCollidersAttached();
 
         // Ajuste EN CALIENTE de los colisores generados del pelo: si cambias radio, cantidad o solape
         // en el Inspector durante el Play, se recolocan al instante (y se reconstruye el array nativo).
