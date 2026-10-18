@@ -276,7 +276,6 @@ namespace Gallop.Live.Cutt
 
                 for (int i = 0; i < CharaPositionMax; i++)
                 {
-                    Debug.Log(i);
                     _motionSequenceArray[i] = new LiveTimelineMotionSequence();
                     _motionSequenceArray[i].Initialize(Director.instance.charaObjs[i], i, motionSequence[i], this);
                 }

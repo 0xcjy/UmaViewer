@@ -154,9 +154,6 @@ namespace Gallop.RenderPipeline
         private int _rezworkHeight;
 
         private ScreenOverlayRender _overlayRender;
-        private bool _loggedExecute;
-        private bool _loggedMaterialDiagnostics;
-        private float _nextDofParameterLogTime;
 
         // Snapshot of the values actually sent to the shader during Execute.
         // LiveFrameCapture reads this after WaitForEndOfFrame so diagnostics can
@@ -240,20 +237,6 @@ namespace Gallop.RenderPipeline
                 return false;
             }
 
-            if (!_loggedMaterialDiagnostics)
-            {
-                _loggedMaterialDiagnostics = true;
-                LogMaterialDiagnostics("DepthOfField34", _oldDofMaterial);
-                LogMaterialDiagnostics("SeparableWeightedBlurDof34", _oldDofBlurMaterial);
-                LogMaterialDiagnostics("FastBloom", _fastBloomMaterial);
-                LogMaterialDiagnostics("PostDofBloom_Rich", _dofBloomMaterial);
-                LogMaterialDiagnostics("PostDiffusionBloom_Rich", _diffusionBloomMaterial);
-                LogMaterialDiagnostics("PostDiffusionDofBloom_Rich", _diffusionDofBloomMaterial);
-                LogMaterialDiagnostics("WeightedBlur", _weightedBlurMaterial);
-                LogMaterialDiagnostics("PostBloom_Rich", _bloomMaterial);
-                LogMaterialDiagnostics("PostBlit_Rich", _blitMaterial);
-            }
-
             renderPassEvent = param.RenderPassEvent;
             _cameraData = cameraData;
             _feature = feature;
@@ -263,24 +246,6 @@ namespace Gallop.RenderPipeline
                 _overlayRender = CreateOverlayRender();
 
             return true;
-        }
-
-        private static void LogMaterialDiagnostics(string label, Material material)
-        {
-            if (material == null)
-            {
-                Debug.LogWarning("[RecoveredPostEffect] material " + label + " is null");
-                return;
-            }
-
-            Shader shader = material.shader;
-            Debug.Log("[RecoveredPostEffect] material " + label +
-                      " shader=" + (shader != null ? shader.name : "<null>") +
-                      " passes=" + material.passCount +
-                      " mainTex=" + material.HasProperty("_MainTex") +
-                      " blitTexture=" + material.HasProperty("_BlitTexture") +
-                      " parameter=" + material.HasProperty("_Parameter") +
-                      " invTarget=" + material.HasProperty("_InvRenderTargetSize"));
         }
 
         /// <summary>
@@ -361,7 +326,6 @@ namespace Gallop.RenderPipeline
             _feature = null;
             _featureParameter = null;
             _overlayRender = null;
-            _loggedExecute = false;
         }
 
         private static void DestroyMaterial(ref Material material)
@@ -475,29 +439,6 @@ namespace Gallop.RenderPipeline
                 ? "transform"
                 : param.DofFocalType == DepthBlurAndBloom.DofFocalType.Position
                     ? "position" : "point";
-            if (Time.realtimeSinceStartup >= _nextDofParameterLogTime)
-            {
-                _nextDofParameterLogTime = Time.realtimeSinceStartup +
-                    5f;
-                // The normalised values alone are unreadable, so also report the
-                // distances they stand for under this pass's own far-near
-                // normalisation: where the frame is still sharp and where the
-                // background CoC saturates. Comparing those two numbers with the
-                // camera-to-performer distance is what tells us whether the focus
-                // target is right, independent of the official shader internals.
-                float focusMeters = focalDistance01 * depthRange;
-                float sharpToMeters = focalEnd * depthRange;
-                float rampMeters = focalDistance01 * param.DofSmoothness * depthRange;
-                Debug.Log($"[RecoveredPostEffect] dof-param camera={camera.name} " +
-                          $"target={(param.DofFocalTransfrom != null ? param.DofFocalTransfrom.name : param.DofFocalType == DepthBlurAndBloom.DofFocalType.Position ? "position" : "point") } " +
-                          $"depth01={focalDistance01:0.######} focalEnd={focalEnd:0.######} " +
-                          $"focus={focusMeters:0.##}m sharpTo={sharpToMeters:0.##}m " +
-                          $"blurAt={(sharpToMeters + rampMeters):0.##}m " +
-                          $"near={near:0.###} far={camera.farClipPlane:0.#} " +
-                          $"size={param.DofFocalSize:0.###} spread={param.DofMaxBlurSpread:0.###} " +
-                          $"smooth={param.DofSmoothness:0.###} quality={param.DofQualityType} " +
-                          $"blur={param.DofBlurType}");
-            }
 
             int curveParamsId = ShaderManager.GetPropertyId(ShaderManager.PropertyId._CurveParams);
             cmd.SetGlobalVector(
@@ -1976,22 +1917,6 @@ namespace Gallop.RenderPipeline
             int height = GetHandleHeight(source);
             if (width <= 0 || height <= 0)
                 return;
-
-            if (!_loggedExecute)
-            {
-                _loggedExecute = true;
-#pragma warning disable 618
-                RenderTargetIdentifier cameraColorTarget =
-                    renderingData.cameraData.renderer != null &&
-                    renderingData.cameraData.renderer.cameraColorTargetHandle != null
-                        ? renderingData.cameraData.renderer.cameraColorTargetHandle.nameID
-                        : default;
-#pragma warning restore 618
-                Debug.Log($"[RecoveredPostEffect] execute camera={renderingData.cameraData.camera?.name} " +
-                          $"type={param.UseDofDiffusionBloomType} size={width}x{height} " +
-                          $"bloom={param.IsEnableBloom} dof={param.IsEnableDof} diffusion={param.IsEnableDiffusion} " +
-                          $"source={source.RtId} sourceNameId={source.NameId} cameraTarget={cameraColorTarget}");
-            }
 
             CommandBuffer cmd = CommandBufferPool.Get(POOL_NAME);
             try

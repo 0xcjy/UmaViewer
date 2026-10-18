@@ -139,7 +139,6 @@ public static class GlobalLyrics
         _songs = songs;
         _attempted = true;
 
-        Debug.Log($"[GlobalLyrics] Lista actualizada -> {outPath} ({songs.Count} canciones).");
         return true;
 #else
         error = "Building the lyrics list is only supported in the Editor.";

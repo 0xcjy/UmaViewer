@@ -86,7 +86,6 @@ public class UmaViewerDownload : MonoBehaviour
         }
         else
         {
-            Debug.Log("saving " + entry.Url);
             SaveDownloadedAsset(entry, response.Data);
         }
     }
@@ -162,7 +161,6 @@ public class UmaViewerDownload : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log("saving " + entry.Url);
                     SaveDownloadedAsset(entry, response.Data);
                 }
             }

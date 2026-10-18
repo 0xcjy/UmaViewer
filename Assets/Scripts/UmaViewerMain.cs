@@ -125,7 +125,6 @@ public class UmaViewerMain : MonoBehaviour
 
                     ApplyEnglishNames(charaNames, mobNames);
                     TrySaveEnglishNamesCache(cachePath, charaNames, mobNames);
-                    Debug.Log($"Loaded online English names: {charaNames.Count} characters, {mobNames.Count} mobs.");
                 }
                 catch (Exception ex)
                 {
@@ -329,7 +328,6 @@ public class UmaViewerMain : MonoBehaviour
                 if (charaNames.Count == 0 || mobNames.Count == 0)
                     throw new InvalidDataException("English name cache is missing required name tables.");
                 ApplyEnglishNames(charaNames, mobNames);
-                Debug.Log($"Loaded cached English names: {charaNames.Count} characters, {mobNames.Count} mobs.");
             }
             return true;
         }

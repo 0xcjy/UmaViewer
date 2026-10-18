@@ -136,7 +136,6 @@ public static class GlobalNames
         Loaded = true;
         SourcePath = folder;
 
-        Debug.Log($"[GlobalNames] Lista actualizada desde {dbPath} -> {outPath} ({total} nombres).");
         return true;
     }
 
@@ -246,9 +245,6 @@ public static class GlobalNames
                 return;
             }
             MergeTables(ParseJson(asset.text));
-            Debug.Log($"[GlobalNames] Lista empaquetada cargada " +
-                      $"(chara={Count(CategoryChara)}, dress={Count(CategoryDress)}, " +
-                      $"song={Count(CategorySong)}, mob={Count(CategoryMob)}).");
         }
         catch (Exception ex)
         {
@@ -263,9 +259,6 @@ public static class GlobalNames
             string path = Path.Combine(Application.persistentDataPath, "GlobalNames.json");
             if (!File.Exists(path)) return;
             MergeTables(ParseJson(File.ReadAllText(path)));
-            Debug.Log($"[GlobalNames] Lista del usuario cargada desde {path} " +
-                      $"(chara={Count(CategoryChara)}, dress={Count(CategoryDress)}, " +
-                      $"song={Count(CategorySong)}, mob={Count(CategoryMob)}).");
         }
         catch (Exception ex)
         {
@@ -287,9 +280,6 @@ public static class GlobalNames
 
         MergeTables(built);
         SourcePath = path;
-        Debug.Log($"[GlobalNames] Refrescado desde el global {dbPath} " +
-                  $"(chara={Count(CategoryChara)}, dress={Count(CategoryDress)}, " +
-                  $"song={Count(CategorySong)}, mob={Count(CategoryMob)}).");
     }
 
     private static Dictionary<int, Dictionary<int, string>> ParseJson(string json)

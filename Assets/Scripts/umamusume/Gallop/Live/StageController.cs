@@ -429,9 +429,6 @@ namespace Gallop.Live
             RebuildMirrorReflectionCache();
             RebuildBgColorCache();
 
-            Debug.Log("[StageController] stage parts = " +
-                string.Join(", ", _stageObjects.ConvertAll(o => o ? o.name : "<null>")));
-
             if (Director.instance)
                 Director.instance._stageController = this;
 
@@ -612,7 +609,6 @@ namespace Gallop.Live
 
                 if (prefab != null)
                 {
-                    Debug.Log("[StageController] loaded laser object: " + prefab.name);
                     list.Add(prefab);
                 }
                 else
@@ -633,7 +629,6 @@ namespace Gallop.Live
             if (_laserControllerArray != null)
             {
                 _laserSetupDone = true;
-                Debug.Log("[StageController] Laser setup done. count=" + _laserControllerArray.Length);
             }
         }
 
@@ -742,11 +737,6 @@ namespace Gallop.Live
 
                     result.Add(controller);
 
-                    Debug.Log(
-                        $"[StageController] instantiated laser index={controllerIndex}, " +
-                        $"prefab={prefab.name}, objectIndex={objectIndex}, " +
-                        $"timelineMaterialIndex={timelineMaterialIndex}, " +
-                        $"sourceMaterial={(material != null ? material.name : "<prefab>")}");
                 }
             }
 
@@ -756,8 +746,6 @@ namespace Gallop.Live
             // Renderer/Material 绑定，否则 LaserA、LaserB 等颜色轨不会生效。
             PopulateLaserMaterialsFromRuntimeIfNeeded();
             RebuildBgColorCache();
-
-            Debug.Log("[StageController] SetupLaserObject complete. count=" + _laserControllerArray.Length);
         }
 
         private Material ResolveLaserSourceMaterial(int timelineMaterialIndex)
@@ -1048,7 +1036,6 @@ namespace Gallop.Live
             if (data == null)
                 return;
 
-            Debug.Log("[LaserDataDump] type=" + data.GetType().FullName);
 
             var fields = data.GetType().GetFields(
                 System.Reflection.BindingFlags.Instance |
@@ -1104,7 +1091,6 @@ namespace Gallop.Live
             if (GetComponent(t) == null)
             {
                 gameObject.AddComponent(t);
-                Debug.Log($"[StageController] AutoAddDriver added: {t.FullName}");
             }
         }
 
@@ -1184,9 +1170,6 @@ namespace Gallop.Live
                 if (!_animationObjects.Contains(controller))
                     _animationObjects.Add(controller);
             }
-
-            if (_animationObjects.Count > 0)
-                Debug.Log("[StageController] animation objects = " + _animationObjects.Count);
         }
 
         private void AutoAttachMirrorReflectionComponents()
@@ -1198,7 +1181,6 @@ namespace Gallop.Live
             if (renderers == null || renderers.Length == 0)
                 return;
 
-            int attachedCount = 0;
             for (int i = 0; i < renderers.Length; i++)
             {
                 var renderer = renderers[i];
@@ -1206,14 +1188,10 @@ namespace Gallop.Live
                     continue;
 
                 renderer.gameObject.AddComponent<MirrorReflection>();
-                attachedCount++;
 
                 if (_mirrorAutoAttachLog)
                     Debug.Log($"[StageController] Auto attached MirrorReflection -> {GetTransformPath(renderer.transform)}");
             }
-
-            if (attachedCount > 0)
-                Debug.Log($"[StageController] Auto attached {attachedCount} MirrorReflection component(s).");
         }
 
         private bool ShouldAutoAttachMirrorReflection(Renderer renderer)
@@ -2257,10 +2235,6 @@ namespace Gallop.Live
             {
                 Debug.LogWarning($"[StageController] BgColor2 material group not found for timeline '{timelineName}'");
             }
-            else if (_bgColorVerboseLog && resolved != null && resolved.Count > 0)
-            {
-                Debug.Log($"[StageController] BgColor2 '{timelineName}' resolved groups={string.Join(", ", resolved.Select(g => $"{g.kind}:{g.sourceName}:{g.renderers.Count}"))}");
-            }
 
             _bgColor2GroupCache[key] = resolved;
             return resolved;
@@ -2456,9 +2430,8 @@ namespace Gallop.Live
 
             var set = new HashSet<Renderer>();
 
-            if (TryAddRenderersFromStageObjectMap(timelineName, key, set) | TryAddRenderersFromUnitMap(timelineName, key, set))
-            {
-            }
+            TryAddRenderersFromStageObjectMap(timelineName, key, set);
+            TryAddRenderersFromUnitMap(timelineName, key, set);
 
             ApplyBindingOverrides(timelineName, key, set);
 
@@ -2483,10 +2456,6 @@ namespace Gallop.Live
             {
                 if (_bgColorVerboseLog && !string.IsNullOrEmpty(timelineName) && _bgColorMissingLogged.Add(timelineName))
                     Debug.LogWarning($"[StageController] BgColor target not found for timeline '{timelineName}'");
-            }
-            else if (_bgColorVerboseLog)
-            {
-                Debug.Log($"[StageController] BgColor '{timelineName}' resolved renderers={resolved.Count}");
             }
 
             _bgColorRendererCache[key] = resolved;

@@ -53,7 +53,6 @@ public class TemporalIcon : MonoBehaviour
 
         _button.onClick = new Button.ButtonClickedEvent();
         _button.onClick.AddListener(OnButton);
-        Debug.Log("[TemporalIcon] Boton 'CreateMissingCodes' cableado (lote).");
     }
 
     private static Button FindTemporalButton()
@@ -127,7 +126,6 @@ public class TemporalIcon : MonoBehaviour
 
         // 1) crear la lista de trajes sin icono.
         var items = CreateList(main);
-        Debug.Log("[TemporalIcon] Trajes pendientes: " + items.Count);
 
         // 2) por cada traje: cargar -> esperar 1 s -> foto -> png -> borrar.
         for (int i = 0; i < items.Count; i++)
@@ -183,7 +181,6 @@ public class TemporalIcon : MonoBehaviour
 
         if (popup != null) Destroy(popup.gameObject);
         _running = false;
-        Debug.Log("[TemporalIcon] Lote terminado.");
     }
 
     // ------------------------------------------------------------------ lista
@@ -274,8 +271,6 @@ public class TemporalIcon : MonoBehaviour
 
         Directory.CreateDirectory(ListDir());
         File.WriteAllLines(ListFile(), lines);
-        Debug.Log("[TemporalIcon] Lista (" + (lines.Count - 1) + ") -> " + ListFile()
-            + " | comunes con otro pj: " + commonFallbacks);
         return items;
     }
 
@@ -433,7 +428,6 @@ public class TemporalIcon : MonoBehaviour
         string file = Path.Combine(IconDir(), key + ".png");
         File.WriteAllBytes(file, output.EncodeToPNG());
         Destroy(output);
-        Debug.Log("[TemporalIcon] Icono: " + file);
     }
 
     // ------------------------------------------------------------------ helpers

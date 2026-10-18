@@ -29,7 +29,6 @@ namespace Gallop.Live.Cutt
             HeadHeght = (Bones["Position"].InverseTransformPoint(Bones["Head"].position).y + 0.1f) * UmaContainer.BodyScale;
             WaistHeght = Bones["Position"].InverseTransformPoint(Bones["Waist"].position).y * UmaContainer.BodyScale;
             ChestHeght = Bones["Position"].InverseTransformPoint(Bones["Chest"].position).y * UmaContainer.BodyScale;
-            Debug.Log($"InfoChara {UmaContainer.CharaEntry.Name}: {HeadHeght}, {WaistHeght}, {ChestHeght}");
         }
 
         float HeadHeght;

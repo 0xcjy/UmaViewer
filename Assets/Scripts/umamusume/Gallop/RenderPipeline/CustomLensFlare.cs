@@ -266,20 +266,6 @@ namespace Gallop.RenderPipeline
                 }
             }
 
-            Debug.Log($"[LensFlareDiag] camera={(camera != null ? camera.name : "<none>")} " +
-                      $"pipeline={(pipelineAsset != null ? pipelineAsset.name : "<non-URP>")} " +
-                      $"pipelineFlareSupport={(pipelineAsset != null && pipelineAsset.supportDataDrivenLensFlare)} " +
-                      $"registryEmpty={LensFlareCommonSRP.Instance.IsEmpty()} " +
-                      $"total={flares.Length} activeHosts={activeHosts} assets={validAssets} textures={validTextures} " +
-                      $"components={validComponents} enabled={enabledComponents} positiveIntensity={positiveIntensity} " +
-                      $"elements={elementCount} inFront={inFront} inViewport={inViewport} " +
-                      $"cameraLayerVisible={cameraLayerVisible} distanceAttenPositive={positiveDistanceAttenuation} " +
-                      $"screenAttenPositive={positiveScreenAttenuation} " +
-                      $"sourceBrightness={minSourceBrightness:0.###}-{maxSourceBrightness:0.###} " +
-                      $"sourceSize={minSourceSize:0.###}-{maxSourceSize:0.###} " +
-                      $"imageIndices={FormatImageIndexCounts(imageIndexCounts)} " +
-                      $"occlusion={occlusionEnabled}/{validComponents} runtimeOcclusion={RuntimeOcclusion}; " +
-                      string.Join(" | ", samples));
         }
 
         private static string FormatImageIndexCounts(Dictionary<int, int> counts)
@@ -312,15 +298,12 @@ namespace Gallop.RenderPipeline
                     maxAlpha = System.Math.Max(maxAlpha, pixel.a);
                     maxLuma = Mathf.Max(maxLuma, (pixel.r + pixel.g + pixel.b) / (255f * 3f));
                 }
-                Debug.Log($"[LensFlareTexture] {texture.name} {texture.width}x{texture.height} " +
-                          $"alpha={minAlpha}-{maxAlpha} maxLuma={maxLuma:0.###}");
                 UnityEngine.Object.Destroy(probe);
                 RenderTexture.active = previous;
                 RenderTexture.ReleaseTemporary(rt);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.Log($"[LensFlareTexture] {texture.name} sample failed: {ex.GetType().Name}: {ex.Message}");
             }
         }
 

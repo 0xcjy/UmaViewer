@@ -152,7 +152,6 @@ public class LiveViewerUI : MonoBehaviour
         //entero por la salida real del live.
         bn.onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
         bn.onClick.AddListener(OnExitLiveButtonClick);
-        Debug.Log($"[LiveViewerUI] Boton de salir del live cableado: '{bn.gameObject.name}'.");
     }
 
     //Busca el Button de salir del live. Primero por ruta exacta (su sitio en LiveScene.unity) y, si

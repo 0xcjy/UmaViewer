@@ -123,7 +123,6 @@ public class UmaAssetManager : MonoBehaviour
         if (_diagActive)
         {
             ResetDiagCounters();
-            Debug.Log($"[LiveDiag] PreLoadAsset begin. raw_input={entries?.Count ?? 0}");
         }
 
         List<UmaDatabaseEntry> roots = DeduplicateEntries(entries);

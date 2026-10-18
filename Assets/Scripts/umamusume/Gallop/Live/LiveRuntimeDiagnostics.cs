@@ -232,7 +232,6 @@ namespace Gallop.Live
             record.requireStage = requireStage;
             record.characters = characters != null ? characters.Count : 0;
             Write(record);
-            Debug.Log("[LiveDiag] JSONL output=" + outputPath);
         }
 
         public static void RecordResourceRoots(int director, int normal, int mob,

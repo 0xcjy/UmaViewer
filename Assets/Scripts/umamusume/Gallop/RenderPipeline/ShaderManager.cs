@@ -813,7 +813,6 @@ namespace Gallop
                 return;
 
             _loggedBundleReady = true;
-            Debug.Log("[ShaderManager] shader bundle is available to recovered post effects.");
         }
 
         public static string GetShaderFileName(ShaderKinds kinds)

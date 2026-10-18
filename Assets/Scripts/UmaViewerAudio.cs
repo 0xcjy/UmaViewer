@@ -85,8 +85,6 @@ public class UmaViewerAudio
             sourceList.Add(source);
         }
 
-        Debug.Log(sourceList);
-
         CuteAudioSource cute = new CuteAudioSource
         {
             tag = ((PartForm)part).ToString(),

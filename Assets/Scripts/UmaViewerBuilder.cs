@@ -209,7 +209,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                     texPattern2 = $"tex_bdy{costumeId}_0_{bust}";
                     break;
             }
-            Debug.Log(texPattern1 + " " + texPattern2);
             //Load Body Textures
             foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath)
                 && (a.Name.Contains(texPattern1)
@@ -319,7 +318,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
 
             if (Main.AbList.TryGetValue(headClothPath, out UmaDatabaseEntry headClothAsset))
             {
-                Debug.Log($"[UmaViewerBuilder] Load head physics: {headClothPath}");
                 umaContainer.LoadPhysics(headClothAsset);
             }
             else
@@ -376,10 +374,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                     {
                         umaContainer.LoadPhysics(clothAsset);
                     }
-                }
-                else
-                {
-                    Debug.Log("no tail");
                 }
             }
         }
@@ -462,7 +456,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
             string body = "";
             body = UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/pfb_bdy{costumeId}_{height}_{shape}_{bust}";
 
-            Debug.Log("Looking for " + body);
             Main.AbList.TryGetValue(body, out asset);
         }
         else Main.AbList.TryGetValue($"{UmaDatabaseController.BodyPath}bdy{bodyid}_{costumeId}/pfb_bdy{bodyid}_{costumeId}", out asset);
@@ -498,7 +491,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                     texPattern2 = $"tex_bdy{costumeId}_0_{bust}";
                     break;
             }
-            Debug.Log(texPattern1 + " " + texPattern2);
             //Load Body Textures
             foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath)
                 && (a.Name.Contains(texPattern1)
@@ -590,7 +582,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                     hairClothPath,
                     out UmaDatabaseEntry hairClothAsset))
             {
-                Debug.Log($"[UmaViewerBuilder] Load mob hair physics: {hairClothPath}");
                 umaContainer.LoadPhysics(hairClothAsset);
             }
             else
@@ -655,10 +646,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                 {
                     umaContainer.LoadPhysics(asset2);
                 }
-            }
-            else
-            {
-                Debug.Log("no tail");
             }
         }
 
@@ -808,10 +795,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                 //Load Physics
                 var asset1 = Main.AbList[$"{tailPath}clothes/pfb_{tailName}_cloth00"];
                 umaContainer.LoadPhysics(asset1);
-            }
-            else
-            {
-                Debug.Log("no tail");
             }
         }
 
@@ -1470,7 +1453,6 @@ private void DumpBodyRenderersAndMaterials(UmaContainerCharacter uma)
         sb.AppendLine("]");
     }
 
-    Debug.Log(sb.ToString());
 }
 
 private static bool MatchesAny(string value, string[] keywords)

@@ -39,7 +39,6 @@ public class UmaContainer : MonoBehaviour
         {
             foreach(var rend in Renderers)
             {
-                Debug.Log(rend.Key.name);
                 Material[] mat = new Material[rend.Key.sharedMaterials.Length];
                 for(int i = 0; i < mat.Length; i++)
                 {

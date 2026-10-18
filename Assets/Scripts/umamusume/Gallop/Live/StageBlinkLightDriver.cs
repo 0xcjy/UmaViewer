@@ -520,11 +520,6 @@ namespace Gallop.Live
                     if (!probeTimelineOncePerFrame || _probeFrame != f)
                     {
                         _probeFrame = f;
-                        Debug.Log(
-                            $"[TL] frame={f} root={rootName} " +
-                            $"progressTime={info.progressTime:F6} keyIndex={info.keyIndex} " +
-                            $"blend={info.LightBlendMode} washBlend={info.UseWashLightBlendMode}"
-                        );
                     }
                 }
             }
@@ -775,7 +770,6 @@ namespace Gallop.Live
                 {
                     var e = rc.renderers[i];
                     string n = (e.r != null) ? e.r.name : "<null>";
-                    Debug.Log($"[BlinkMap] root={rc.rootName} renderer={n} owner={e.cachedChildName} rawIndex={e.rawIndex} colorIndex={e.colorIndex}");
                 }
             }
         }

@@ -127,13 +127,6 @@ namespace Gallop.Live.Cyalume
             {
                 _loadedPartCsvSource = partSource;
                 BuildPartFramesFromCsv(partCsvText);
-                if (verboseLog)
-                    Debug.Log($"[CyalumePlaybackProvider] Loaded part CSV: musicId={musicId}, source={partSource}, rows={partFrames.Count}");
-            }
-
-            if (verboseLog)
-            {
-                Debug.Log($"[CyalumePlaybackProvider] Loaded cyalume CSV: musicId={musicId}, source={sourceName}, rows={data.Count}, uniquePatterns={patternDefinitions.Count}");
             }
 
             return data.Count > 0;

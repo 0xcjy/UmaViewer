@@ -281,7 +281,6 @@ public static class CostumeBlacklist
             Loaded = Entries.Count > 0;
             count = Entries.Count;
 
-            Debug.Log($"[CostumeBlacklist] Generado {outPath} ({count} entradas).");
             return true;
         }
         catch (Exception ex)

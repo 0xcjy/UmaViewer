@@ -68,7 +68,6 @@ public class PoseManager : MonoBehaviour
         Directory.CreateDirectory(Application.dataPath + "/../Poses");
         foreach (var file in Directory.GetFiles($"{Application.dataPath}/../Poses/"))
         {
-            Debug.Log(file);
             try
             {
                 var data = JsonConvert.DeserializeObject<PoseData>(File.ReadAllText(file));

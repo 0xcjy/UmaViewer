@@ -333,8 +333,6 @@ public class LiveRecordDirector : MonoBehaviour
         _frameWritten = 0;
         _startRealtime = Time.realtimeSinceStartupAsDouble;
         _phase = Phase.Recording;
-        Debug.Log($"[LiveRecord] Recording {_totalFrames} frames at {_settings.fps} fps " +
-                  $"({_settings.RenderWidth}x{_settings.RenderHeight} -> {_settings.width}x{_settings.height}) to {_tempVideoPath}");
     }
 
     //Asigna el RenderTexture a la cámara que presenta el show en este frame (la que cambia según el
@@ -830,7 +828,6 @@ public class LiveRecordDirector : MonoBehaviour
         if (muxed)
         {
             try { if (File.Exists(_tempVideoPath)) File.Delete(_tempVideoPath); } catch { }
-            Debug.Log($"[LiveRecord] Recording finished: {finalPath}" + (hasAudio ? $" (+ {_audioPath})" : " (no audio)"));
         }
 
         //Ya no se graba: se calla el show, se devuelven pantalla/sonido y se sale al visor.

@@ -148,21 +148,6 @@ namespace Gallop
                 else
                     ResolveBasicBones();
             }
-
-            Debug.Log(
-                "[SkirtController] Awake " + name +
-                ", center=" + GetTransformName(_center) +
-                ", kneeL=" + GetTransformName(_kneeL) +
-                ", kneeR=" + GetTransformName(_kneeR) +
-                ", ankleL=" + GetTransformName(_ankleL) +
-                ", ankleR=" + GetTransformName(_ankleR) +
-                ", skirtCount=" + (_skirtDataArray != null ? _skirtDataArray.Length : 0),
-                this);
-        }
-
-        private void OnEnable()
-        {
-            Debug.Log("[SkirtController] OnEnable " + name, this);
         }
 
         
@@ -170,18 +155,7 @@ namespace Gallop
         public void Create(SkirtParamDataAsset data)
         {
             _paramDataAsset = data;
-            Debug.Log("[SkirtController] Create called. data=" + data);
 
-            if (data != null)
-            {
-                Debug.Log(
-                    "[SkirtController] asset=" + data.name +
-                    ", center=" + data._centerBoneName +
-                    ", kneeL=" + data._kneeLBoneName +
-                    ", kneeR=" + data._kneeRBoneName +
-                    ", skirtCount=" + (data._skirtBone != null ? data._skirtBone.Count : -1)
-                );
-            }
             if (ModelScale <= 0.0f)
                 ModelScale = 1.0f;
 
@@ -219,13 +193,6 @@ namespace Gallop
 
         public void CreateLinkCySpring(CySpringRootBone[] rootBoneList, Func<bool> isEnableCySpringFunc)
         {
-            Debug.Log(
-                "[SkirtController] CreateLinkCySpring called. rootBoneList=" +
-                (rootBoneList != null ? rootBoneList.Length : -1) +
-                ", skirtDataArray=" +
-                (_skirtDataArray != null ? _skirtDataArray.Length : -1)
-            );
-
             if (rootBoneList == null || _skirtDataArray == null)
             {
                 _isEnableCySpringFunc = isEnableCySpringFunc;
@@ -260,13 +227,6 @@ namespace Gallop
                 if (firstChild == null)
                     continue;
 
-                Debug.Log(
-                    "[SkirtController] Try rootBone=" +
-                    rootBone.BoneName +
-                    ", firstChild=" +
-                    firstChild.BoneName
-                );
-
                 Vector3 rootPos = rootBone.GameObject.transform.position;
 
                 for (int s = 0; s < _skirtDataArray.Length; s++)
@@ -278,17 +238,6 @@ namespace Gallop
 
                     if (skirtData.SkirtRoot == null || skirtData.SkirtChild == null)
                         continue;
-
-                    Debug.Log(
-                        "[SkirtController] Compare skirtRoot=" +
-                        skirtData.SkirtRoot.name +
-                        ", skirtChild=" +
-                        skirtData.SkirtChild.name +
-                        " with rootBone=" +
-                        rootBone.BoneName +
-                        ", firstChild=" +
-                        firstChild.BoneName
-                    );
 
                     if (!string.Equals(skirtData.SkirtRoot.name, rootBone.BoneName, StringComparison.Ordinal))
                         continue;
@@ -308,19 +257,6 @@ namespace Gallop
                         work.OffsetAngle = offsetAngle;
                         NativeWorkingArray[s] = work;
                     }
-
-                    Debug.Log(
-                        "[SkirtController] Link skirt SUCCESS: " +
-                        skirtData.SkirtRoot.name +
-                        " -> " +
-                        rootBone.BoneName +
-                        ", child=" +
-                        skirtData.SkirtChild.name +
-                        ", index=" +
-                        s +
-                        ", offset=" +
-                        offsetAngle
-                    );
 
                     break;
                 }
@@ -804,11 +740,6 @@ namespace Gallop
             }
 
             return null;
-        }
-
-        private static string GetTransformName(Transform t)
-        {
-            return t != null ? t.name : "None";
         }
 
         private void ApplyParamAsset(SkirtParamDataAsset data)

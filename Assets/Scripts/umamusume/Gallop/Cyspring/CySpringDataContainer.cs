@@ -414,30 +414,6 @@ private const float EarTipStiffness = 0.65f;
                 // partículas. Es la MISMA solución para pelo, orejas y cola.
                 AttachCollidersToAllParticles(dynamic, spring, colliders);
 
-                // (DIAG T012a) Colisores realmente atados a esta cadena. Quitar al cerrar T012a.
-                if (dynamic.Particles != null)
-                {
-                    var colNames = new HashSet<string>(StringComparer.Ordinal);
-                    for (int pi = 0; pi < dynamic.Particles.Count; pi++)
-                    {
-                        var pp = dynamic.Particles[pi];
-                        if (pp == null || pp.m_Colliders == null)
-                            continue;
-
-                        for (int ci = 0; ci < pp.m_Colliders.Count; ci++)
-                        {
-                            var cc = pp.m_Colliders[ci];
-                            if (cc != null && !string.IsNullOrEmpty(cc.ColliderName))
-                                colNames.Add(cc.ColliderName);
-                        }
-                    }
-
-                    Debug.Log(
-                        $"[CySpring][ColNames] {gameObject.name} root={spring._boneName} " +
-                        $"parts={dynamic.Particles.Count} -> {string.Join(",", colNames)}"
-                    );
-                }
-
                 // (P1) Gradiente de peso por ÍNDICE, no por _childElements. Motivo medido: el
                 // resorte de la oreja (`Sp_He_Ear0_R_00`, 6 huesos) solo declara 2 hijos, así
                 // que aplicar el gradiente dentro del bucle de hijos dejaba los huesos 1-3
@@ -449,25 +425,6 @@ private const float EarTipStiffness = 0.65f;
 
             if (DynamicBones.Count > 0)
             {
-                int particleColliderLinks = 0;                for (int i = 0; i < DynamicBones.Count; i++)
-                {
-                    var db = DynamicBones[i];
-                    if (db == null || db.Particles == null)
-                        continue;
-
-                    for (int p = 0; p < db.Particles.Count; p++)
-                    {
-                        var particle = db.Particles[p];
-                        if (particle != null && particle.m_Colliders != null)
-                            particleColliderLinks += particle.m_Colliders.Count;
-                    }
-                }
-
-                Debug.Log(
-                    $"[CySpring][Colisión] {gameObject.name}: {DynamicBones.Count} cadenas, " +
-                    $"{particleColliderLinks} enlaces partícula↔colisor (colisores propagados a todas las partículas)."
-                );
-
                 // (T012d) Anclaje de pose: las partículas de DynamicBone se quedan en la pose que
                 // había al inicializar, mientras los huesos siguen la animación y el giro manual de
                 // cabeza. Medido: la partícula de Sp_He_Hair4_L_01 quedaba a 0.078 m de su hueso.

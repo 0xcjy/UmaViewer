@@ -280,7 +280,6 @@ namespace Gallop.Live
                 _instance = this;
                 LiveRuntimeDiagnostics.BeginDirector(this);
                 Gallop.RenderPipeline.PostImageEffectFeature.ResetRuntimeParameter();
-                Debug.Log(string.Format(CUTT_PATH, live.MusicId));
                 Builder.LoadAssetPath(string.Format(CUTT_PATH, live.MusicId), transform);
                 // Character eye tracking can run while subsequent asset preloads yield.
                 // Establish Camera.main before constructing/enabling those characters.
@@ -288,8 +287,6 @@ namespace Gallop.Live
                 UpdateMainCamera();
                 if (RequireStage)
                 {
-                    Debug.Log(live.BackGroundId);
-
                     string stagePath = string.Format(STAGE_PATH, live.BackGroundId);
                     if (UmaViewerMain.Instance.AbList.TryGetValue(stagePath, out var stageEntry) &&
                         !UmaAssetManager.Exist(stageEntry))
@@ -335,8 +332,6 @@ namespace Gallop.Live
                 //Get live parts info
                 UmaDatabaseEntry partAsset = UmaViewerMain.Instance.AbList[string.Format(LIVE_PART_PATH, live.MusicId)];
                 UmaViewerAudio.LastAudioPartIndex = -1;
-
-                Debug.Log(partAsset.Name);
 
                 AssetBundle bundle = UmaAssetManager.LoadAssetBundle(partAsset);
                 TextAsset partData = bundle.LoadAsset<TextAsset>($"m{live.MusicId}_part");
@@ -856,10 +851,6 @@ namespace Gallop.Live
             _capSameVoice = liveVocalCharaIds.Count >= 2 &&
                             liveVocalCharaIds.TrueForAll(id => id == liveVocalCharaIds[0]);
 
-            Debug.Log($"[Live] VOCAL cancion={songid} modo={VocalMode} elegidas=[{string.Join(", ", vocalIds)}] " +
-                      $"resueltas={liveVocal.Count}/{maxVoices} capSameVoice={_capSameVoice}" +
-                      (partInfo != null ? $" (SingerCount={partInfo.SingerCount} TrackCount={partInfo.TrackCount})" : ""));
-
             //Con 0 o 1 voces no hay nada que mezclar: se salta AlterUpdate y la única pista suena
             //completa (todos sus waves a volumen 1), que es el "Solo concert".
             _soloMode = liveVocal.Count < 2;
@@ -1305,7 +1296,6 @@ namespace Gallop.Live
                     isRecursive: false);
             }
 
-            Debug.Log($"[StagePreloadFallback] bgId={bgId}, bundles={required.Count}");
         }
         private void InitializeMirrorReflections()
         {
@@ -1325,7 +1315,6 @@ namespace Gallop.Live
 
             if (_mirrorReflections.Count == 0)
             {
-                Debug.Log("[Mirror] No MirrorReflection found.");
                 return;
             }
 
@@ -1352,7 +1341,6 @@ namespace Gallop.Live
                 }
             }
 
-            Debug.Log($"[Mirror] Initialized {_mirrorReflections.Count} mirrors.");
         }
 
         private static void AddMirrorReflections(List<MirrorReflection> target, MirrorReflection[] mirrors)

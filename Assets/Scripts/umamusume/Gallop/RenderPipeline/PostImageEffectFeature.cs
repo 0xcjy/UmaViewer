@@ -43,7 +43,6 @@ namespace Gallop.RenderPipeline
 
         private RenderTextureHandle _sourceRT;
         private List<ScriptableRenderPass> _registerPass;
-        private bool _loggedEnqueue;
         private bool _loggedParameterMissing;
         private bool _loggedParameterDisabled;
         private bool _loggedSetupFailed;
@@ -114,7 +113,6 @@ namespace Gallop.RenderPipeline
         {
             Instance = this;
             Dispose();
-            _loggedEnqueue = false;
             _loggedParameterMissing = false;
             _loggedParameterDisabled = false;
             _loggedSetupFailed = false;
@@ -142,8 +140,6 @@ namespace Gallop.RenderPipeline
             _registerPass = new List<ScriptableRenderPass>(REGISTER_PASS_SIZE);
 
             _sourceRT = RenderTextureHandle.Make(new RenderTargetIdentifier(INVALID_NAME_ID), 0, 0);
-            Debug.Log($"[RecoveredPostEffect] Create enabled={_enableRendering} " +
-                      $"shaderReady={ShaderManager.IsShaderBundleReady}");
 
             // 让 Dof Pass 直接使用同一套 CameraData 参数解析逻辑。
             DofDiffusionBloomOverlayPass.FeatureParameterResolver = ResolveFeatureParameter;
@@ -200,7 +196,6 @@ namespace Gallop.RenderPipeline
                 if (!_loggedBypass)
                 {
                     _loggedBypass = true;
-                    Debug.Log("[RecoveredPostEffect] bypass enabled: camera color is preserved");
                 }
                 return;
             }
@@ -218,7 +213,6 @@ namespace Gallop.RenderPipeline
                 if (!_shaderLoadRequested)
                 {
                     _shaderLoadRequested = true;
-                    Debug.Log("[RecoveredPostEffect] requested shader bundle load from render pass");
                 }
             }
 
@@ -251,7 +245,6 @@ namespace Gallop.RenderPipeline
                 if (!_loggedParameterDisabled)
                 {
                     _loggedParameterDisabled = true;
-                    Debug.Log($"[RecoveredPostEffect] skip camera={camera.name}: feature parameter disabled");
                 }
                 return;
             }
@@ -286,14 +279,6 @@ namespace Gallop.RenderPipeline
                                      $"shaderReady={ShaderManager.IsShaderBundleReady}");
                 }
                 return;
-            }
-
-            if (!_loggedEnqueue)
-            {
-                _loggedEnqueue = true;
-                Debug.Log($"[RecoveredPostEffect] enqueue camera={camera.name} " +
-                          $"type={RuntimeParameter.DofDiffuionBloomOverlay.UseDofDiffusionBloomType} " +
-                          $"shaderReady={ShaderManager.IsShaderBundleReady}");
             }
 
             // Explicitly request URP depth for CoC; do not rely on another feature

@@ -953,7 +953,6 @@ namespace Gallop
                     }
                 }
 
-                Debug.Log($"[DiagPelo] {tag} {root.BoneName}: Aim_vs_hueso->hijo errMax={worst:F1}deg ({worstName})  IsLimit={limitCount} [{limitSample}]");
             }
         }
 

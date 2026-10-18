@@ -236,8 +236,6 @@ public class UmaContainerCharacter : UmaContainer
     private int _lastArmCount = -1;
     private float _lastArmOverlap = -1.0f;
     private float _lastArmStartOffset = -1.0f;
-    private float _lastHairBoneRadiusBase = -1.0f;
-    private float _lastHairBoneRadiusTip = -1.0f;
     // Extremos del tramo hombro->codo EN EL ESPACIO LOCAL del hueso del brazo, capturados una sola
     // vez (pose de carga) para que el reparto no dependa de la pose del momento.
     private Vector3[] _armSegmentLocalStart;
@@ -609,7 +607,7 @@ public class UmaContainerCharacter : UmaContainer
                         Toggle = Instantiate(UI.UmaContainerTogglePrefab, UI.ModelSettings.MaterialsList.content)
                     };
                     matHlp.Toggle.Name = mat.name;
-                    matHlp.Toggle.Toggle.onValueChanged.AddListener((value) => { Debug.Log("e"); matHlp.ToggleMaterials(value); });
+                    matHlp.Toggle.Toggle.onValueChanged.AddListener((value) => { matHlp.ToggleMaterials(value); });
                     Materials.Add(matHlp);
                 }
 
@@ -840,14 +838,6 @@ public class UmaContainerCharacter : UmaContainer
             }
         }
 
-        // (DIAG T012a) Banco de colisores realmente creado desde los datos. Sirve para ver si
-        // EXISTE el colisor que falta (p. ej. un glúteo) o si un nombre no resuelve. Quitar
-        // cuando T012a esté cerrada en Play Mode.
-        Debug.Log(
-            $"[CySpring][ColBank] {name}: dbColliders={dbColliders.Count} -> " +
-            string.Join(",", dbColliders.Keys)
-        );
-
         for (int i = 0; i < cySpringDataContainers.Count; i++)
         {
             CySpringDataContainer container = cySpringDataContainers[i];
@@ -991,8 +981,6 @@ public class UmaContainerCharacter : UmaContainer
             CySpring headSpring = _cySpringController.GetSpringArray(0);
             if (headSpring != null)
                 headSpring.DiagLogRestCoherence("DIAG");
-            else
-                Debug.Log("[DiagPelo] part Head = null (el contenedor del pelo no entro al nativo)");
         }
 
         if (CySpringHairViaNative)
@@ -1022,14 +1010,6 @@ public class UmaContainerCharacter : UmaContainer
         }
 
         LinkSkirtControllerToCySpring();
-
-        Debug.Log(
-            "[UmaContainerCharacter] CySpring loaded. " +
-            $"head={(slots.head ? slots.head.name : "null")}, " +
-            $"body={(slots.body ? slots.body.name : "null")}, " +
-            $"bust={(slots.bust ? slots.bust.name : "null")}, " +
-            $"tail={(slots.tail ? slots.tail.name : "null")}"
-        );
     }
 
     private Dictionary<string, Transform> BuildCySpringTransformCache(Transform root, out HashSet<string> duplicateBoneNames)
@@ -1103,19 +1083,10 @@ public class UmaContainerCharacter : UmaContainer
         if (_cySpringController == null || !CySpringHairBoneRadiusEnabled)
             return;
 
-        bool logIt = force ||
-                     !Mathf.Approximately(CySpringHairBoneRadiusBase, _lastHairBoneRadiusBase) ||
-                     !Mathf.Approximately(CySpringHairBoneRadiusTip, _lastHairBoneRadiusTip);
-
-        _lastHairBoneRadiusBase = CySpringHairBoneRadiusBase;
-        _lastHairBoneRadiusTip = CySpringHairBoneRadiusTip;
-
         CySpring headSpring = _cySpringController.GetSpringArray(0);
         CySpringRootBone[] roots = headSpring != null ? headSpring.RootBoneArray : null;
         if (roots == null)
             return;
-
-        int chains = 0;
 
         for (int i = 0; i < roots.Length; i++)
         {
@@ -1150,21 +1121,11 @@ public class UmaContainerCharacter : UmaContainer
                 float t = bl.Count <= 1 ? 0.0f : (float)b / (bl.Count - 1);
                 bone.CollisionRadius = Mathf.Lerp(baseRadius, tipRadius, t);
             }
-
-            chains++;
         }
 
         // (FIX) Los gizmos cian leen el radio nativo: hay que refrescarlos al cambiar el valor, o el
         // ajuste surte efecto en el motor pero no se ve en la Scene view.
         UpdateHairBoneVisualizers();
-
-        if (logIt)
-        {
-            Debug.Log(
-                $"[PeloCol] grosor del pelo aplicado a {chains} cadenas " +
-                $"(general raiz={CySpringHairBoneRadiusBase:F3} punta={CySpringHairBoneRadiusTip:F3}; " +
-                $"overrides activos={CountEnabledRadiusOverrides()})");
-        }
     }
 
     // Primer override de grosor que coincide con el hueso RAIZ de la cadena (o null).
@@ -1184,21 +1145,6 @@ public class UmaContainerCharacter : UmaContainer
         }
 
         return null;
-    }
-
-    private int CountEnabledRadiusOverrides()
-    {
-        if (CySpringHairBoneRadiusOverrides == null)
-            return 0;
-
-        int count = 0;
-        for (int i = 0; i < CySpringHairBoneRadiusOverrides.Count; i++)
-        {
-            if (CySpringHairBoneRadiusOverrides[i] != null && CySpringHairBoneRadiusOverrides[i].Enabled)
-                count++;
-        }
-
-        return count;
     }
 
     // ---- SONDAS LATERALES DEL MECHON --------------------------------------------------------
@@ -1378,8 +1324,6 @@ public class UmaContainerCharacter : UmaContainer
             _probeAxisLocal[bt] = axisLocal.normalized;
         }
 
-        Debug.Log($"[PeloSonda] eje de ancho medido de la malla en {_probeAxisLocal.Count} huesos " +
-                  $"(filtros: {string.Join(", ", CySpringHairProbeBoneFilters ?? new string[0])})");
     }
 
     private Vector3 GetProbeAxisLocal(CySpringBoneBase bone)
@@ -1873,7 +1817,6 @@ public class UmaContainerCharacter : UmaContainer
 
         if (!CySpringArmColliderEnabled)
         {
-            Debug.Log("[PeloCol] colisores generados DESACTIVADOS: el pelo se queda sin colisiones.");
             return;
         }
 
@@ -1993,9 +1936,6 @@ public class UmaContainerCharacter : UmaContainer
             }
         }
 
-        Debug.Log(
-            $"[PeloCol] colisores generados={_generatedHairCollisionNames.Count} · " +
-            $"cadenas de pelo tocadas={chains} (raiz + {childBones} hijos)");
     }
 
     // Nombres que le corresponden a una cadena: si el hueso declara lado (_L / _R) solo las esferas
@@ -2070,9 +2010,6 @@ public class UmaContainerCharacter : UmaContainer
             _armSegmentLocalEnd[s] = anchor.InverseTransformPoint(end.position);
             _armSegmentLength[s] = Vector3.Distance(start.position, end.position);
 
-            Debug.Log(
-                $"[PeloCol] tramo '{side}': {start.name}->{end.name} longitud={_armSegmentLength[s]:F3} m " +
-                $"(anclado a {anchor.name})");
         }
     }
 
@@ -2388,7 +2325,6 @@ public class UmaContainerCharacter : UmaContainer
             _cySpringController.TryUpdateWarmUp();
         }
 
-        Debug.Log($"[UmaContainerCharacter] ReloadClothPhysics OK (duplicados={duplicates.Count}).");
     }
 
     private void LoadSkirtController(UmaDatabaseEntry bodyEntry)
@@ -2413,10 +2349,6 @@ public class UmaContainerCharacter : UmaContainer
 
         if (_cySpringController != null)
             LinkSkirtControllerToCySpring();
-
-        Debug.Log(
-            $"[UmaContainerCharacter] SkirtController loaded param={skirtParam.name}, " +
-            $"charaId={_skirtController.CharaId}, body={bodyEntry.Name}");
     }
 
     private SkirtParamDataAsset LoadBestSkirtParamAsset(UmaDatabaseEntry bodyEntry)
@@ -2456,10 +2388,6 @@ public class UmaContainerCharacter : UmaContainer
                 bestScore = score;
                 bestHasCharaOverride = hasCharaOverride;
             }
-
-            Debug.Log(
-                $"[UmaContainerCharacter] Skirt candidate {asset.name}: " +
-                $"score={score}, charaOverride={hasCharaOverride}, entry={entry.Name}");
         }
 
         return best;
@@ -2974,7 +2902,6 @@ public class UmaContainerCharacter : UmaContainer
                                 }
                             }
                         }
-                        Debug.Log($"[DiagPelo] f{_diagFrameCounter} {r.BoneName}: desvio_vs_reposo={worst:F1}deg  enlace_max={worstLink:F4}m ({worstLinkName})");
                     }
                 }
 
@@ -3042,13 +2969,6 @@ public class UmaContainerCharacter : UmaContainer
         }
 
         _faceLightInitialized = FaceRenderer != null && HeadToonBaseTransform != null;
-
-        Debug.Log(
-            $"[FaceLight] init={_faceLightInitialized}, " +
-            $"FaceRenderer={(FaceRenderer ? FaceRenderer.name : "null")}, " +
-            $"FaceMaterial={(FaceMaterial ? FaceMaterial.name : "null")}, " +
-            $"HeadToonBase={(HeadToonBaseTransform ? HeadToonBaseTransform.name : "null")}"
-        );
     }
 
     private void UpdateFaceLightRuntime()
@@ -3430,7 +3350,6 @@ public class UmaContainerCharacter : UmaContainer
                                 optionMap = $"tex_bdy{costumeIdLong}_0_{bust}_ctrl";
                                 break;
                         }
-                        Debug.Log("Looking for texture " + mainTex);
                         m.SetTexture("_MainTex", textures.Load(t => t.name == mainTex));
                         m.SetTexture("_ToonMap", textures.Load(t => t.name == toonMap));
                         m.SetTexture("_TripleMaskMap", textures.Load(t => t.name == tripleMap));
@@ -3612,7 +3531,6 @@ public class UmaContainerCharacter : UmaContainer
                             m.renderQueue += 1; //fix eyebrows disappearing sometimes
                             break;
                         default:
-                            Debug.Log(m.shader.name);
                             // m.shader = Shader.Find("Nars/UmaMusume/Body");
                             break;
                     }
@@ -3688,7 +3606,6 @@ public class UmaContainerCharacter : UmaContainer
                         m.SetFloat("_CylinderBlend", 0.25f);
                         break;
                     default:
-                        Debug.Log(m.shader.name);
                         // m.shader = Shader.Find("Nars/UmaMusume/Body");
                         break;
                 }

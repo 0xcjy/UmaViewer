@@ -70,8 +70,6 @@ namespace Gallop.Live.Cutt
             {
                 ChestHeght = position.InverseTransformPoint(chest.position).y * UmaContainer.BodyScale;
             }
-
-            Debug.Log($"InfoChara {UmaContainer.CharaEntry.Name}: {HeadHeght}, {WaistHeght}, {ChestHeght}");
         }
 
         private Transform GetBone(string name)

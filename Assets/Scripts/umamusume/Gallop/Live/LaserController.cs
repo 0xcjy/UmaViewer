@@ -172,11 +172,6 @@ namespace Gallop.Live
             _raycastDistance = 0f;
             _isInitialized = true;
 
-            Debug.Log(
-                $"[LaserController] initialized: {_instance.name}, " +
-                $"rays={_rayControllerArray?.Length ?? 0}, " +
-                $"lights={_lightRendererArray?.Length ?? 0}, " +
-                $"rayNames={GetRayNameList()}");
         }
         private static GameObject[] GetIndexedObjects(Component holder,string prefix, int maxCount)
         {
@@ -303,7 +298,6 @@ namespace Gallop.Live
             _raycastDistance = 0f;
             _isInitialized = true;
 
-            Debug.Log($"[LaserController] bound existing: {_instance.name}, rays={_rayControllerArray?.Length ?? 0}, lights={_lightRendererArray?.Length ?? 0}");
         }
 
         private static GameObject[] FindRayObjectsFromHierarchy(Transform controllerTransform)

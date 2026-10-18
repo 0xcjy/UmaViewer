@@ -353,7 +353,6 @@ namespace Gallop.Cyalume
                 sb.AppendLine("  uniqueShaders=" + string.Join(", ", shaderCounts.Select(pair => $"{pair.Key} x{pair.Value}")));
             }
 
-            Debug.Log(sb.ToString());
         }
 
         protected void WriteCyalumeSceneSnapshot(string context)

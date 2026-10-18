@@ -529,7 +529,6 @@ namespace Gallop.Live
                         resolvedCount++;
                 }
 
-                Debug.Log($"[MonitorUvMovieProvider] rebuilt context slots from liveSettings: total={contextSlots.Count}, resolved={resolvedCount}, musicId={musicId}");
             }
 
             return contextSlots.Count > 0;
