@@ -27,6 +27,16 @@ public class LiveRecordSettings
     public bool postProcess = true;
     //Quemar la letra del show en el vídeo.
     public bool lyrics = true;
+    //Calidad de codificación de ENTREGA:
+    //  0 = Low    · H.264 4:2:0 8 bits, rápida y ligera
+    //  1 = Normal · H.264 4:2:0 8 bits, buena calidad
+    //  2 = High   · HEVC 4:4:4 8 bits (croma completa, sin máster)
+    //  3 = Max    · HEVC 4:4:4 10 bits + MÁSTER FFV1 sin pérdida
+    //No afecta al tiempo de grabación: el codificador va sobrado.
+    public int qualityLevel = 1;
+    //Máster sin pérdida (FFV1 en .mkv, audio PCM): lo activa el nivel Max. Permite reencodar después
+    //sin volver a renderizar. Ocupa ~20-30 GB por minuto a 4K120.
+    public bool masterMode = false;
     //Tramo a grabar, en segundos. 'endTime <= 0' significa "todo el show".
     public float startTime = 0f;
     public float endTime = 0f;
@@ -61,6 +71,8 @@ public class LiveRecordSettings
 
     public string VideoPath => Path.Combine(ResolvedFolder, ResolvedName + ".mp4");
     public string AudioPath => Path.Combine(ResolvedFolder, ResolvedName + ".wav");
+    //Máster sin pérdida (solo si 'masterMode'): FFV1 en Matroska, con el audio PCM dentro.
+    public string MasterPath => Path.Combine(ResolvedFolder, ResolvedName + ".master.mkv");
 
     //Comprueba los valores y los deja dentro de rango. Lanza si algo es irrecuperable (así el panel
     //puede avisar en vez de grabar basura).
@@ -75,6 +87,7 @@ public class LiveRecordSettings
         height -= height % 2;
         superSamplePercent = Mathf.Clamp(superSamplePercent, 50, 200);
         msaa = msaa <= 1 ? 1 : (msaa <= 2 ? 2 : (msaa <= 4 ? 4 : 8));
+        qualityLevel = Mathf.Clamp(qualityLevel, 0, 3);
         if (startTime < 0f) startTime = 0f;
         if (endTime > 0f && endTime <= startTime)
             throw new InvalidOperationException("End time must be greater than the start time.");

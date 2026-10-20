@@ -4,7 +4,9 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading;
+using Unity.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
@@ -30,6 +32,13 @@ using Debug = UnityEngine.Debug;
 //La captura reutiliza la misma mecánica que la herramienta de diagnóstico del Editor
 //(Assets/Editor/LiveRenderCapture.cs): la cámara de presentación apunta a un RenderTexture y se leen
 //los píxeles justo al terminar su render, para no perder los postefectos del live.
+//
+//DIAGNÓSTICO DEL BUCLE (opcional, ver LiveRecordProfile.cs)
+//----------------------------------------------------------
+//Con `LiveRecordProfile` activo, antes de grabar se miden dos sondas (render sin captura, y render con
+//lectura de píxeles) y durante la grabación se desglosa cada frame (escena/envío, espera de fin de
+//frame, letra, lectura de píxeles, copia y espera a FFmpeg). Sirve para decidir si el techo es la GPU,
+//la CPU, el lector de píxeles o el codificador. Con el perfil apagado no cuesta nada.
 public class LiveRecordDirector : MonoBehaviour
 {
     public static LiveRecordDirector Instance;
@@ -39,13 +48,15 @@ public class LiveRecordDirector : MonoBehaviour
     private const int WarmupMinFrames = 30;
     private const int WarmupMaxFrames = 150;
 
-    private enum Phase { Preparing, Mixing, Warmup, Recording, Draining, Finalizing, Done }
+    private enum Phase { Preparing, Mixing, Warmup, ProbeRender, ProbeRead, Recording, Draining, Finalizing, Done }
 
     private LiveRecordSettings _settings;
     private Director _director;
     private Phase _phase = Phase.Preparing;
 
     private RenderTexture _rt;
+    private RenderTexture _readbackTarget;   //RT reducido al tamaño de salida (o _rt si no hay supermuestreo)
+    private Material _downscale;
     private Texture2D _readback;
     private Camera _frameCamera;
     private RenderTexture _savedCameraTarget;
@@ -72,8 +83,61 @@ public class LiveRecordDirector : MonoBehaviour
     private double _startRealtime;
     private bool _finalizing;
 
+    //Reencode de entrega desde el máster y trabajos finales (en hilos aparte, con progreso).
+    private string _deliveryArgs;
+    private volatile float _jobProgress = -1f;   //0..1 cuando se conoce; -1 = todavía sin dato
+    private double _jobStart;
+    private volatile bool _jobOk;
+    private volatile string _jobError;
+    private bool _videoOk;
+
+    //Diagnóstico (opcional, ver LiveRecordProfile.cs). Si `_profile` es false no hace nada.
+    private bool _profile;
+    private int _probeFrames;
+    private int _probeDrainEvery = 8;
+    private bool _probeDrainFrame;
+    private bool _sampling;          //este frame se está midiendo
+    private char _curPhase;          //etiqueta de la muestra ('p','q','b','c')
+    private int _sampledFrame;       //índice de frame de la muestra
+    private double _frameStartMs;    //inicio del frame actual (en AdvanceTimeline)
+    private double _submitEndMs;     //final del render de las cámaras del show
+    private double _captureEndMs;    //final de la captura del frame actual
+    private double _markMs;          //marca de trabajo dentro del frame
+    private double _curSubmitMs, _curWaitMs, _curBlitMs, _curReadMs, _curCopyMs, _curWriteMs;
+    private int _curPending;
+    private bool _throttleWarned;
+    private int _probeNotes;
+
+    //Lectura de píxeles asíncrona (ver 'RequestAsyncReadback') y escala de render neutralizada mientras
+    //se graba (ver 'BeginWhenReady').
+    private bool _asyncReadback;
+    private bool _asyncFailed;
+    private bool _readbackPending;
+    private AsyncGPUReadbackRequest _pendingReadback;
+    private UniversalRenderPipelineAsset _savedPipeline;
+    private float _savedRenderScale = 1f;
+
+    //Tiempos de la lectura asíncrona (su callback cae en otro frame, así que se acumulan aparte).
+    private double _asyncCopyMs, _asyncWriteMs;
+    private int _asyncFrames;
+
+    //Búferes nativos para la lectura asíncrona sin copias: la GPU escribe en uno y el hilo escritor lo
+    //manda a FFmpeg tal cual. Varios búferes para que siempre haya uno libre.
+    private NativeArray<byte>[] _asyncBuffers;
+    private bool[] _asyncBusy;
+    private int _asyncCursor;
+    private int _asyncBufferBytes;
+    private int _pendingIndex = -1;
+
+    //Tamaño del frame que va a la CPU (tamaño de salida) y tiempo de la reducción en GPU.
+    private int _captureW, _captureH;
+    private double _curResolveMs;
+    private int _fallbacks;
+
     //Cuadro de progreso (se monta por código, como el resto de overlays del live).
     private GameObject _progressRoot;
+    private GameObject _eventSystem;
+    private bool _ownEventSystem;
     private Text _progressText;
     private Text _progressTitle;
     private GameObject _hudRoot;
@@ -130,12 +194,35 @@ public class LiveRecordDirector : MonoBehaviour
         //de progreso se monta ya aquí, con el aviso de preparación.
         EnsureScreenCover();
         HideLiveHud();
+        EnsureEventSystem();
         BuildProgressOverlay();
+    }
+
+    //El cuadro de progreso necesita un EventSystem para recibir clics. Durante el live la escena que
+    //lo tenía (Version2) ya se ha descargado, así que si no hay ninguno activo se crea uno propio.
+    //Sin esto, el botón Cancelar no responde (y era justo el bug que se veía).
+    private void EnsureEventSystem()
+    {
+        if (_eventSystem != null) return;
+        var current = EventSystem.current;
+        if (current != null)
+        {
+            _eventSystem = current.gameObject;
+            _ownEventSystem = false;
+            return;
+        }
+
+        var go = new GameObject("LiveRecordEventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+        _eventSystem = go;
+        _ownEventSystem = true;
+        Debug.LogWarning("[LiveRecord] No active EventSystem in the live scene; created one for the progress overlay.");
     }
 
     private void OnDestroy()
     {
         RenderPipelineManager.endCameraRendering -= OnCameraRendered;
+        //Diagnóstico: si se sale del Play Mode a mitad de grabación, deja igualmente lo medido hasta ahí.
+        LiveRecordProfile.Dump();
         if (Instance == this) Instance = null;
     }
 
@@ -145,6 +232,8 @@ public class LiveRecordDirector : MonoBehaviour
     {
         if (_settings == null || director == null) return;
         if (_phase == Phase.Done) return;
+
+        TickFrame();
 
         switch (_phase)
         {
@@ -159,7 +248,16 @@ public class LiveRecordDirector : MonoBehaviour
 
             case Phase.Warmup:
                 director.OfflineRenderTime = _startTime;
-                if (--_warmupFrames <= 0) StartRecording(director);
+                if (--_warmupFrames <= 0) StartProbe(director);
+                break;
+
+            //Sondas de diagnóstico: se avanza la línea de tiempo igual que al grabar, pero la captura
+            //(y en 'ProbeRender' también la lectura de píxeles) se salta. Ver LiveRecordProfile.cs.
+            case Phase.ProbeRender:
+            case Phase.ProbeRead:
+                director.OfflineRenderTime = _startTime + _frameScheduled * _settings.Step;
+                _frameScheduled++;
+                if (_frameScheduled >= _probeFrames) AdvanceProbe(director);
                 break;
 
             case Phase.Recording:
@@ -182,7 +280,123 @@ public class LiveRecordDirector : MonoBehaviour
         }
 
         SyncFrameCamera(director);
+        BeginSampledFrame();
     }
+
+    //======================================================================
+    // Diagnóstico del bucle (LiveRecordProfile)
+    //======================================================================
+
+    //Cierra la muestra del frame anterior y abre la del actual. Se llama en cada Update, al principio
+    //de 'AdvanceTimeline', así que el tiempo "total" de un frame es del inicio de un Update al del
+    //siguiente: lo que se tarda de verdad en producir ese frame.
+    private void TickFrame()
+    {
+        if (!_profile) return;
+
+        double now = LiveRecordProfile.NowMs;
+        if (_sampling)
+        {
+            double captureEnd = _captureEndMs > 0 ? _captureEndMs : now;
+            LiveRecordProfile.Push(new LiveRecordProfile.Sample
+            {
+                phase = _curPhase,
+                frame = _sampledFrame,
+                totalMs = now - _frameStartMs,
+                submitMs = _submitEndMs > 0 ? _submitEndMs - _frameStartMs : 0,
+                waitMs = _curWaitMs,
+                resolveMs = _curResolveMs,
+                blitMs = _curBlitMs,
+                readMs = _curReadMs,
+                copyMs = _curCopyMs,
+                writeMs = _curWriteMs,
+                gapMs = now - captureEnd,
+                pending = _curPending
+            });
+
+            //Deja rastro en la consola durante las sondas: si el bucle va a segundos por frame, no debe
+            //parecer que se ha colgado.
+            if (_curPhase == 'p' || _curPhase == 'q' || _curPhase == 'b')
+            {
+                _probeNotes++;
+                if (_probeNotes % 5 == 0)
+                    LiveRecordProfile.Note(string.Format("sonda '{0}' {1}/{2}: {3:0} ms   |   {4}",
+                        _curPhase, _sampledFrame, _probeFrames, now - _frameStartMs, LiveRecordProfile.LiveLine(_curPhase, 1000)));
+            }
+        }
+
+        _frameStartMs = now;
+        _markMs = now;
+        _submitEndMs = 0;
+        _captureEndMs = 0;
+        _curSubmitMs = _curWaitMs = _curBlitMs = _curReadMs = _curCopyMs = _curWriteMs = 0;
+        _curResolveMs = 0;
+        _curPending = 0;
+        _sampling = false;   //lo decide BeginSampledFrame() al final del Update
+
+        //Vigila que nadie devuelva el límite de FPS ni el vSync a mitad de grabación: eso estrangula el
+        //bucle y se confundiría con un cuello de botella real.
+        if (!_throttleWarned && (Application.targetFrameRate != -1 || QualitySettings.vSyncCount != 0))
+        {
+            _throttleWarned = true;
+            LiveRecordProfile.Note(string.Format("¡ojo! límite de fotogramas restaurado durante la grabación: targetFrameRate={0} vSync={1}",
+                Application.targetFrameRate, QualitySettings.vSyncCount));
+        }
+    }
+
+    //Marca el frame actual (y con qué etiqueta) para medirlo. Se llama al final de 'AdvanceTimeline',
+    //cuando ya se sabe en qué fase se va a renderizar.
+    private void BeginSampledFrame()
+    {
+        if (!_profile) return;
+
+        _sampling = _phase == Phase.Recording || _phase == Phase.ProbeRender || _phase == Phase.ProbeRead;
+        if (!_sampling) { _curPhase = '\0'; return; }
+
+        _sampledFrame = _frameScheduled;
+        if (_phase == Phase.ProbeRender)
+        {
+            _probeDrainFrame = _frameScheduled % _probeDrainEvery == 0;
+            _curPhase = _probeDrainFrame ? 'q' : 'p';
+        }
+        else
+        {
+            _curPhase = _phase == Phase.ProbeRead ? 'b' : 'c';
+        }
+    }
+
+    private void StartProbe(Director director)
+    {
+        if (!_profile)
+        {
+            StartRecording(director);
+            return;
+        }
+
+        //Sondas cortas a propósito: si el bucle va a segundos por frame (configuraciones que agotan la
+        //VRAM), una sonda larga parece un cuelgue. 12-24 frames bastan para ver el orden de magnitud.
+        _probeFrames = Mathf.Clamp(_settings.fps / 8, 12, 24);
+        _frameScheduled = 0;
+        _probeDrainFrame = false;
+        _phase = Phase.ProbeRender;
+        LiveRecordProfile.Note("sondas: " + _probeFrames + " frames de render sin captura y " + _probeFrames + " con lectura de píxeles");
+        SetPhaseText("Measuring the render loop (diagnostic)…");
+    }
+
+    private void AdvanceProbe(Director director)
+    {
+        _frameScheduled = 0;
+        if (_phase == Phase.ProbeRender)
+        {
+            _phase = Phase.ProbeRead;
+            return;
+        }
+
+        LiveRecordProfile.Note("sonda 'p' (render sin captura): " + LiveRecordProfile.LiveLine('p', 1000));
+        LiveRecordProfile.Note("sonda 'b' (render + lectura de píxeles): " + LiveRecordProfile.LiveLine('b', 1000));
+        StartRecording(director);
+    }
+
 
     private void BeginWhenReady(Director director)
     {
@@ -220,19 +434,94 @@ public class LiveRecordDirector : MonoBehaviour
 
         _audioPath = Path.Combine(folder, name + ".wav");
         //Nombre provisional: si la grabación se interrumpe (p. ej. se sale del Play Mode) queda este
-        //fichero a medias en lugar de un MP4 incompleto con el nombre bueno.
-        _tempVideoPath = Path.Combine(folder, name + ".partial.mp4");
+        //fichero a medias en lugar de un MP4 incompleto con el nombre bueno. Con máster, el contenedor
+        //es Matroska (FFV1 no va en MP4).
+        _tempVideoPath = Path.Combine(folder, name + (_settings.masterMode ? ".partial.mkv" : ".partial.mp4"));
 
-        //RenderTexture de captura (con supermuestreo y MSAA) y textura de lectura.
+        //RenderTexture de captura (con supermuestreo y MSAA) y, si hay supermuestreo, un segundo RT del
+        //tamaño de salida donde se reduce EN LA GPU antes de leer (ver LiveDownscale.shader): la CPU
+        //sólo recibe el frame final, 4x menos datos a 200 % de supermuestreo.
         int rw = _settings.RenderWidth, rh = _settings.RenderHeight;
+        _captureW = _settings.width;
+        _captureH = _settings.height;
         try
         {
             _rt = new RenderTexture(rw, rh, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default);
             _rt.antiAliasing = _settings.msaa;
             _rt.Create();
-            _readback = new Texture2D(rw, rh, TextureFormat.RGB24, false);
+
+            if (rw != _captureW || rh != _captureH)
+            {
+                var shader = Resources.Load<Shader>("Shaders/LiveDownscale");
+                if (shader != null)
+                {
+                    _downscale = new Material(shader) { hideFlags = HideFlags.DontSave };
+                    _downscale.SetVector("_DstSize", new Vector4(_captureW, _captureH, 0f, 0f));
+                    _readbackTarget = new RenderTexture(_captureW, _captureH, 0, RenderTextureFormat.ARGB32,
+                                                        RenderTextureReadWrite.Default);
+                    _readbackTarget.Create();
+                }
+                else
+                {
+                    //Sin shader no hay reducción: se lee el frame grande y FFmpeg lo reescala (como antes).
+                    Debug.LogWarning("[LiveRecord] LiveDownscale shader not found; falling back to a CPU-side scale in FFmpeg.");
+                    _captureW = rw;
+                    _captureH = rh;
+                }
+            }
         }
         catch (Exception e) { Abort("Could not create the capture RenderTexture: " + e.Message); return; }
+
+        //La escala de render de URP se neutraliza mientras se graba. Con una cámara que renderiza a un
+        //RenderTexture, URP crea la profundidad a RT × escala mientras el color está al tamaño del RT:
+        //el frame queda inválido ("color surface does not match depth surface") y además cuesta 4x más.
+        //El supermuestreo del grabador ya hace ese trabajo (y FFmpeg reduce con lanczos).
+        //El pipeline activo es una copia en memoria (RuntimeGraphicsSettings), no el asset del proyecto.
+        _savedPipeline = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+        if (_savedPipeline != null)
+        {
+            _savedRenderScale = _savedPipeline.renderScale;
+            _savedPipeline.renderScale = 1f;
+        }
+
+        //Lectura de píxeles asíncrona: la GPU entrega el frame cuando termina, sin bloquear el hilo
+        //principal (que puede empezar el siguiente). Si el sistema no la soporta, se sigue leyendo en
+        //síncrono. En las sondas de diagnóstico se mide siempre la síncrona, que es la que se compara.
+        _asyncReadback = SystemInfo.supportsAsyncGPUReadback;
+        if (_asyncReadback)
+        {
+            //Cuatro búferes persistentes del tamaño de SALIDA. La GPU escribe en uno; el callback copia
+            //a un búfer de RAM (2-3 ms) y lo libera al instante, así que nunca escasean.
+            _asyncBufferBytes = _captureW * _captureH * 4;
+            _asyncBuffers = new NativeArray<byte>[4];
+            _asyncBusy = new bool[4];
+            for (int i = 0; i < _asyncBuffers.Length; i++)
+                _asyncBuffers[i] = new NativeArray<byte>(_asyncBufferBytes, Allocator.Persistent,
+                                                         NativeArrayOptions.UninitializedMemory);
+        }
+
+        //Diagnóstico del bucle (opcional): perfil por frame y sondas antes de grabar.
+        //Ver LiveRecordProfile.cs; con el perfil apagado no cuesta nada.
+        LiveRecordProfile.Configure(folder, name);
+        _profile = LiveRecordProfile.Resolve();
+        if (_profile)
+        {
+            LiveRecordProfile.Note(LiveRecordProfile.EnvironmentLine());
+            LiveRecordProfile.Note(string.Format(
+                "ajustes: fps={0} salida={1}x{2} supermuestreo={3}% rt={4}x{5} msaa={6} post={7} letra={8} frames={9} paso={10:0.#####}",
+                _settings.fps, _settings.width, _settings.height, _settings.superSamplePercent, rw, rh,
+                _settings.msaa, _settings.postProcess, _settings.lyrics, _totalFrames, _settings.Step));
+            LiveRecordProfile.Note("perfil activado por: " + LiveRecordProfile.EnabledBy);
+
+            //Con la escala de render ya neutralizada: cuánta memoria piden los adjuntos del frame y con
+            //qué método se leen los píxeles.
+            LiveRecordProfile.Note(string.Format(
+                "urp: renderScale={0:0.##} msaa={1}; lectura de píxeles={2}",
+                _savedPipeline != null ? _savedPipeline.renderScale : -1f,
+                _savedPipeline != null ? _savedPipeline.msaaSampleCount : -1,
+                _asyncReadback ? "asíncrona" : "síncrona"));
+            LiveRecordProfile.Note(LiveRecordProfile.FootprintLine(rw, rh, _settings.msaa, 1f));
+        }
 
         //Ajustes globales de grabación: paso fijo, sin límite de FPS y sin sync del vertido.
         _savedCaptureDelta = Time.captureDeltaTime;
@@ -274,15 +563,59 @@ public class LiveRecordDirector : MonoBehaviour
         //FFmpeg.
         //OJO: la memoria de textura de Unity va de ABAJO hacia arriba y el `rawvideo` de FFmpeg la
         //interpreta de ARRIBA hacia abajo, así que el frame entra volteado verticalmente y hay que
-        //deshacerlo con `vflip` (si no, todo el vídeo sale boca abajo). El reescalado del
-        //supermuestreo se encadena al volteo.
+        //deshacerlo con `vflip` (si no, todo el vídeo sale boca abajo). El supermuestreo ya NO se
+        //reescala aquí: se reduce en la GPU antes de leer el frame.
+        //El formato es `rgba` porque es el que se lee del RenderTexture: es nativo (no obliga a
+        //convertir en CPU como `rgb24`) y es el más rápido de transferir.
+        bool master = _settings.masterMode;
         string filter = "vflip";
-        if (_settings.superSamplePercent != 100)
+        //Si por lo que sea no hay reducción en GPU (shader ausente), FFmpeg vuelve a reescalar como antes.
+        if (_captureW != _settings.width || _captureH != _settings.height)
             filter += $",scale={_settings.width}:{_settings.height}:flags=lanczos";
+
+        //Etiquetas de color explícitas (BT.709, rango limitado). Sin esto, los ficheros 10 bits salen
+        //con matrix/primaries/transfer "unknown" y algunos reproductores (y YouTube) reinterpretan el
+        //color: se ven lavados. El máster FFV1 no las lleva porque va en RGB (bgr0/pc), que es lo suyo.
+        if (!master)
+            filter += ",scale=out_color_matrix=bt709:out_range=tv" +
+                      ",setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=tv";
+
+        string encoderArgs = null;
         try
         {
+            //El encoder se resuelve una vez: NVENC/HEVC si el equipo los tiene, x264 si no.
+            bool nvencH264 = LiveFfmpeg.SupportsEncoder(_ffmpeg, "h264_nvenc");
+            bool nvencHevc = LiveFfmpeg.SupportsEncoder(_ffmpeg, "hevc_nvenc");
+            //4:4:4 se comprueba con el formato exacto: puede haber HEVC sin soporte de croma completa.
+            bool nvencHevc444 = (_settings.qualityLevel >= 2 || master) &&
+                                LiveFfmpeg.SupportsEncoder(_ffmpeg, "hevc_nvenc", "yuv444p");
+            bool nvencHevc44410 = (_settings.qualityLevel >= 3 || master) &&
+                                  LiveFfmpeg.SupportsEncoder(_ffmpeg, "hevc_nvenc", "yuv444p10le");
+
+            //Codificador de la captura: máster sin pérdida (FFV1, nivel Max) o entrega directa.
+            encoderArgs = master
+                ? LiveFfmpeg.MasterEncoderArgs
+                : LiveFfmpeg.VideoEncoderArgs(_settings.qualityLevel, nvencH264, nvencHevc,
+                                              nvencHevc444, nvencHevc44410);
+
+            //Entrega al reencodar desde el máster: el mismo nivel elegido (Max = 4:4:4 10 bits).
+            _deliveryArgs = LiveFfmpeg.VideoEncoderArgs(_settings.qualityLevel, nvencH264, nvencHevc,
+                                                        nvencHevc444, nvencHevc44410);
+
             _pipe = new LiveFfmpegVideoPipe(_ffmpeg, _tempVideoPath,
-                rw, rh, _settings.fps, filter);
+                _captureW, _captureH, _settings.fps, filter, 4, "rgba", encoderArgs, master);
+
+            if (_profile)
+            {
+                LiveRecordProfile.Note("captura: " + (master ? "FFV1 máster sin pérdida (.mkv)"
+                    : LiveFfmpeg.EncoderLabel(_settings.qualityLevel, nvencH264, nvencHevc,
+                                              nvencHevc444, nvencHevc44410) +
+                      " (nivel " + _settings.qualityLevel + ")"));
+                LiveRecordProfile.Note("entrega: " + LiveFfmpeg.EncoderLabel(_settings.qualityLevel,
+                    nvencH264, nvencHevc, nvencHevc444, nvencHevc44410));
+                LiveRecordProfile.Note(string.Format("frame a la CPU: {0}x{1} ({2:0.0} MB)",
+                    _captureW, _captureH, _asyncBufferBytes / 1048576.0));
+            }
         }
         catch (Exception e) { Abort("Could not start FFmpeg: " + e.Message); return; }
 
@@ -375,6 +708,10 @@ public class LiveRecordDirector : MonoBehaviour
         var director = Director.instance;
         if (cam == _frameCamera || (director != null && director.IsPresentationCamera(cam)))
             _showRenderedFrame = Time.frameCount;
+
+        //Diagnóstico: hasta aquí ha llegado el trabajo de escena + envío de cámaras de este frame.
+        if (_profile && _sampling && (cam == _frameCamera || cam == _lyricsCamera))
+            _submitEndMs = LiveRecordProfile.NowMs;
     }
 
     private System.Collections.IEnumerator CaptureLoop()
@@ -383,43 +720,259 @@ public class LiveRecordDirector : MonoBehaviour
         {
             yield return new WaitForEndOfFrame();
 
-            if (_phase != Phase.Recording) continue;
-            if (_showRenderedFrame != Time.frameCount) continue;   //el show no se renderizó ese frame
-            if (_frameWritten >= _totalFrames) continue;
+            bool recording = _phase == Phase.Recording;
+            bool probeRead = _phase == Phase.ProbeRead;
+            bool probeRender = _phase == Phase.ProbeRender;
+            if (!recording && !probeRead && !probeRender) continue;
 
-            CaptureFrame();
+            //El show no se renderizó en este frame de Unity: no hay nada que capturar.
+            if (_showRenderedFrame != Time.frameCount) continue;
+
+            //Sondas: 'ProbeRead' lee los píxeles en cada frame; 'ProbeRender' sólo cada
+            //'_probeDrainEvery' frames (para vaciar la GPU de vez en cuando y que el bucle no
+            //se mida "adelantando" trabajo). Ni una ni otra envían nada a FFmpeg.
+            bool read = recording || probeRead || (probeRender && _probeDrainFrame);
+            if (recording && _frameWritten >= _totalFrames) continue;
+
+            if (_profile)
+            {
+                //La espera es del final del render de las cámaras al arranque de la captura; y la marca
+                //se reinicia aquí para que el desglose del frame empiece en este punto.
+                _curWaitMs = _submitEndMs > 0 ? LiveRecordProfile.NowMs - _submitEndMs : 0;
+                _markMs = LiveRecordProfile.NowMs;
+            }
+            if (read) CaptureFrame(recording);
+            if (_profile) _captureEndMs = LiveRecordProfile.NowMs;
         }
     }
 
-    private void CaptureFrame()
+    //'toPipe' = enviar el frame a FFmpeg; si es false (sondas) sólo se lee, para separar el coste de
+    //la lectura de píxeles del de la codificación.
+    private void CaptureFrame(bool toPipe)
     {
-        Texture2D image = _readback;
+        try
+        {
+            //1) Reducción del supermuestreo EN LA GPU: el frame grande (8K) se lleva al tamaño de salida
+            //(4K). Sin esto, a la CPU viajarían 4x más datos y FFmpeg tendría que reescalar.
+            RenderTexture target = _readbackTarget != null ? _readbackTarget : _rt;
+            if (_readbackTarget != null)
+            {
+                Graphics.Blit(_rt, _readbackTarget, _downscale);
+                if (_profile) MarkStage(ref _curResolveMs);
+            }
+
+            //2) Compone la letra (si toca) encima del frame, ya al tamaño de salida. Se hace aquí, con el
+            //frame ya renderizado, para no depender de cómo vuelca URP las cámaras a un RenderTexture.
+            if (_lyricsRT != null && _lyricsBlit != null)
+            {
+                Graphics.Blit(_lyricsRT, target, _lyricsBlit);
+                if (_profile) MarkStage(ref _curBlitMs);
+            }
+
+            if (!toPipe)
+            {
+                //Sondas: lectura síncrona (es justo lo que se quiere medir) y nada para FFmpeg.
+                ReadBackSync(target);
+                if (_profile) MarkStage(ref _curReadMs);
+                return;
+            }
+
+            if (_asyncReadback)
+            {
+                //La GPU entrega el frame por el callback, sin bloquear este hilo.
+                RequestAsyncReadback(target);
+                return;
+            }
+
+            ReadBackSync(target);
+            if (_profile) MarkStage(ref _curReadMs);
+            SendReadbackTexture(_readback.GetRawTextureData<byte>(), true);
+        }
+        catch (Exception e)
+        {
+            _videoError = e.Message;
+            Debug.LogError("[LiveRecord] Failed to capture the frame: " + e);
+        }
+    }
+
+    //Lectura síncrona del RenderTexture a la textura de CPU. Bloquea hasta que la GPU termina el frame
+    //(es el método de referencia y el que usan las sondas).
+    private void ReadBackSync(RenderTexture source)
+    {
+        EnsureReadbackTexture();
         var previous = RenderTexture.active;
         try
         {
-            //Compone la letra (si toca) encima del frame del show. Se hace aquí, con el frame ya
-            //renderizado, para no depender de cómo vuelca URP las cámaras a un RenderTexture.
-            if (_lyricsRT != null && _lyricsBlit != null)
-                Graphics.Blit(_lyricsRT, _rt, _lyricsBlit);
-
-            RenderTexture.active = _rt;
-            image.ReadPixels(new Rect(0, 0, _rt.width, _rt.height), 0, 0);
-            image.Apply();
+            RenderTexture.active = source;
+            _readback.ReadPixels(new Rect(0, 0, _captureW, _captureH), 0, 0);
+            _readback.Apply();
+        }
+        finally
+        {
             RenderTexture.active = previous;
+        }
+    }
 
-            var raw = image.GetRawTextureData<byte>();
+    //Copia los píxeles a un búfer del pool y los encola hacia FFmpeg. Sólo se usa en la lectura síncrona
+    //(sondas y reserva): la asíncrona entrega el búfer nativo sin copiar.
+    private void SendReadbackTexture(NativeArray<byte> pixels, bool fromStage)
+    {
+        var buffer = _pipe.Rent();
+        if (buffer.Length != pixels.Length) buffer = new byte[pixels.Length];
+
+        double t0 = _profile ? LiveRecordProfile.NowMs : 0;
+        pixels.CopyTo(buffer);
+        double t1 = _profile ? LiveRecordProfile.NowMs : 0;
+
+        _pipe.Write(buffer, buffer.Length);
+        double t2 = _profile ? LiveRecordProfile.NowMs : 0;
+
+        if (_profile && fromStage)
+        {
+            _curCopyMs = t1 - t0;
+            _curWriteMs = t2 - t1;
+            _curPending = _pipe.Pending;
+            _markMs = t2;
+        }
+        _frameWritten++;
+    }
+
+    //Textura de lectura de CPU, al tamaño de salida. Se crea la primera vez y en RGBA32, que es nativo
+    //y no obliga a convertir canales como RGB24.
+    private void EnsureReadbackTexture()
+    {
+        if (_readback != null) return;
+        _readback = new Texture2D(_captureW, _captureH, TextureFormat.RGBA32, false);
+    }
+
+    //Pide la lectura asíncrona del frame, directamente a un búfer nativo. Si la anterior aún no ha
+    //llegado se espera: saltarse un frame rompería la secuencia del vídeo.
+    private void RequestAsyncReadback(RenderTexture source)
+    {
+        if (_readbackPending)
+        {
+            try { _pendingReadback.WaitForCompletion(); } catch { _readbackPending = false; }
+        }
+
+        int index = PickFreeAsyncBuffer();
+        if (index < 0)
+        {
+            //No debería ocurrir: el búfer se libera en cuanto se copia (2-3 ms), no al escribir. Si
+            //pasara, se espera a lo pendiente y se reintenta; el camino síncrono queda como último
+            //recurso y se cuenta, para verlo en el perfil si alguna vez se usa.
+            _fallbacks++;
+            try { _pendingReadback.WaitForCompletion(); } catch { }
+            _readbackPending = false;
+            index = PickFreeAsyncBuffer();
+
+            if (index < 0)
+            {
+                ReadBackSync(source);
+                if (_profile) MarkStage(ref _curReadMs);
+                SendReadbackTexture(_readback.GetRawTextureData<byte>(), true);
+                return;
+            }
+        }
+
+        _asyncBusy[index] = true;
+        _pendingIndex = index;
+        _readbackPending = true;
+        _pendingReadback = AsyncGPUReadback.RequestIntoNativeArray(ref _asyncBuffers[index], source, 0,
+                                                                  TextureFormat.RGBA32, OnAsyncReadback);
+        if (_profile) MarkStage(ref _curReadMs);
+    }
+
+    //Busca un búfer nativo que el hilo escritor haya terminado de usar.
+    private int PickFreeAsyncBuffer()
+    {
+        if (_asyncBuffers == null) return -1;
+        for (int k = 1; k <= _asyncBuffers.Length; k++)
+        {
+            int i = (_asyncCursor + k) % _asyncBuffers.Length;
+            if (!_asyncBusy[i]) { _asyncCursor = i; return i; }
+        }
+        return -1;
+    }
+
+    //Callback de la lectura asíncrona (se ejecuta en el hilo principal). Aquí se copia el frame a RAM y
+    //se libera el búfer de GPU ENSEGUIDA: así el siguiente frame nunca se queda sin sitio aunque el
+    //hilo escritor vaya con retraso (era lo que hacía caer medio bucle al camino síncrono).
+    private void OnAsyncReadback(AsyncGPUReadbackRequest request)
+    {
+        _readbackPending = false;
+        int index = _pendingIndex;
+        _pendingIndex = -1;
+        if (index < 0) return;
+
+        if (request.hasError)
+        {
+            _asyncBusy[index] = false;
+            if (!_asyncFailed)
+            {
+                _asyncFailed = true;
+                _asyncReadback = false;
+                Debug.LogWarning("[LiveRecord] The asynchronous pixel readback failed; switching to the synchronous one.");
+            }
+            return;
+        }
+
+        try
+        {
+            int length = _asyncBufferBytes;
             var buffer = _pipe.Rent();
-            if (buffer.Length != raw.Length) buffer = new byte[raw.Length];
-            raw.CopyTo(buffer);
-            _pipe.Write(buffer, buffer.Length);
+            if (buffer.Length != length) buffer = new byte[length];
+
+            double t0 = _profile ? LiveRecordProfile.NowMs : 0;
+            _asyncBuffers[index].CopyTo(buffer);
+            _asyncBusy[index] = false;   //el búfer de GPU ya está libre
+            double t1 = _profile ? LiveRecordProfile.NowMs : 0;
+
+            _pipe.Write(buffer, length);
+            double t2 = _profile ? LiveRecordProfile.NowMs : 0;
+
+            if (_profile)
+            {
+                _asyncCopyMs += t1 - t0;
+                _asyncWriteMs += t2 - t1;
+                _asyncFrames++;
+                _curPending = _pipe.Pending;
+            }
             _frameWritten++;
         }
         catch (Exception e)
         {
-            RenderTexture.active = previous;
+            _asyncBusy[index] = false;
             _videoError = e.Message;
-            Debug.LogError("[LiveRecord] Failed to capture the frame: " + e);
+            Debug.LogError("[LiveRecord] Failed to send the asynchronous frame: " + e);
         }
+    }
+
+    //Libera los búferes nativos. Se llama al restaurar, DESPUÉS de cerrar la tubería (su hilo escritor
+    //podría estar usándolos).
+    private void DisposeAsyncBuffers()
+    {
+        if (_asyncBuffers == null) return;
+        for (int i = 0; i < _asyncBuffers.Length; i++)
+            if (_asyncBuffers[i].IsCreated) _asyncBuffers[i].Dispose();
+        _asyncBuffers = null;
+        _asyncBusy = null;
+        _pendingIndex = -1;
+    }
+
+    //Espera a que la última lectura asíncrona llegue antes de cerrar la tubería (si no se perdería el
+    //último frame).
+    private void FlushReadback()
+    {
+        if (!_readbackPending) return;
+        try { _pendingReadback.WaitForCompletion(); } catch { }
+        _readbackPending = false;
+    }
+
+    private void MarkStage(ref double slot)
+    {
+        double now = LiveRecordProfile.NowMs;
+        slot = now - _markMs;
+        _markMs = now;
     }
 
     private void Update()
@@ -559,7 +1112,7 @@ public class LiveRecordDirector : MonoBehaviour
     private void BuildProgressOverlay()
     {
         _progressRoot = new GameObject("LiveRecordProgress",
-            typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+            typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas = _progressRoot.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 32000;   //por encima de cualquier overlay de depuración
@@ -643,6 +1196,20 @@ public class LiveRecordDirector : MonoBehaviour
             return;
         }
 
+        //Sondas de diagnóstico (ver LiveRecordProfile.cs): se miden antes de empezar a grabar.
+        if (_phase == Phase.ProbeRender || _phase == Phase.ProbeRead)
+        {
+            var probe = new StringBuilder();
+            probe.AppendLine(_phase == Phase.ProbeRender
+                ? "Measuring the render loop (diagnostic)…"
+                : "Measuring the pixel readback (diagnostic)…");
+            probe.AppendLine($"Frame {_frameScheduled} / {_probeFrames}");
+            AppendProfileLine(probe, 'p');
+            AppendProfileLine(probe, 'b');
+            _progressText.text = probe.ToString();
+            return;
+        }
+
         double total = Mathf.Max(_totalFrames, 1);
         int written = Mathf.Min(_frameWritten, _totalFrames);
         double percent = Math.Min(1.0, Math.Max(0.0, written / total)) * 100.0;
@@ -657,8 +1224,17 @@ public class LiveRecordDirector : MonoBehaviour
         sb.AppendLine($"Time      {FormatDuration(currentTime - _startTime)} / {FormatDuration(_endTime - _startTime)}");
         sb.AppendLine($"Remaining {FormatDuration(remaining)}   ({speed:0.00}x realtime)");
         sb.AppendLine($"Output    {_settings.width}x{_settings.height} @ {_settings.fps} fps");
+        AppendProfileLine(sb, 'c');
         if (_phase == Phase.Draining) sb.AppendLine("Finalizing video…");
         _progressText.text = sb.ToString();
+    }
+
+    //Añade al cuadro de progreso la media de la fase indicada (sólo con el diagnóstico activo).
+    private static void AppendProfileLine(StringBuilder sb, char phase)
+    {
+        if (!LiveRecordProfile.Enabled) return;
+        string line = LiveRecordProfile.LiveLine(phase, 1000);
+        if (!string.IsNullOrEmpty(line)) sb.AppendLine(line);
     }
 
     private static string FormatDuration(double seconds)
@@ -692,7 +1268,7 @@ public class LiveRecordDirector : MonoBehaviour
         var shader = Resources.Load<Shader>("Shaders/LyricsOverlayBlit");
         if (shader != null) _lyricsBlit = new Material(shader) { hideFlags = HideFlags.DontSave };
 
-        int rw = _rt.width, rh = _rt.height;
+        int rw = _captureW, rh = _captureH;
         _lyricsRT = new RenderTexture(rw, rh, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default)
         {
             name = "LiveRecordLyricsRT"
@@ -722,17 +1298,33 @@ public class LiveRecordDirector : MonoBehaviour
         canvas.planeDistance = 1f;
         canvas.sortingOrder = 0;
 
-        //Misma escala de UI que el HUD del live, si se puede leer.
+        //------------------------------------------------------------------------
+        //ESCALA: la letra se mide en PÍXELES DEL VÍDEO, no en píxeles de la pantalla.
+        //
+        //CAUSA DEL BUG: el HUD del live se apaga (SetActive(false)) antes de montar esta capa, y
+        //`GetComponentInParent` NO mira objetos inactivos: devolvía null. La copia del CanvasScaler
+        //nunca se hacía y el canvas de la letra se quedaba con los valores por defecto
+        //(ConstantPixelSize, scaleFactor 1) → el texto se dibujaba a 15 px dentro de un frame de
+        //2160 (0,7 % del alto). De ahí que la letra saliera diminuta y que los ajustes de escala
+        //anteriores no cambiasen nada: la rama que los aplicaba no llegaba a ejecutarse.
+        //(Y el propio Canvas sí se dimensiona con el RenderTexture: lo que fallaba era el factor.)
+        //
+        //Ahora la capa busca el scaler subiendo la jerarquía a mano (funciona con el HUD apagado) y
+        //calcula el factor con la fórmula del CanvasScaler, pero evaluada con el tamaño del VÍDEO en
+        //vez del de la ventana:
+        //     px por unidad = blend(altoRT/refAlto, anchoRT/refAncho, match)
+        //
+        //Resultado: la letra ocupa siempre la misma fracción del frame (la del diseño del HUD) a
+        //cualquier resolución, sin depender de cómo esté de grande el editor.
+        //El canvas se deja a 1 unidad = 1 píxel y se escala el TEXTO (fontSize, caja, posición y
+        //sombra), no el canvas: así los glifos se rasterizan al tamaño final y salen nítidos.
+        //------------------------------------------------------------------------
+        var sourceScaler = FindCanvasScaler(source.transform);
+        float pxPerUnit = VideoUiScale(sourceScaler, _captureW, _captureH);
+
         var scaler = _lyricsRoot.GetComponent<CanvasScaler>();
-        var sourceScaler = source.GetComponentInParent<CanvasScaler>();
-        if (sourceScaler != null)
-        {
-            scaler.uiScaleMode = sourceScaler.uiScaleMode;
-            scaler.referenceResolution = sourceScaler.referenceResolution;
-            scaler.matchWidthOrHeight = sourceScaler.matchWidthOrHeight;
-            scaler.screenMatchMode = sourceScaler.screenMatchMode;
-            scaler.referencePixelsPerUnit = sourceScaler.referencePixelsPerUnit;
-        }
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+        scaler.scaleFactor = 1f;   //1 unidad de canvas = 1 píxel del RenderTexture
 
         var textGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
         textGo.layer = LyricsLayer;
@@ -742,19 +1334,51 @@ public class LiveRecordDirector : MonoBehaviour
         rect.anchorMin = sourceRect.anchorMin;
         rect.anchorMax = sourceRect.anchorMax;
         rect.pivot = sourceRect.pivot;
-        rect.anchoredPosition = sourceRect.anchoredPosition;
-        rect.sizeDelta = sourceRect.sizeDelta;
+        rect.anchoredPosition = sourceRect.anchoredPosition * pxPerUnit;
+        rect.sizeDelta = new Vector2(sourceRect.sizeDelta.x * pxPerUnit,
+                                     sourceRect.sizeDelta.y * pxPerUnit);
 
         _lyricsText = textGo.GetComponent<Text>();
         _lyricsText.font = source.font;
-        _lyricsText.fontSize = source.fontSize;
+        //El tamaño va en píxeles del vídeo (ver el bloque de escala de arriba).
+        _lyricsText.fontSize = Mathf.Max(1, Mathf.RoundToInt(source.fontSize * pxPerUnit));
         _lyricsText.fontStyle = source.fontStyle;
         _lyricsText.color = source.color;
         _lyricsText.alignment = source.alignment;
         _lyricsText.raycastTarget = false;
         _lyricsText.horizontalOverflow = source.horizontalOverflow;
         _lyricsText.verticalOverflow = source.verticalOverflow;
+        _lyricsText.lineSpacing = source.lineSpacing;
+        _lyricsText.supportRichText = source.supportRichText;
+        _lyricsText.resizeTextForBestFit = source.resizeTextForBestFit;
+        if (source.resizeTextForBestFit)
+        {
+            _lyricsText.resizeTextMinSize = Mathf.Max(1, Mathf.RoundToInt(source.resizeTextMinSize * pxPerUnit));
+            _lyricsText.resizeTextMaxSize = Mathf.Max(1, Mathf.RoundToInt(source.resizeTextMaxSize * pxPerUnit));
+        }
         _lyricsText.text = "";
+
+        //La letra del HUD lleva sombra/contorno (1 unidad de separación). Se copia también, escalado
+        //como el resto, o en el vídeo sale más plana que en pantalla.
+        foreach (var sourceEffect in source.GetComponents<Shadow>())
+        {
+            var effect = textGo.AddComponent(sourceEffect.GetType()) as Shadow;
+            if (effect == null) continue;
+            effect.effectColor = sourceEffect.effectColor;
+            effect.effectDistance = sourceEffect.effectDistance * pxPerUnit;
+            effect.useGraphicAlpha = sourceEffect.useGraphicAlpha;
+        }
+
+        //Diagnóstico (sólo con el perfil activo): con estos números se comprueba de un vistazo que la
+        //letra va al tamaño del vídeo y no al de la ventana.
+        if (_profile)
+            LiveRecordProfile.Note(string.Format(
+                "letra: píxeles de vídeo por unidad={0:0.###} (vídeo {1}x{2}, referencia {3}x{4}) " +
+                "→ fontSize={5} px, caja {6}x{7} px",
+                pxPerUnit, _captureW, _captureH,
+                sourceScaler != null ? sourceScaler.referenceResolution.x : -1f,
+                sourceScaler != null ? sourceScaler.referenceResolution.y : -1f,
+                _lyricsText.fontSize, rect.sizeDelta.x, rect.sizeDelta.y));
 
         UpdateLyricsCanvas();
     }
@@ -763,6 +1387,53 @@ public class LiveRecordDirector : MonoBehaviour
     {
         if (_lyricsText == null) return;
         _lyricsText.text = _lyricsSource != null ? _lyricsSource.text : "";
+    }
+
+    //Sube la jerarquía a mano en vez de usar GetComponentInParent: el HUD del live está apagado
+    //(SetActive(false)) cuando se monta la capa de la letra y GetComponentInParent ignora los
+    //objetos inactivos, así que devolvía null y la escala se quedaba en los valores por defecto.
+    private static CanvasScaler FindCanvasScaler(Transform t)
+    {
+        while (t != null)
+        {
+            var scaler = t.GetComponent<CanvasScaler>();
+            if (scaler != null) return scaler;
+            t = t.parent;
+        }
+        return null;
+    }
+
+    //Factor de escala que el HUD del live tendría si se dibujara a la resolución del vídeo. Es la
+    //fórmula del CanvasScaler (ScaleWithScreenSize) evaluada con el tamaño del RenderTexture en vez
+    //del de la ventana, para que la letra ocupe siempre la misma fracción del frame.
+    private static float VideoUiScale(CanvasScaler scaler, int width, int height)
+    {
+        float w = Mathf.Max(1, width);
+        float h = Mathf.Max(1, height);
+
+        if (scaler == null) return Mathf.Max(0.01f, h / 600f);   //sin referencia conocida
+
+        if (scaler.uiScaleMode != CanvasScaler.ScaleMode.ScaleWithScreenSize)
+            return Mathf.Max(0.01f, scaler.scaleFactor);
+
+        Vector2 reference = scaler.referenceResolution;
+        if (reference.x <= 0f || reference.y <= 0f) return 1f;
+
+        switch (scaler.screenMatchMode)
+        {
+            case CanvasScaler.ScreenMatchMode.Expand:
+                return Mathf.Max(0.01f, Mathf.Min(w / reference.x, h / reference.y));
+            case CanvasScaler.ScreenMatchMode.Shrink:
+                return Mathf.Max(0.01f, Mathf.Max(w / reference.x, h / reference.y));
+            default:
+            {
+                const float logBase = 2f;
+                float logWidth = Mathf.Log(w / reference.x, logBase);
+                float logHeight = Mathf.Log(h / reference.y, logBase);
+                return Mathf.Max(0.01f,
+                    Mathf.Pow(logBase, Mathf.Lerp(logWidth, logHeight, scaler.matchWidthOrHeight)));
+            }
+        }
     }
 
     private void LateUpdate()
@@ -793,6 +1464,19 @@ public class LiveRecordDirector : MonoBehaviour
 
         RenderPipelineManager.endCameraRendering -= OnCameraRendered;
 
+        //Diagnóstico: qué ha hecho el codificador mientras se grababa (espera por contrapresión).
+        if (_profile && _pipe != null)
+        {
+            LiveRecordProfile.Note(string.Format(
+                "ffmpeg: {0} frames entregados; la escritura ha esperado {1:0.0} s en total, {2} de {3} veces con contrapresión (>2 ms); pendientes {4}",
+                _pipe.FramesWritten, _pipe.WriteMs / 1000.0, _pipe.BackpressureCalls, _pipe.WriteCalls, _pipe.Pending));
+
+            if (_asyncFrames > 0)
+                LiveRecordProfile.Note(string.Format(
+                    "lectura asíncrona: {0} frames; copia {1:0.0} ms + envío {2:0.0} ms por frame (hilo principal); lecturas síncronas por falta de búfer: {3}",
+                    _asyncFrames, _asyncCopyMs / _asyncFrames, _asyncWriteMs / _asyncFrames, _fallbacks));
+        }
+
         StartCoroutine(FinalizeRoutine());
     }
 
@@ -801,23 +1485,84 @@ public class LiveRecordDirector : MonoBehaviour
         SetPhaseText("Finalizing video…");
         yield return null;   //deja que el aviso se dibuje antes de los bloqueos
 
+        //Diagnóstico: el perfil se escribe ANTES de cerrar el vídeo, para que quede en disco aunque
+        //la codificación final se alargue o falle.
+        LiveRecordProfile.Dump();
+
         //Espera a que termine la mezcla de audio si aún estaba en marcha.
         try { _audioThread?.Join(TimeSpan.FromMinutes(5)); } catch { }
 
-        bool videoOk = _pipe != null && _pipe.Complete();
+        //Espera a la última lectura asíncrona: si no, se perdería el último frame de la grabación.
+        FlushReadback();
+
+        //------------------------------------------------------------------------
+        // 1) Cerrar el vídeo capturado (FFmpeg termina de escribir lo que quede en cola).
+        //    En un hilo aparte: con el máster sin pérdida esto puede tardar y antes congelaba el Editor.
+        //------------------------------------------------------------------------
+        SetPhaseText("Closing the recording…");
+        _jobProgress = -1f;
+        _jobStart = Time.realtimeSinceStartupAsDouble;
+        _videoOk = false;
+
+        var closeThread = new Thread(() =>
+        {
+            try { _videoOk = _pipe != null && _pipe.Complete(); }
+            catch (Exception e) { _jobError = e.Message; }
+        })
+        { IsBackground = true, Name = "LiveRecordClose" };
+        closeThread.Start();
+
+        while (closeThread.IsAlive)
+        {
+            SetJobText("Closing the recording (FFmpeg finishing)…",
+                       "Queued frames: " + (_pipe != null ? _pipe.Pending : 0));
+            yield return null;
+        }
+
+        bool videoOk = _videoOk;
         if (!videoOk)
             Debug.LogError("[LiveRecord] FFmpeg failed to encode the video: " + (_pipe != null ? _pipe.Error : _videoError));
 
-        string finalPath = _settings.VideoPath;
+        //Con máster, el vídeo capturado es el .mkv sin pérdida; si no, el MP4 de entrega.
+        bool master = _settings.masterMode;
+        string finalPath = master ? _settings.MasterPath : _settings.VideoPath;
         bool hasAudio = !string.IsNullOrEmpty(_audioPath) && File.Exists(_audioPath);
         bool muxed = false;
+
+        //------------------------------------------------------------------------
+        // 2) Mux del audio (con el máster se COPIA el PCM: son varios GB de lectura/escritura).
+        //    También en un hilo, con progreso por tiempo de salida.
+        //------------------------------------------------------------------------
         if (videoOk && File.Exists(_tempVideoPath))
         {
             if (hasAudio)
             {
-                string error;
-                muxed = LiveFfmpeg.MuxAudio(_ffmpeg, _tempVideoPath, _audioPath, finalPath, out error);
-                if (!muxed) Debug.LogError("[LiveRecord] Could not mux the audio: " + error);
+                double totalSeconds = Math.Max(1.0, _endTime - _startTime);
+                _jobProgress = -1f;
+                _jobStart = Time.realtimeSinceStartupAsDouble;
+                _jobOk = false;
+                _jobError = null;
+
+                var muxThread = new Thread(() =>
+                {
+                    try
+                    {
+                        _jobOk = LiveFfmpeg.MuxAudio(_ffmpeg, _tempVideoPath, _audioPath, finalPath, out _jobError,
+                            master, progress => _jobProgress = (float)Math.Min(1.0, progress / totalSeconds));
+                    }
+                    catch (Exception e) { _jobError = e.Message; }
+                })
+                { IsBackground = true, Name = "LiveRecordMux" };
+                muxThread.Start();
+
+                while (muxThread.IsAlive)
+                {
+                    SetJobText(master ? "Muxing the lossless master (audio in PCM)…" : "Muxing the audio…", null);
+                    yield return null;
+                }
+
+                muxed = _jobOk;
+                if (!muxed) Debug.LogError("[LiveRecord] Could not mux the audio: " + _jobError);
             }
             else
             {
@@ -830,6 +1575,46 @@ public class LiveRecordDirector : MonoBehaviour
             try { if (File.Exists(_tempVideoPath)) File.Delete(_tempVideoPath); } catch { }
         }
 
+        //------------------------------------------------------------------------
+        // 3) Reencode de entrega desde el máster (High o superior). Es lo más largo después del
+        //    render: ~30 ms por frame, o sea varios minutos para un show entero.
+        //------------------------------------------------------------------------
+        if (muxed && master)
+        {
+            double totalSeconds = Math.Max(1.0, _endTime - _startTime);
+            _jobProgress = -1f;
+            _jobStart = Time.realtimeSinceStartupAsDouble;
+            _jobOk = false;
+            _jobError = null;
+
+            string masterPath = finalPath;
+            string deliveryPath = _settings.VideoPath;
+            string args = _deliveryArgs;
+
+            var encodeThread = new Thread(() =>
+            {
+                try
+                {
+                    //La entrega mantiene la misma cadencia que la captura (sin remuestreo).
+                    _jobOk = LiveFfmpeg.ReencodeFromMaster(_ffmpeg, masterPath, deliveryPath, args, out _jobError,
+                        progress => _jobProgress = (float)Math.Min(1.0, progress / totalSeconds));
+                }
+                catch (Exception e) { _jobError = e.Message; }
+            })
+            { IsBackground = true, Name = "LiveRecordDelivery" };
+            encodeThread.Start();
+
+            while (encodeThread.IsAlive)
+            {
+                SetJobText("Encoding delivery (MP4) from the lossless master…",
+                           _totalFrames > 0 ? "Frames in total: " + _totalFrames : null);
+                yield return null;
+            }
+
+            if (!string.IsNullOrEmpty(_jobError))
+                Debug.LogError("[LiveRecord] Delivery encode failed: " + _jobError);
+        }
+
         //Ya no se graba: se calla el show, se devuelven pantalla/sonido y se sale al visor.
         _phase = Phase.Done;
         StopLiveAudio();
@@ -838,6 +1623,39 @@ public class LiveRecordDirector : MonoBehaviour
 
         var director = Director.instance;
         if (director != null) director.RequestExit();
+    }
+
+    //Cuadro de progreso de los trabajos finales (cierre, mux, reencode). 'progress' se rellena desde el
+    //hilo de trabajo con los segundos de salida ya procesados, así que aquí solo se pinta.
+    private void SetJobText(string title, string detail)
+    {
+        if (_progressText == null) return;
+
+        double elapsed = Time.realtimeSinceStartupAsDouble - _jobStart;
+        float progress = _jobProgress;
+        var sb = new StringBuilder();
+        sb.AppendLine(title);
+        sb.AppendLine();
+
+        if (progress >= 0f)
+        {
+            float clamped = Mathf.Clamp01(progress);
+            sb.AppendLine($"Progress  {clamped * 100f:0.0} %");
+            sb.AppendLine($"Elapsed   {FormatDuration(elapsed)}");
+
+            if (clamped > 0.01f)
+            {
+                double total = elapsed / clamped;
+                sb.AppendLine($"Remaining {FormatDuration(Math.Max(0.0, total - elapsed))}   (total ≈ {FormatDuration(total)})");
+            }
+        }
+        else
+        {
+            sb.AppendLine($"Elapsed   {FormatDuration(elapsed)}");
+        }
+
+        if (!string.IsNullOrEmpty(detail)) sb.AppendLine(detail);
+        _progressText.text = sb.ToString();
     }
 
     //Corta la música y las voces del show (estaban sonando en tiempo real, sólo silenciadas por el
@@ -862,6 +1680,7 @@ public class LiveRecordDirector : MonoBehaviour
     private void Abort(string message)
     {
         Debug.LogError("[LiveRecord] " + message);
+        LiveRecordProfile.Dump();   //diagnóstico: deja el perfil de lo medido hasta aquí
         if (UmaViewerUI.Instance != null)
             UmaViewerUI.Instance.ShowMessage("Recording: " + message, UIMessageType.Error);
         _phase = Phase.Done;
@@ -880,6 +1699,13 @@ public class LiveRecordDirector : MonoBehaviour
 
     private void Restore()
     {
+        //Nada de lecturas en vuelo a partir de aquí (el callback escribiría en una tubería cerrada).
+        FlushReadback();
+        _asyncReadback = false;
+
+        //Devuelve la escala de render que tenía el live antes de grabar.
+        if (_savedPipeline != null) _savedPipeline.renderScale = _savedRenderScale;
+
         Time.captureDeltaTime = _savedCaptureDelta;
         Application.targetFrameRate = _savedTargetFrameRate;
         QualitySettings.vSyncCount = _savedVSync;
@@ -904,10 +1730,18 @@ public class LiveRecordDirector : MonoBehaviour
         if (_coverCamera != null) Destroy(_coverCamera.gameObject);
 
         if (_progressRoot != null) Destroy(_progressRoot);
+        //Solo se destruye el EventSystem si lo creó el grabador (nunca uno de la escena).
+        if (_ownEventSystem && _eventSystem != null) Destroy(_eventSystem);
 
         if (_readback != null) Destroy(_readback);
+        if (_readbackTarget != null) { _readbackTarget.Release(); Destroy(_readbackTarget); }
+        if (_downscale != null) Destroy(_downscale);
         if (_rt != null) { _rt.Release(); Destroy(_rt); }
 
         _pipe?.Dispose();
+
+        //Los búferes nativos se liberan después de cerrar la tubería: su hilo escritor podría estar
+        //usándolos (Dispose espera a que termine).
+        DisposeAsyncBuffers();
     }
 }

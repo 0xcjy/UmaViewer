@@ -1,18 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using SFB;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
 //(Grabación del live) Menú de ajustes de grabación.
 //
-//Se monta por código (no vive en ninguna escena) para no tocar el YAML de Version2 ni depender de
-//prefabs. Aparece al pulsar RECORD en el panel de selección del show y no arranca nada hasta que se
-//acepta: entonces entrega un LiveRecordSettings y se cierra.
+//El panel vive en Version2.unity como objeto INACTIVO (LiveRecordPanelUI), para poder retocarlo en el
+//Editor sin tocar código. Open() lo activa y lo conecta con la lógica por nombre (Bind()); si no se
+//encontrara o no se pudiera conectar, se construye por código como respaldo.
+//Aparece al pulsar RECORD en el panel de selección del show y no arranca nada hasta que se acepta:
+//entonces entrega un LiveRecordSettings y se cierra.
 public class LiveRecordPanel : MonoBehaviour
 {
     public static LiveRecordPanel Instance;
+
+    //Nombre del objeto con el panel en la escena (se guarda inactivo y se activa al abrirlo).
+    public const string SceneObjectName = "LiveRecordPanelUI";
+
+    //Serializado: marca que este panel vive en la escena (se oculta en vez de destruirse).
+    [SerializeField] private bool _baked;
+    private static bool _opening;
+    private readonly List<Dropdown> _ownDropdowns = new List<Dropdown>();
+
+    //Estado de las listas de los desplegables del panel (ver EnforceSingleDropdown).
+    private readonly Dictionary<Dropdown, bool> _listWasOpen = new Dictionary<Dropdown, bool>();
+    private readonly HashSet<Dropdown> _hideRequested = new HashSet<Dropdown>();
+    private Dropdown _lastOpened;
 
     private LiveRecordSettings _settings = new LiveRecordSettings();
     private Action<LiveRecordSettings> _onAccept;
@@ -20,13 +37,17 @@ public class LiveRecordPanel : MonoBehaviour
 
     //Controles del formulario.
     private InputField _fps, _start, _end, _folder, _name;
+    private Dropdown _fpsPresets;
+    private bool _syncingFps;
     private Dropdown _resolution;
     private Slider _superSample;
     private Text _superSampleValue;
     private Segmented _antiAliasing;
+    private Segmented _quality;
     private ToggleSwitch _postProcess, _lyrics;
     private Text _status;
     private Text _hint;
+    private Text _maxNotice;
 
     //Resoluciones de salida más habituales. La resolución es UNA sola elección: ancho y alto van
     //juntos (no tiene sentido 1920x480).
@@ -46,6 +67,28 @@ public class LiveRecordPanel : MonoBehaviour
 
     private static readonly string[] MsaaLabels = { "Off", "2x", "4x", "8x" };
     private static readonly int[] MsaaValues = { 1, 2, 4, 8 };
+
+    //Presets de FPS. "Custom" (valor 0) deja el número que se haya escrito a mano.
+    private static readonly string[] FpsPresetLabels = { "30", "60", "90", "120", "240", "Custom" };
+    private static readonly int[] FpsPresetValues = { 30, 60, 90, 120, 240, 0 };
+
+    //Niveles de calidad (0 = Low, 1 = Normal, 2 = High, 3 = Max).
+    //  Low    · H.264 4:2:0 8 bits, rápida y ligera
+    //  Normal · H.264 4:2:0 8 bits, buena calidad
+    //  High   · HEVC 4:4:4 8 bits (croma completa, sin máster)
+    //  Max    · HEVC 4:4:4 10 bits + máster FFV1 sin pérdida
+    private static readonly string[] QualityLabels = { "Low", "Normal", "High", "Max" };
+    private static readonly int[] QualityValues = { 0, 1, 2, 3 };
+
+    //Aviso que se muestra sólo con la calidad Máx (HEVC 4:4:4 de 10 bits).
+    private const string MaxQualityNotice =
+        "4:4:4 + 10-bit: some players may not open it — VLC (or similar) recommended.";
+
+    //Orden de canvas del panel: por encima de todo lo que usa la app (UI del visor 0-5, overlays del
+    //live 30000-32000, listas de desplegables 30000) y por debajo del límite de 32767.
+    public const int PanelSortingOrder = 32760;
+    //Las listas de los desplegables del propio panel se suben aquí para quedar sobre él.
+    private const int PanelDropdownSortingOrder = 32766;
 
     //Colores del control segmentado (antialiasing) y de los interruptores.
     private static readonly Color SegmentOn = new Color(0.24f, 0.56f, 0.87f, 1f);
@@ -119,35 +162,391 @@ public class LiveRecordPanel : MonoBehaviour
     {
         Close();
 
+        //Cierra cualquier desplegable abierto (su lista y su "bloqueador" se pintan en canvases propios
+        //por encima de casi todo) y quita el foco del EventSystem, para que las teclas no sigan
+        //manejando un control de detrás.
+        var openDropdowns = Resources.FindObjectsOfTypeAll<Dropdown>();
+        for (int i = 0; i < openDropdowns.Length; i++)
+            if (openDropdowns[i] != null) openDropdowns[i].Hide();
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+
+        //1) Panel guardado en la escena (inactivo): se activa y se conecta con la lógica.
+        var baked = FindScenePanel();
+        if (baked != null)
+        {
+            baked._settings = defaults != null ? defaults.Clone() : new LiveRecordSettings();
+            baked._onAccept = onAccept;
+            baked._songLabel = songLabel;
+
+            _opening = true;
+            try { baked.gameObject.SetActive(true); }
+            finally { _opening = false; }
+
+            if (baked.Bind())
+            {
+                baked._baked = true;
+                Instance = baked;
+                return baked;
+            }
+
+            //Si el panel de la escena no se pudiera conectar, se oculta y se construye uno nuevo: nunca
+            //se queda sin menú.
+            baked.gameObject.SetActive(false);
+            Debug.LogWarning("[LiveRecordPanel] The scene panel could not be bound; building it at runtime.");
+        }
+
+        //2) Respaldo: construcción por código.
         var go = new GameObject("LiveRecordPanel",
             typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var panel = go.AddComponent<LiveRecordPanel>();
         panel._settings = defaults != null ? defaults.Clone() : new LiveRecordSettings();
         panel._onAccept = onAccept;
         panel._songLabel = songLabel;
-        panel.Build();
+
+        //Si construir el panel fallara, no debe quedarse un objeto a medias en la escena (su "Dim"
+        //taparía la pantalla y el siguiente panel saldría oscurecido).
+        try { panel.Build(); }
+        catch
+        {
+            Destroy(go);
+            throw;
+        }
+
         Instance = panel;
         return panel;
     }
 
+    //El panel vive en la escena (Version2.unity) como objeto inactivo; aquí se busca para reutilizarlo.
+    private static LiveRecordPanel FindScenePanel()
+    {
+        var all = Resources.FindObjectsOfTypeAll<LiveRecordPanel>();
+        for (int i = 0; i < all.Length; i++)
+        {
+            var panel = all[i];
+            if (panel == null) continue;
+            if (!panel.gameObject.scene.IsValid()) continue;
+            if (panel.gameObject.name != SceneObjectName) continue;
+            return panel;
+        }
+        return null;
+    }
+
     public static void Close()
     {
-        if (Instance != null) Destroy(Instance.gameObject);
+        var panel = Instance;
         Instance = null;
+        if (panel == null) return;
+
+        //El panel de la escena se OCULTA (no se destruye); el de respaldo se destruye.
+        if (panel._baked) panel.gameObject.SetActive(false);
+        else Destroy(panel.gameObject);
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
+    //======================================================================
+    // Conexión del panel de la escena con la lógica
+    //======================================================================
+
+    //Busca sus controles por nombre, reconstruye los ayudantes (Segmented/ToggleSwitch) y cablea los
+    //eventos. No crea nada: el objeto ya existe en la escena.
+    private bool Bind()
+    {
+        if (_settings == null) _settings = new LiveRecordSettings();
+
+        var win = transform.Find("Panel") as RectTransform;
+        if (win == null) return false;
+        _panel = win;
+
+        var canvas = GetComponent<Canvas>();
+        if (canvas != null) canvas.sortingOrder = PanelSortingOrder;
+
+        var titleText = FindText(win, "Title");
+        if (titleText != null) titleText.text = "RECORD LIVE  ·  " + _songLabel;
+
+        //FPS: combo (campo + flecha + lista de presets).
+        _fps = FindInput(win, "FPS/Field");
+        _fpsPresets = FindDropdown(win, "FPS/Dropdown");
+        var fpsArrow = win.Find("FPS/Arrow") != null ? win.Find("FPS/Arrow").GetComponent<Button>() : null;
+        if (_fps != null)
+        {
+            _fps.onValueChanged.RemoveAllListeners();
+            _fps.text = _settings.fps.ToString(CultureInfo.InvariantCulture);
+            _fps.onValueChanged.AddListener(_ => { SyncFpsPreset(); RefreshHint(); });
+        }
+        if (fpsArrow != null) fpsArrow.onClick.RemoveAllListeners();
+        if (fpsArrow != null && _fpsPresets != null) fpsArrow.onClick.AddListener(() => _fpsPresets.Show());
+        if (_fpsPresets != null)
+        {
+            _fpsPresets.onValueChanged.RemoveAllListeners();
+            _fpsPresets.onValueChanged.AddListener(OnFpsPresetChanged);
+        }
+        SyncFpsPreset();
+
+        //Resto de controles.
+        _resolution = FindDropdown(win, "Dropdown");
+        if (_resolution != null)
+        {
+            _resolution.onValueChanged.RemoveAllListeners();
+            _resolution.SetValueWithoutNotify(FindResolutionIndex(_settings));
+            _resolution.RefreshShownValue();
+            _resolution.onValueChanged.AddListener(_ => RefreshHint());
+        }
+
+        _superSample = win.Find("Slider") != null ? win.Find("Slider").GetComponent<Slider>() : null;
+        _superSampleValue = FindText(win, "SSValue");
+        if (_superSample != null)
+        {
+            _superSample.onValueChanged.RemoveAllListeners();
+            _superSample.value = Mathf.Clamp(_settings.superSamplePercent, SuperSampleMin, SuperSampleMax);
+            if (_superSampleValue != null) _superSampleValue.text = ((int)_superSample.value) + " %";
+            _superSample.onValueChanged.AddListener(value =>
+            {
+                if (_superSampleValue != null) _superSampleValue.text = ((int)value) + " %";
+                RefreshHint();
+            });
+        }
+
+        _antiAliasing = BindSegmented("Msaa_", MsaaValues, () => RefreshHint());
+        _quality = BindSegmented("Quality_", QualityValues, () => RefreshHint());
+        _postProcess = BindToggle("PostToggle", _settings.postProcess);
+        _lyrics = BindToggle("LyricsToggle", _settings.lyrics);
+
+        _start = BindInput(win, "StartInput", _settings.startTime.ToString("0.##", CultureInfo.InvariantCulture));
+        _end = BindInput(win, "EndInput", _settings.endTime.ToString("0.##", CultureInfo.InvariantCulture));
+        _folder = BindInput(win, "OutputFolder", string.IsNullOrWhiteSpace(_settings.outputFolder)
+            ? LiveRecordSettings.DefaultFolder : _settings.outputFolder);
+        _name = BindInput(win, "NameInput", string.IsNullOrWhiteSpace(_settings.fileName) ? "Live" : _settings.fileName);
+
+        _hint = FindText(win, "Hint");
+        _status = FindText(win, "Status");
+        if (_status != null) _status.text = "";
+        _maxNotice = FindText(win, "MaxNotice");
+        if (_maxNotice != null) _maxNotice.text = MaxQualityNotice;
+
+        var browse = win.Find("BrowseButton") != null ? win.Find("BrowseButton").GetComponent<Button>() : null;
+        if (browse != null) { browse.onClick.RemoveAllListeners(); browse.onClick.AddListener(BrowseOutputFolder); }
+        var record = win.Find("Record") != null ? win.Find("Record").GetComponent<Button>() : null;
+        if (record != null) { record.onClick.RemoveAllListeners(); record.onClick.AddListener(Accept); }
+        var cancel = win.Find("Cancel") != null ? win.Find("Cancel").GetComponent<Button>() : null;
+        if (cancel != null) { cancel.onClick.RemoveAllListeners(); cancel.onClick.AddListener(Close); }
+
+        //Valores iniciales de los segmentados e interruptores.
+        SelectSegmented(_antiAliasing, MsaaValues, _settings.msaa);
+        SelectSegmented(_quality, QualityValues, _settings.qualityLevel);
+
+        //Desplegables cuyas listas hay que subir por encima del panel.
+        _ownDropdowns.Clear();
+        if (_fpsPresets != null) _ownDropdowns.Add(_fpsPresets);
+        if (_resolution != null) _ownDropdowns.Add(_resolution);
+
+        //Estado limpio de listas y, si se cerró el panel con una lista abierta, se destruye esa lista:
+        //uGUI guarda una referencia a ella y, mientras exista, Show() no vuelve a abrirla (la flecha
+        //dejaría de responder).
+        _listWasOpen.Clear();
+        _hideRequested.Clear();
+        _lastOpened = null;
+        for (int i = 0; i < _ownDropdowns.Count; i++)
+        {
+            var dropdown = _ownDropdowns[i];
+            if (dropdown != null && dropdown.transform.Find("Dropdown List") != null) dropdown.Hide();
+        }
+
+        AttachClickAway(transform.Find("Dim"));
+        AttachClickAway(win);
+
+        RefreshHint();
+        return _fps != null && _resolution != null && _quality != null;
+    }
+
+    private static Text FindText(Transform root, string path)
+    {
+        var t = root.Find(path);
+        return t != null ? t.GetComponent<Text>() : null;
+    }
+
+    private static InputField FindInput(Transform root, string path)
+    {
+        var t = root.Find(path);
+        return t != null ? t.GetComponent<InputField>() : null;
+    }
+
+    private static Dropdown FindDropdown(Transform root, string path)
+    {
+        var t = root.Find(path);
+        return t != null ? t.GetComponent<Dropdown>() : null;
+    }
+
+    private InputField BindInput(Transform root, string name, string value)
+    {
+        var field = FindInput(root, name);
+        if (field == null) return null;
+        field.onValueChanged.RemoveAllListeners();
+        field.text = value;
+        field.onValueChanged.AddListener(_ => RefreshHint());
+        return field;
+    }
+
+    private static void SelectSegmented(Segmented segmented, int[] values, int value)
+    {
+        if (segmented == null) return;
+        for (int i = 0; i < values.Length; i++)
+            if (values[i] == value) { segmented.Select(i); return; }
+    }
+
+    //Reconstruye un control segmentado a partir de sus botones ("Option <prefijo><etiqueta>").
+    private Segmented BindSegmented(string prefix, int[] values, Action onChange)
+    {
+        var segmented = new Segmented { Values = values, Backgrounds = new Image[values.Length] };
+        var found = new List<Transform>();
+        foreach (Transform child in _panel)
+            if (child.name.StartsWith("Option " + prefix, StringComparison.Ordinal)) found.Add(child);
+
+        found.Sort((a, b) => ((RectTransform)a).anchoredPosition.x.CompareTo(((RectTransform)b).anchoredPosition.x));
+        for (int i = 0; i < found.Count && i < values.Length; i++)
+        {
+            int index = i;
+            segmented.Backgrounds[i] = found[i].GetComponent<Image>();
+            var button = found[i].GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => { segmented.Select(index); if (onChange != null) onChange(); });
+            }
+        }
+        return segmented;
+    }
+
+    //Reconstruye un interruptor ON/OFF a partir de su objeto ("<nombre>/Knob", "<nombre>/Label").
+    private ToggleSwitch BindToggle(string name, bool isOn)
+    {
+        var rect = _panel.Find(name) as RectTransform;
+        if (rect == null) return null;
+
+        var toggle = new ToggleSwitch
+        {
+            IsOn = isOn,
+            Background = rect.GetComponent<Image>(),
+            Knob = rect.Find("Knob") as RectTransform,
+            Label = rect.Find("Label") != null ? rect.Find("Label").GetComponent<Text>() : null,
+            HalfTravel = 104f * 0.5f - 34f * 0.5f
+        };
+
+        var button = rect.GetComponent<Button>();
+        if (button != null) { button.onClick.RemoveAllListeners(); button.onClick.AddListener(toggle.Toggle); }
+        toggle.Apply();
+        return toggle;
+    }
+
+    //Las listas de los desplegables del panel se crean en un canvas propio a orden 30000, por DEBAJO del
+    //panel (32760): aquí se suben para que se vean.
+    private void LateUpdate()
+    {
+        for (int i = 0; i < _ownDropdowns.Count; i++)
+        {
+            var dropdown = _ownDropdowns[i];
+            var list = dropdown != null ? dropdown.transform.Find("Dropdown List") : null;
+            if (list == null) continue;
+            var canvas = list.GetComponent<Canvas>();
+            if (canvas != null && canvas.sortingOrder != PanelDropdownSortingOrder)
+                canvas.sortingOrder = PanelDropdownSortingOrder;
+        }
+
+        EnforceSingleDropdown();
+    }
+
+    //Solo puede haber UNA lista abierta: al abrir otra, se cierra la anterior. (El "blocker" que uGUI
+    //crea para cerrar al pulsar fuera se pinta en un canvas de orden inferior a este panel, así que sus
+    //clics no llegan a la ventana; de ahí que hubiera que devolver ese comportamiento a mano, ver
+    //AttachClickAway.)
+    private void EnforceSingleDropdown()
+    {
+        if (_ownDropdowns.Count == 0) return;
+
+        for (int i = 0; i < _ownDropdowns.Count; i++)
+        {
+            var dropdown = _ownDropdowns[i];
+            if (dropdown == null) continue;
+
+            bool open = IsListOpen(dropdown);
+            bool wasOpen;
+            _listWasOpen.TryGetValue(dropdown, out wasOpen);
+
+            if (!open)
+            {
+                _listWasOpen[dropdown] = false;
+                _hideRequested.Remove(dropdown);
+                continue;
+            }
+
+            //Acaba de abrirse (y no es una que esté cerrándose): pasa a ser la lista visible.
+            if (!wasOpen && !_hideRequested.Contains(dropdown)) _lastOpened = dropdown;
+            _listWasOpen[dropdown] = true;
+
+            if (_lastOpened != null && _lastOpened != dropdown && !_hideRequested.Contains(dropdown))
+            {
+                _hideRequested.Add(dropdown);
+                dropdown.Hide();
+            }
+        }
+    }
+
+    private static bool IsListOpen(Dropdown dropdown)
+    {
+        var list = dropdown.transform.Find("Dropdown List");
+        return list != null && list.gameObject.activeInHierarchy;
+    }
+
+    //Cierra todas las listas del panel (se usa al pulsar fuera de ellas).
+    private void HideOwnDropdowns()
+    {
+        for (int i = 0; i < _ownDropdowns.Count; i++)
+        {
+            var dropdown = _ownDropdowns[i];
+            if (dropdown == null || !IsListOpen(dropdown)) continue;
+            if (_hideRequested.Contains(dropdown)) continue;
+            _hideRequested.Add(dropdown);
+            dropdown.Hide();
+        }
+    }
+
+    //Devuelve a mano el "cerrar al pulsar fuera" que uGUI hace con su blocker: el blocker de una lista
+    //abierta se pinta por debajo de este panel, así que un clic en la ventana no lo cerraría. Se pone en
+    //el fondo oscuro y en el fondo de la ventana (los hijos con gráfico propio reciben antes el clic).
+    private void AttachClickAway(Transform target)
+    {
+        if (target == null) return;
+
+        var trigger = target.GetComponent<EventTrigger>();
+        if (trigger == null) trigger = target.gameObject.AddComponent<EventTrigger>();
+        trigger.triggers.Clear();
+
+        var entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
+        entry.callback.AddListener(_ => HideOwnDropdowns());
+        trigger.triggers.Add(entry);
     }
 
     private void Awake()
     {
         _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        //Si el panel de la escena arranca ACTIVO (p. ej. la escena se guardó con el menú abierto), se
+        //oculta: sólo debe mostrarse a través de Open(), que es quien lo conecta con la lógica.
+        if (_baked && !_opening) gameObject.SetActive(false);
     }
 
     private void Build()
     {
         var canvas = GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        //OJO: el orden de canvas se guarda en 16 bits (con signo); por encima de 32767 se desborda y
-        //el panel acabaría DETRÁS de todo. Con 1000 sobra para quedar por encima de la UI del viewer.
-        canvas.sortingOrder = 1000;
+        //El panel va POR ENCIMA DE TODO lo que usa la app: la UI del visor (0-5), los overlays del live
+        //(30000/31000/32000) y las listas de los desplegables de uGUI (30000). Así ninguna ventana de
+        //detrás puede pintarse ni recibir clics por encima. Sus propios desplegables se suben aún más
+        //(ver LateUpdate). El límite del campo es 32767.
+        canvas.sortingOrder = PanelSortingOrder;
 
         var scaler = GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -164,7 +563,7 @@ public class LiveRecordPanel : MonoBehaviour
         _panel = NewRect("Panel", transform);
         _panel.anchorMin = _panel.anchorMax = new Vector2(0.5f, 0.5f);
         _panel.pivot = new Vector2(0.5f, 0.5f);
-        _panel.sizeDelta = new Vector2(860f, 660f);
+        _panel.sizeDelta = new Vector2(860f, 760f);
         var panelImage = _panel.gameObject.AddComponent<Image>();
         panelImage.color = new Color(0.09f, 0.10f, 0.12f, 0.98f);
         panelImage.raycastTarget = true;
@@ -176,7 +575,11 @@ public class LiveRecordPanel : MonoBehaviour
         float y = 235f;
         const float step = 40f;
 
-        _fps = AddRowInput("FPS", ref y, step, _settings.fps.ToString(CultureInfo.InvariantCulture));
+        //FPS: un único elemento que sirve para escribir un valor a mano y para elegir uno de los
+        //habituales con la flecha (ver AddFpsCombo).
+        AddLabel("FPS", y);
+        _fps = AddFpsCombo(y);
+        y -= step;
 
         AddLabel("Resolution", y);
         _resolution = AddDropdown(_panel, new Vector2(ControlX, y), new Vector2(420f, 32f),
@@ -198,33 +601,66 @@ public class LiveRecordPanel : MonoBehaviour
 
         AddLabel("Anti-aliasing", y);
         _antiAliasing = AddSegmented(_panel, new Vector2(ControlX, y), new Vector2(420f, 32f),
-            MsaaLabels, MsaaValues, _settings.msaa, () => RefreshHint());
+            MsaaLabels, MsaaValues, _settings.msaa, "Msaa_", () => RefreshHint());
         y -= step;
 
         AddLabel("Post effects", y);
-        _postProcess = AddToggle(_panel, new Vector2(ControlX, y), _settings.postProcess);
+        _postProcess = AddToggle(_panel, "PostToggle", new Vector2(ControlX, y), _settings.postProcess);
         y -= step;
 
         AddLabel("Lyrics in video", y);
-        _lyrics = AddToggle(_panel, new Vector2(ControlX, y), _settings.lyrics);
+        _lyrics = AddToggle(_panel, "LyricsToggle", new Vector2(ControlX, y), _settings.lyrics);
         y -= step;
 
-        _start = AddRowInput("Start (s)", ref y, step, _settings.startTime.ToString("0.##", CultureInfo.InvariantCulture));
-        _end = AddRowInput("End (s) · 0 = full show", ref y, step, _settings.endTime.ToString("0.##", CultureInfo.InvariantCulture));
-        _folder = AddRowInput("Output folder", ref y, step,
-            string.IsNullOrWhiteSpace(_settings.outputFolder) ? LiveRecordSettings.DefaultFolder : _settings.outputFolder);
-        _name = AddRowInput("File name", ref y, step, string.IsNullOrWhiteSpace(_settings.fileName) ? "Live" : _settings.fileName);
+        _start = AddRowInput("Start (s)", "StartInput", ref y, step, _settings.startTime.ToString("0.##", CultureInfo.InvariantCulture));
+        _end = AddRowInput("End (s) · 0 = full show", "EndInput", ref y, step, _settings.endTime.ToString("0.##", CultureInfo.InvariantCulture));
 
-        _hint = AddText(_panel, "Hint", new Vector2(0f, -232f), new Vector2(820f, 46f), 18,
+        //Carpeta de salida: campo (alineado con el resto) + botón que abre el explorador del sistema.
+        AddLabel("Output folder", y);
+        _folder = AddInput(_panel, "OutputFolder", new Vector2(30f, y), new Vector2(260f, 32f),
+            string.IsNullOrWhiteSpace(_settings.outputFolder) ? LiveRecordSettings.DefaultFolder : _settings.outputFolder);
+        _folder.onValueChanged.AddListener(_ => RefreshHint());
+        AddButton(_panel, "BrowseButton", "Browse…", new Vector2(250f, y), new Vector2(140f, 32f),
+            new Color(0.20f, 0.30f, 0.45f, 1f), BrowseOutputFolder);
+        y -= step;
+
+        _name = AddRowInput("File name", "NameInput", ref y, step, string.IsNullOrWhiteSpace(_settings.fileName) ? "Live" : _settings.fileName);
+
+        AddLabel("Video quality", y);
+        _quality = AddSegmented(_panel, new Vector2(ControlX, y), new Vector2(420f, 32f),
+            QualityLabels, QualityValues, _settings.qualityLevel, "Quality_", () => RefreshHint());
+        y -= step;
+
+        //Resumen (dos líneas: el texto puede partirse) y avisos.
+        _hint = AddText(_panel, "Hint", new Vector2(0f, -232f), new Vector2(800f, 46f), 18,
             new Color(0.75f, 0.8f, 0.85f, 1f), TextAnchor.MiddleCenter);
-        _status = AddText(_panel, "Status", new Vector2(0f, -266f), new Vector2(820f, 30f), 21,
+        _hint.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+        //Aviso que sólo aparece con la calidad Máx (4:4:4 de 10 bits).
+        _maxNotice = AddText(_panel, "MaxNotice", new Vector2(0f, -270f), new Vector2(800f, 24f), 17,
+            new Color(1f, 0.72f, 0.35f, 1f), TextAnchor.MiddleCenter);
+        _maxNotice.text = MaxQualityNotice;
+
+        _status = AddText(_panel, "Status", new Vector2(0f, -298f), new Vector2(800f, 26f), 20,
             new Color(1f, 0.55f, 0.45f, 1f), TextAnchor.MiddleCenter);
         _status.text = "";
 
-        AddButton(_panel, "Record", new Vector2(-130f, -300f), new Vector2(230f, 50f),
+        AddButton(_panel, "Record", "Record", new Vector2(-130f, -338f), new Vector2(230f, 52f),
             new Color(0.16f, 0.42f, 0.22f, 1f), Accept);
-        AddButton(_panel, "Cancel", new Vector2(130f, -300f), new Vector2(230f, 50f),
+        AddButton(_panel, "Cancel", "Cancel", new Vector2(130f, -338f), new Vector2(230f, 52f),
             new Color(0.35f, 0.16f, 0.16f, 1f), Close);
+
+        //Desplegables cuyas listas hay que subir por encima del panel (ver LateUpdate).
+        _ownDropdowns.Clear();
+        if (_fpsPresets != null) _ownDropdowns.Add(_fpsPresets);
+        if (_resolution != null) _ownDropdowns.Add(_resolution);
+
+        //Cerrar al pulsar fuera (ver AttachClickAway).
+        _listWasOpen.Clear();
+        _hideRequested.Clear();
+        _lastOpened = null;
+        AttachClickAway(transform.Find("Dim"));
+        AttachClickAway(_panel);
 
         RefreshHint();
     }
@@ -233,10 +669,10 @@ public class LiveRecordPanel : MonoBehaviour
     // Construcción de controles
     //======================================================================
 
-    private InputField AddRowInput(string label, ref float y, float step, string value)
+    private InputField AddRowInput(string label, string name, ref float y, float step, string value)
     {
         AddLabel(label, y);
-        var field = AddInput(_panel, "Input", new Vector2(ControlX, y), new Vector2(420f, 32f), value);
+        var field = AddInput(_panel, name, new Vector2(ControlX, y), new Vector2(420f, 32f), value);
         y -= step;
         field.onValueChanged.AddListener(_ => RefreshHint());
         return field;
@@ -249,10 +685,10 @@ public class LiveRecordPanel : MonoBehaviour
         text.text = label;
     }
 
-    private void AddButton(Transform parent, string label, Vector2 position, Vector2 size, Color color,
+    private void AddButton(Transform parent, string name, string label, Vector2 position, Vector2 size, Color color,
                            Action onClick)
     {
-        var rect = NewRect(label, parent);
+        var rect = NewRect(name, parent);
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = size;
@@ -293,7 +729,7 @@ public class LiveRecordPanel : MonoBehaviour
         text.horizontalOverflow = HorizontalWrapMode.Wrap;
         text.verticalOverflow = VerticalWrapMode.Truncate;
 
-        var input = rect.gameObject.AddComponent<InputField>();
+        var input = rect.gameObject.AddComponent<LiveRecordTextField>();
         input.targetGraphic = image;
         input.textComponent = text;
         input.lineType = InputField.LineType.SingleLine;
@@ -361,9 +797,11 @@ public class LiveRecordPanel : MonoBehaviour
         return slider;
     }
 
-    //Fila de opciones (antialiasing): todas visibles y la elegida resaltada.
+    //Fila de opciones (antialiasing, calidad): todas visibles y la elegida resaltada.
+    //'prefix' va en el nombre de cada botón ("Option Msaa_Off"), para poder re-vincularlos al abrir el
+    //panel horneado en la escena.
     private Segmented AddSegmented(Transform parent, Vector2 position, Vector2 size, string[] labels,
-                                   int[] values, int value, Action onChange)
+                                   int[] values, int value, string prefix, Action onChange)
     {
         var segmented = new Segmented { Values = values, Backgrounds = new Image[labels.Length] };
 
@@ -374,7 +812,7 @@ public class LiveRecordPanel : MonoBehaviour
         for (int i = 0; i < labels.Length; i++)
         {
             int index = i;
-            var rect = NewRect("Option " + labels[i], parent);
+            var rect = NewRect("Option " + prefix + labels[i], parent);
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(width, size.y);
@@ -403,9 +841,9 @@ public class LiveRecordPanel : MonoBehaviour
     }
 
     //Interruptor ON/OFF de una sola pieza (un botón de dos caras).
-    private ToggleSwitch AddToggle(Transform parent, Vector2 position, bool isOn)
+    private ToggleSwitch AddToggle(Transform parent, string name, Vector2 position, bool isOn)
     {
-        var rect = NewRect("Toggle", parent);
+        var rect = NewRect(name, parent);
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(104f, 34f);
@@ -688,21 +1126,168 @@ public class LiveRecordPanel : MonoBehaviour
         return 0;
     }
 
+    //Combo de FPS: un solo elemento con el mismo aspecto que los demás campos. Se puede escribir un
+    //valor a mano y, con la flecha de la derecha, elegir uno de los habituales.
+    //
+    //Se reutiliza el Dropdown de uGUI solo por su lista: su parte visible se anula (sin gráfico que
+    //reciba clics) y la caja la dibuja el combo. La flecha llama a 'Show()', y la lista aparece justo
+    //debajo porque el desplegable ocupa exactamente el mismo rectángulo que la caja.
+    private InputField AddFpsCombo(float y)
+    {
+        //Contenedor (sin gráfico propio: el fondo lo pone el objeto del propio campo).
+        var box = NewRect("FPS", _panel);
+        box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
+        box.pivot = new Vector2(0.5f, 0.5f);
+        box.sizeDelta = new Vector2(420f, 32f);
+        box.anchoredPosition = new Vector2(ControlX, y);
+
+        //Objeto del campo: fondo + InputField (un solo Graphic por GameObject, como en AddInput).
+        var fieldRect = NewRect("Field", box);
+        fieldRect.anchorMin = Vector2.zero;
+        fieldRect.anchorMax = Vector2.one;
+        fieldRect.offsetMin = Vector2.zero;
+        fieldRect.offsetMax = new Vector2(-30f, 0f);
+
+        var background = fieldRect.gameObject.AddComponent<Image>();
+        background.color = new Color(0.16f, 0.17f, 0.20f);
+
+        var textRect = NewRect("Text", fieldRect);
+        Stretch(textRect, 8f, 4f);
+        var text = textRect.gameObject.AddComponent<Text>();
+        text.font = _font;
+        text.fontSize = 20;
+        text.color = Color.white;
+        text.alignment = TextAnchor.MiddleLeft;
+        text.supportRichText = false;
+        text.raycastTarget = false;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
+
+        var input = fieldRect.gameObject.AddComponent<LiveRecordTextField>();
+        input.targetGraphic = background;
+        input.textComponent = text;
+        input.lineType = InputField.LineType.SingleLine;
+        input.text = _settings.fps.ToString(CultureInfo.InvariantCulture);
+        input.onValueChanged.AddListener(_ => { SyncFpsPreset(); RefreshHint(); });
+
+        //Flecha: abre la lista.
+        var arrow = NewRect("Arrow", box);
+        arrow.anchorMin = new Vector2(1f, 0f);
+        arrow.anchorMax = new Vector2(1f, 1f);
+        arrow.pivot = new Vector2(1f, 0.5f);
+        arrow.sizeDelta = new Vector2(30f, 0f);
+        arrow.anchoredPosition = Vector2.zero;
+
+        var arrowImage = arrow.gameObject.AddComponent<Image>();
+        arrowImage.color = new Color(0.20f, 0.21f, 0.25f, 1f);
+
+        var glyph = AddText(arrow, "Glyph", Vector2.zero, new Vector2(30f, 32f), 18,
+            new Color(0.85f, 0.85f, 0.85f, 1f), TextAnchor.MiddleCenter);
+        glyph.text = "v";
+
+        //Lista de presets (el desplegable de uGUI, sin su parte visible: no debe interceptar clics).
+        _fpsPresets = AddDropdown(box, Vector2.zero, new Vector2(420f, 32f),
+            FpsPresetLabels, FpsPresetLabels.Length - 1, OnFpsPresetChanged);
+        var dropdownImage = _fpsPresets.GetComponent<Image>();
+        if (dropdownImage != null)
+        {
+            //El desplegable solo aporta la lista: su fondo debe ser INVISIBLE, porque se dibuja encima
+            //del campo (mismo rectángulo) y taparía el texto que se escribe y la flecha.
+            dropdownImage.color = new Color(0f, 0f, 0f, 0f);
+            dropdownImage.raycastTarget = false;
+        }
+        if (_fpsPresets.captionText != null) _fpsPresets.captionText.gameObject.SetActive(false);
+        var dropdownArrow = _fpsPresets.transform.Find("Arrow");
+        if (dropdownArrow != null) dropdownArrow.gameObject.SetActive(false);
+
+        var button = arrow.gameObject.AddComponent<Button>();
+        button.targetGraphic = arrowImage;
+        button.onClick.AddListener(() => { if (_fpsPresets != null) _fpsPresets.Show(); });
+
+        SyncFpsPreset();
+        return input;
+    }
+
+    //Desplegable de FPS: escribe el preset en el campo. "Custom" no toca lo escrito.
+    private void OnFpsPresetChanged(int index)
+    {
+        if (_syncingFps) return;
+        int value = FpsPresetValues[Mathf.Clamp(index, 0, FpsPresetValues.Length - 1)];
+        if (value <= 0) return;
+        if (_fps != null) _fps.text = value.ToString(CultureInfo.InvariantCulture);
+        RefreshHint();
+    }
+
+    //Pone el desplegable en el preset que coincida con el campo (o "Custom" si es otro valor).
+    private void SyncFpsPreset()
+    {
+        if (_fpsPresets == null) return;
+        int fps = ParseInt(_fps, 60);
+        int index = FpsPresetValues.Length - 1;
+        for (int i = 0; i < FpsPresetValues.Length; i++)
+            if (FpsPresetValues[i] > 0 && FpsPresetValues[i] == fps) { index = i; break; }
+
+        _syncingFps = true;
+        _fpsPresets.value = index;
+        _fpsPresets.RefreshShownValue();
+        _syncingFps = false;
+    }
+
+    //Abre el explorador de carpetas del sistema para elegir la carpeta de salida.
+    private void BrowseOutputFolder()
+    {
+        try
+        {
+            string current = _folder != null && !string.IsNullOrWhiteSpace(_folder.text)
+                ? _folder.text.Trim()
+                : LiveRecordSettings.DefaultFolder;
+
+            string[] picked = StandaloneFileBrowser.OpenFolderPanel("Select output folder", current, false);
+            if (picked != null && picked.Length > 0 && !string.IsNullOrWhiteSpace(picked[0]))
+            {
+                _folder.text = picked[0];
+                RefreshHint();
+            }
+        }
+        catch (Exception e)
+        {
+            if (_status != null) _status.text = Truncate("Folder picker: " + e.Message, 90);
+        }
+    }
+
     private void RefreshHint()
     {
         if (_hint == null) return;
         int fps = ParseInt(_fps, 60);
         int ss = _superSample != null ? Mathf.RoundToInt(_superSample.value) : 100;
         Vector2Int resolution = CurrentResolution;
-        string name = string.IsNullOrWhiteSpace(_name.text) ? "Live" : _name.text.Trim();
-        string folder = string.IsNullOrWhiteSpace(_folder.text) ? LiveRecordSettings.DefaultFolder : _folder.text.Trim();
 
         //La resolución de render es la de salida por el factor del supermuestreo.
         int renderX = Mathf.Max(16, Mathf.RoundToInt(resolution.x * (ss / 100f)));
         int renderY = Mathf.Max(16, Mathf.RoundToInt(resolution.y * (ss / 100f)));
 
+        //Descripción del nivel elegido.
+        int quality = _quality != null ? _quality.Current : 1;
+        string level = quality >= 3
+            ? "Max · HEVC 4:4:4 10-bit + FFV1 master (~28 GB/min)"
+            : (quality >= 2
+                ? "High · HEVC 4:4:4 8-bit"
+                : (quality >= 1 ? "Normal · H.264 4:2:0" : "Low · H.264 4:2:0 (fast)"));
+
         _hint.text = $"Rendering {renderX}x{renderY}  →  {resolution.x}x{resolution.y} @ {fps} fps\n" +
-                     ShortenPath(System.IO.Path.Combine(folder, name + ".mp4"), HintMaxChars);
+                     level;
+
+        //Con la calidad Máx se avisa de que el 4:4:4 de 10 bits no lo abren todos los reproductores.
+        if (_maxNotice != null) _maxNotice.gameObject.SetActive(quality >= 3);
+
+        //Aviso medido: el MSAA encarece muchísimo la lectura de píxeles (el "resolve" de la superficie
+        //con MSAA se paga al leer el frame). Con supermuestreo ya hay antialiasing por muestreo:
+        //medido a 4K con supermuestreo 200 %, MSAA x2 → 32 ms de lectura; MSAA x8 → ~410 ms.
+        int msaa = _antiAliasing != null ? _antiAliasing.Current : 1;
+        if (msaa > 1 && ss > 100)
+            _status.text = $"MSAA x{msaa} + supersampling: capture is ~13x slower. MSAA Off is recommended.";
+        else if (_status.text != null && _status.text.StartsWith("MSAA x", StringComparison.Ordinal))
+            _status.text = "";
     }
 
     //Recorta una ruta por el medio para que quepa en el ancho del panel sin salirse.
@@ -734,6 +1319,9 @@ public class LiveRecordPanel : MonoBehaviour
                 msaa = _antiAliasing != null ? _antiAliasing.Current : 1,
                 postProcess = _postProcess != null && _postProcess.IsOn,
                 lyrics = _lyrics != null && _lyrics.IsOn,
+                qualityLevel = _quality != null ? _quality.Current : 1,
+                //El nivel Max incluye el máster FFV1 sin pérdida; los demás, no.
+                masterMode = _quality != null && _quality.Current >= 3,
                 startTime = ParseFloat(_start, 0f),
                 endTime = ParseFloat(_end, 0f),
                 outputFolder = _folder.text.Trim(),
