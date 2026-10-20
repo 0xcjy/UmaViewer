@@ -186,6 +186,22 @@ namespace Gallop.Live
         private int _animationObjectsScanAttempts;
         private const int AnimationObjectsScanAttemptLimit = 600;
 
+        // Legacy Animation components that play on their own (e.g. the
+        // `blinklight_wash_wall_a_circle` moving-head loop): they have no AnimationObjectController,
+        // so the timeline does not drive them. The real clip is kept, but its playhead is written from
+        // the live time so pause / seek / offline recording stay in sync with the rest of the stage.
+        private sealed class LegacyTimelineAnimation
+        {
+            public Animation animation;
+            public AnimationState state;
+            public float speed;
+        }
+
+        private readonly List<LegacyTimelineAnimation> _legacyTimelineAnimations = new List<LegacyTimelineAnimation>();
+        private bool _legacyTimelineAnimationsBuilt;
+        private int _legacyTimelineScanAttempts;
+        private const int LegacyTimelineScanAttemptLimit = 600;
+
         private const int MirrorCharacterSlotCount = 20;
         private sealed class MirrorCameraTarget
         {
@@ -483,6 +499,8 @@ namespace Gallop.Live
 
         private void LateUpdate()
         {
+            UpdateLegacyTimelineAnimations();
+
             var dir = Director.instance;
             var ctl = dir ? dir._liveTimelineControl : null;
 
@@ -1169,6 +1187,98 @@ namespace Gallop.Live
                 controller.Initialize();
                 if (!_animationObjects.Contains(controller))
                     _animationObjects.Add(controller);
+            }
+        }
+
+        // Drives the legacy autonomous stage animations from the live time. The native game simply
+        // lets them play (`playAutomatically` + default clip), which is why they kept moving while the
+        // viewer was paused. Writing their playhead from `_liveCurrentTime` keeps the authored clip
+        // but makes pause, slider seeks and offline recording behave like the timeline-driven objects.
+        private void UpdateLegacyTimelineAnimations()
+        {
+            EnsureLegacyTimelineAnimations();
+            if (_legacyTimelineAnimations.Count == 0)
+                return;
+
+            Director director = Director.instance;
+            if (director == null)
+                return;
+
+            float liveTime = director._liveCurrentTime;
+            for (int i = 0; i < _legacyTimelineAnimations.Count; i++)
+            {
+                LegacyTimelineAnimation entry = _legacyTimelineAnimations[i];
+                AnimationState state = entry.state;
+                if (state == null || state.clip == null)
+                    continue;
+
+                float length = state.clip.length;
+                if (length <= 0f)
+                    continue;
+
+                float time = liveTime * entry.speed;
+                switch (state.wrapMode)
+                {
+                    case WrapMode.Loop:
+                        time = Mathf.Repeat(time, length);
+                        break;
+                    case WrapMode.PingPong:
+                        time = Mathf.PingPong(time, length);
+                        break;
+                    default:
+                        time = Mathf.Clamp(time, 0f, length);
+                        break;
+                }
+
+                state.speed = 0f; // the playhead is written from the live time
+                state.time = time;
+                entry.animation.Sample();
+            }
+        }
+
+        private void EnsureLegacyTimelineAnimations()
+        {
+            if (_legacyTimelineAnimationsBuilt)
+                return;
+            if (_legacyTimelineScanAttempts >= LegacyTimelineScanAttemptLimit)
+                return;
+            _legacyTimelineScanAttempts++;
+
+            Animation[] animations = GetComponentsInChildren<Animation>(true);
+            if (animations == null || animations.Length == 0)
+                return;
+
+            _legacyTimelineAnimationsBuilt = true;
+            for (int i = 0; i < animations.Length; i++)
+            {
+                Animation animation = animations[i];
+                if (animation == null)
+                    continue;
+
+                // Timeline-driven objects (the ground wash lights) are already handled by UpdateAnimation.
+                if (animation.GetComponent<AnimationObjectController>() != null)
+                    continue;
+
+                // Only animations that actually run on their own. The mirror-scan fixtures have
+                // playAutomatically == false and are driven manually by MirrorScanLightRuntime.
+                if (!animation.playAutomatically || !animation.isPlaying)
+                    continue;
+
+                foreach (AnimationState state in animation)
+                {
+                    if (state == null || state.clip == null)
+                        continue;
+                    if (Mathf.Approximately(state.speed, 0f))
+                        continue;
+
+                    _legacyTimelineAnimations.Add(new LegacyTimelineAnimation
+                    {
+                        animation = animation,
+                        state = state,
+                        speed = state.speed
+                    });
+                    state.speed = 0f; // the playhead is written from the live time
+                }
             }
         }
 
