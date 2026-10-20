@@ -26,8 +26,9 @@ using UnityEngine.UI;
 // TOPE DE LA MISMA VOZ
 // --------------------
 // Si la MISMA cantante ocupa TODAS las pistas (incluye Solo concert, que reparte el PJ del slot 1 por
-// todas), el motor no deja sonar más de 3 a la vez: la 4ª y siguientes quedan mudas y aquí se marcan
-// "[max]" (en ámbar). Ver `UmaViewerAudio.MaxSimultaneousSameVoice`.
+// todas), el motor limita cuántas suenan a la vez: las que sobran quedan mudas y aquí se marcan
+// "[max]" (en ámbar). En Mix voices el límite es 3; en Solo concert sale de
+// `Config.MaxSimultaneousVoiceOnSoloConcert` (2 por defecto). Ver `UmaViewerAudio.ComputeSilencedSlots`.
 //
 // ESTILO DEL RÓTULO (como se pidió)
 // ---------------------------------
@@ -302,8 +303,8 @@ public class LiveVocalDebugOverlay : MonoBehaviour
 
         int used = Mathf.Min(vocals.Count, MaxSlots);
 
-        //Tope de la misma voz (lo aplica AlterUpdate): la 4ª pista activa y siguientes quedan mudas.
-        bool capOn = director._capSameVoice && used > UmaViewerAudio.MaxSimultaneousSameVoice;
+        //Tope de la misma voz (lo aplica AlterUpdate): las pistas activas que sobran quedan mudas.
+        bool capOn = director._capSameVoice && used > director._maxSameVoice;
         int capAllowed = 0;
 
         int mutedCount = 0;
@@ -316,7 +317,7 @@ public class LiveVocalDebugOverlay : MonoBehaviour
             title += partInfo != null
                 ? string.Format("   ·   table {0} singing / {1} declared", partInfo.SingerCount, partInfo.TrackCount)
                 : "   ·   no table";
-            if (director._capSameVoice) title += "   ·   Max " + UmaViewerAudio.MaxSimultaneousSameVoice;
+            if (director._capSameVoice) title += "   ·   Max " + director._maxSameVoice;
             title += mutedCount > 0
                 ? "   ·   " + mutedCount + " muted"
                 : "";
@@ -337,7 +338,7 @@ public class LiveVocalDebugOverlay : MonoBehaviour
             bool cappedOut = false;
             if (capOn && tableActive)
             {
-                if (capAllowed >= UmaViewerAudio.MaxSimultaneousSameVoice) cappedOut = true;
+                if (capAllowed >= director._maxSameVoice) cappedOut = true;
                 else capAllowed++;
             }
 

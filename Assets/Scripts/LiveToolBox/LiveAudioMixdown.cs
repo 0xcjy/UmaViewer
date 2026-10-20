@@ -145,7 +145,8 @@ public static class LiveAudioMixdown
 
                         List<VocalSegment> segments = trackIsMusic[i]
                             ? MusicSegments(t)
-                            : VocalSegmentsFor(partInfo, vocals, vocalsByTrack[i], segmentIndex, director._capSameVoice, director.liveVocal.Count < 2);
+                            : VocalSegmentsFor(partInfo, vocals, vocalsByTrack[i], segmentIndex, director._capSameVoice,
+                                director.liveVocal.Count < 2, director._maxSameVoice);
 
                         foreach (var seg in segments)
                         {
@@ -280,7 +281,8 @@ public static class LiveAudioMixdown
     private static List<VocalSegment> VocalSegmentsFor(PartEntry data,
                                                        List<UmaViewerAudio.CuteAudioSource> vocals,
                                                        UmaViewerAudio.CuteAudioSource target,
-                                                       int row, bool capSameVoice, bool soloMode)
+                                                       int row, bool capSameVoice, bool soloMode,
+                                                       int maxSameVoice)
     {
         var result = new List<VocalSegment>();
 
@@ -297,9 +299,10 @@ public static class LiveAudioMixdown
         string part = target.tag;
         if (!UmaViewerAudio.PartSlot.TryGetValue(part, out var slot)) return result;
 
-        //Tope de pistas con la misma voz: misma regla que la mezcla en vivo.
+        //Tope de pistas con la misma voz: misma regla que la mezcla en vivo (en Solo concert el
+        //límite viene de Config.MaxSimultaneousVoiceOnSoloConcert).
         var silenced = new bool[7];
-        UmaViewerAudio.ComputeSilencedSlots(capSameVoice, vocals, data, row, silenced);
+        UmaViewerAudio.ComputeSilencedSlots(capSameVoice, vocals, data, row, silenced, maxSameVoice);
 
         int activeCount = 0;
         foreach (string name in UmaViewerAudio.OrderedParts)

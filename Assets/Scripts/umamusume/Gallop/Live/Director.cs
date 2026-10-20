@@ -204,8 +204,13 @@ namespace Gallop.Live
         public bool _soloMode = false;
 
         //(Live) Ver InitializeMusic: la MISMA cantante ocupa todas las pistas (incluye Solo concert),
-        //así que AlterUpdate no deja sonar más de 3 a la vez.
+        //así que AlterUpdate no deja sonar más de `_maxSameVoice` pistas a la vez.
         public bool _capSameVoice = false;
+
+        //(Live) Nº máximo de pistas de voz que pueden sonar a la vez cuando `_capSameVoice` está
+        //activo. En Solo concert sale de Config.MaxSimultaneousVoiceOnSoloConcert (2 por defecto);
+        //en Mix voices se queda en UmaViewerAudio.MaxSimultaneousSameVoice (3).
+        public int _maxSameVoice = UmaViewerAudio.MaxSimultaneousSameVoice;
 
         //(Live: modo de voz del directo y cantantes elegidas en el bloque VocalSelect.
         // Los rellena UmaViewerBuilder.LoadLive desde la UI y los consume InitializeMusic.
@@ -891,9 +896,23 @@ namespace Gallop.Live
             }
 
             //(Live) Flag "la MISMA cantante en todas las pistas" (incluye Solo concert, que rellena todos
-            //los slots con el PJ del slot 1): AlterUpdate no dejará sonar más de 3 pistas a la vez.
+            //los slots con el PJ del slot 1): AlterUpdate no dejará sonar más de `_maxSameVoice` pistas.
             _capSameVoice = liveVocalCharaIds.Count >= 2 &&
                             liveVocalCharaIds.TrueForAll(id => id == liveVocalCharaIds[0]);
+
+            //(Live) En Solo concert el tope es configurable desde Config.json
+            //(MaxSimultaneousVoiceOnSoloConcert, 2 por defecto). En Mix voices se mantiene el 3 fijo.
+            if (VocalMode == LiveVocalMode.SoloConcert)
+            {
+                int configured = Config.Instance != null
+                    ? Config.Instance.MaxSimultaneousVoiceOnSoloConcert
+                    : 2;
+                _maxSameVoice = Mathf.Max(1, configured);
+            }
+            else
+            {
+                _maxSameVoice = UmaViewerAudio.MaxSimultaneousSameVoice;
+            }
 
             //Con 0 o 1 voces no hay nada que mezclar: se salta AlterUpdate y la única pista suena
             //completa (todos sus waves a volumen 1), que es el "Solo concert".
@@ -948,7 +967,7 @@ namespace Gallop.Live
             _liveTimelineControl.AlterUpdate(_liveCurrentTime);
             if (!_soloMode)
             {
-                UmaViewerAudio.AlterUpdate(_liveCurrentTime, partInfo, liveVocal, sliderControl.is_Outed, _capSameVoice);
+                UmaViewerAudio.AlterUpdate(_liveCurrentTime, partInfo, liveVocal, sliderControl.is_Outed, _capSameVoice, _maxSameVoice);
             }
         }
 

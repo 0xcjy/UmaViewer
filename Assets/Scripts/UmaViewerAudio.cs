@@ -157,13 +157,16 @@ public class UmaViewerAudio
         { "left3", (int)PartForm.left3 }, { "right3", (int)PartForm.right3 },
     };
 
-    //(Live) Tope de pistas con la MISMA voz sonando A LA VEZ. Con 4+ copias de la misma cantante
-    //(p. ej. coros, o Solo concert repartiendo el slot 1 por todas las pistas) el volumen se desmadra,
-    //así que a partir de la 4ª —en orden de slot— se silencia. 2 o 3 no dan problema.
+    //(Live) Tope por defecto de pistas con la MISMA voz sonando A LA VEZ. En Mix voices se usa este
+    //valor (3). En Solo concert el tope es configurable desde Config.json
+    //(MaxSimultaneousVoiceOnSoloConcert, 2 por defecto): si suenan más pistas activas que ese número,
+    //el resto se silencia en orden de slot.
     public const int MaxSimultaneousSameVoice = 3;
     static readonly bool[] SilencedSlots = new bool[7];
 
-    static public void AlterUpdate(float _liveCurrentTime, PartEntry partInfo, List<CuteAudioSource> liveVocal, bool forceUpdate = false, bool capSameVoice = false)
+    static public void AlterUpdate(float _liveCurrentTime, PartEntry partInfo, List<CuteAudioSource> liveVocal,
+                                   bool forceUpdate = false, bool capSameVoice = false,
+                                   int maxSameVoice = MaxSimultaneousSameVoice)
     {
         if (partInfo == null || liveVocal == null ||
             !partInfo.PartSettings.TryGetValue("time", out var times)) return;
@@ -172,9 +175,9 @@ public class UmaViewerAudio
         if (targetIndex < 0 || (!forceUpdate && LastAudioPartIndex == targetIndex)) return;
         LastAudioPartIndex = targetIndex;
 
-        //(Live) Con el flag activo sólo pueden sonar las 3 primeras pistas (en orden de slot) que pida
-        //la tabla en este momento; la 4ª y siguientes quedan mudas.
-        ComputeSilencedSlots(capSameVoice, liveVocal, partInfo, targetIndex, SilencedSlots);
+        //(Live) Con el flag activo sólo pueden sonar las primeras `maxSameVoice` pistas (en orden de
+        //slot) que pida la tabla en este momento; el resto quedan mudas.
+        ComputeSilencedSlots(capSameVoice, liveVocal, partInfo, targetIndex, SilencedSlots, maxSameVoice);
 
         int activeCount = 0;
         foreach (string part in OrderedParts)
@@ -216,22 +219,25 @@ public class UmaViewerAudio
     }
 
     //(Live) Decide qué slots quedan mudos cuando la MISMA voz ocupa muchas pistas (tope
-    //MaxSimultaneousSameVoice). La usan la mezcla en vivo (AlterUpdate) y la mezcla offline de la
-    //grabación, para que ambas coincidan.
+    //`maxVoices`). La usan la mezcla en vivo (AlterUpdate) y la mezcla offline de la grabación, para
+    //que ambas coincidan. En Solo concert el tope viene de Config.json; en Mix voices es el 3 fijo.
     internal static void ComputeSilencedSlots(bool capSameVoice, List<CuteAudioSource> liveVocal,
-                                              PartEntry partInfo, int targetIndex, bool[] silenced)
+                                              PartEntry partInfo, int targetIndex, bool[] silenced,
+                                              int maxVoices = MaxSimultaneousSameVoice)
     {
         for (int i = 0; i < silenced.Length; i++) silenced[i] = false;
         if (!capSameVoice || partInfo == null || liveVocal == null) return;
-        if (liveVocal.Count <= MaxSimultaneousSameVoice) return;
+        maxVoices = Math.Max(1, maxVoices);
+        if (liveVocal.Count <= maxVoices) return;
 
         int allowed = 0;
-        for (int slot = 0; slot < liveVocal.Count && slot < silenced.Length; slot++)
+        //Se recorren los 7 slots (no liveVocal.Count): si un AWB falló, la lista puede tener huecos.
+        for (int slot = 0; slot < silenced.Length; slot++)
         {
             string partName = ((PartForm)slot).ToString();
             if (FindVocal(liveVocal, partName) == null) continue;
             if (PartValue(partInfo, partName, targetIndex, 0f) <= 0f) continue;   // no canta ahora
-            if (allowed >= MaxSimultaneousSameVoice) silenced[slot] = true;
+            if (allowed >= maxVoices) silenced[slot] = true;
             else allowed++;
         }
     }

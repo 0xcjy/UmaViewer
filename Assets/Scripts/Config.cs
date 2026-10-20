@@ -67,6 +67,9 @@ public class Config
     public string TargetFrameRateTip = "Live scene frame rate: positive integer FPS, 0 = unlimited (desktop). Changed only by the Live settings panel.";
     public int TargetFrameRate = 60;
 
+    public string MaxSimultaneousVoiceOnSoloConcertTip = "Max voice tracks sounding at once in Solo concert. When more are active, the rest are muted. Default: 2.";
+    public int MaxSimultaneousVoiceOnSoloConcert = 2;
+
     public string UIFrameRateTip = "Viewer (UI) frame rate: positive integer FPS, 0 = unlimited (desktop). Changed only by the Version2 settings panel.";
     public int UIFrameRate = 60;
 
