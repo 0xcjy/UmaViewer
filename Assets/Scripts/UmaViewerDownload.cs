@@ -45,6 +45,18 @@ public class UmaViewerDownload : MonoBehaviour
     private static HttpClient httpClient;
     private static string httpClientConfiguration;
 
+    // A proxy probe already known to fail must not repeat on every request: it costs up to
+    // proxyProbeTimeoutMilliseconds on the calling thread and logs a warning with a stack trace.
+    // The fallback to a direct connection is retried once the cooldown expires.
+    private static string proxyFallbackConfiguration;
+    private static DateTime proxyFallbackRetryAtUtc = DateTime.MinValue;
+    private const double proxyFallbackCooldownSeconds = 60.0;
+
+    // Files requested by callers that cannot wait for the network (the Live load runs on the
+    // main thread). Deduplicated while in flight; the caller picks the file up on the next load.
+    private static readonly HashSet<string> pendingBackgroundDownloads = new HashSet<string>();
+    private static readonly object pendingBackgroundDownloadsLock = new object();
+
     private sealed class DownloadResponse
     {
         public byte[] Data;
@@ -90,6 +102,49 @@ public class UmaViewerDownload : MonoBehaviour
         }
     }
   
+    // Non-blocking counterpart of DownloadAssetSync, for callers on the main thread that can live
+    // without the file this frame. `UmaDatabaseEntry.FilePath` downloads on demand, so touching it
+    // from the Live load froze the editor for up to syncDownloadTimeoutSeconds per missing file.
+    public static void RequestDownload(UmaDatabaseEntry entry)
+    {
+        if (entry == null)
+            return;
+
+        string path = entry.Path;
+        lock (pendingBackgroundDownloadsLock)
+        {
+            if (File.Exists(path) || !pendingBackgroundDownloads.Add(path))
+                return;
+        }
+
+        DownloadInBackground(entry, path);
+    }
+
+    private static async void DownloadInBackground(UmaDatabaseEntry entry, string path)
+    {
+        try
+        {
+            string baseurl = entry.IsAssetBundle ? GetAssetRequestUrl(entry.Url) : GetGenericRequestUrl(entry.Url);
+            DownloadResponse response = await DownloadBytesAsync(baseurl).ConfigureAwait(false);
+            if (!response.IsSuccess)
+            {
+                Debug.LogWarning($"[UmaViewerDownload] Background download failed for {entry.Name}: {response.Error}");
+                return;
+            }
+
+            SaveDownloadedAsset(entry, response.Data);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[UmaViewerDownload] Background download failed for {entry.Name}: {ex.Message}");
+        }
+        finally
+        {
+            lock (pendingBackgroundDownloadsLock)
+                pendingBackgroundDownloads.Remove(path);
+        }
+    }
+
     public static IEnumerator DownloadAssets(List<UmaDatabaseEntry> entries, Action<int, int, string> callback = null)
     {
         entries = entries.Where(e => !File.Exists(e.Path)).ToList();
@@ -245,24 +300,34 @@ public class UmaViewerDownload : MonoBehaviour
 
     private static HttpClient GetHttpClient()
     {
-        bool useProxy = Config.Instance != null && Config.Instance.UseNetworkProxy;
-        Uri proxyUri = null;
-        string configuration = "direct";
-        if (useProxy)
-        {
-            if (!Config.Instance.TryGetNetworkProxyUri(out proxyUri, out string error))
-            {
-                Debug.LogWarning($"[UmaViewerDownload] Network proxy is enabled but invalid ({error}); using a direct connection.");
-                useProxy = false;
-            }
-            else
-            {
-                configuration = proxyUri.AbsoluteUri;
-            }
-        }
-
         lock (httpClientLock)
         {
+            bool useProxy = Config.Instance != null && Config.Instance.UseNetworkProxy;
+            Uri proxyUri = null;
+            string configuration = "direct";
+            if (useProxy)
+            {
+                if (!Config.Instance.TryGetNetworkProxyUri(out proxyUri, out string error))
+                {
+                    Debug.LogWarning($"[UmaViewerDownload] Network proxy is enabled but invalid ({error}); using a direct connection.");
+                    useProxy = false;
+                }
+                else
+                {
+                    configuration = proxyUri.AbsoluteUri;
+
+                    // A probe that already failed is remembered: without this the client is cached
+                    // as "direct" but requested as the proxy URI, so the probe ran again (and logged
+                    // another warning) on every single request.
+                    if (string.Equals(proxyFallbackConfiguration, configuration, StringComparison.Ordinal) &&
+                        DateTime.UtcNow < proxyFallbackRetryAtUtc)
+                    {
+                        useProxy = false;
+                        configuration = "direct";
+                    }
+                }
+            }
+
             if (httpClient != null && httpClientConfiguration == configuration)
             {
                 return httpClient;
@@ -274,13 +339,20 @@ public class UmaViewerDownload : MonoBehaviour
             if (useProxy && !IsProxyReachable(proxyUri))
             {
                 Debug.LogWarning($"[UmaViewerDownload] Network proxy {proxyUri} is not reachable; using a direct connection.");
+                proxyFallbackConfiguration = configuration;
+                proxyFallbackRetryAtUtc = DateTime.UtcNow.AddSeconds(proxyFallbackCooldownSeconds);
                 useProxy = false;
                 configuration = "direct";
+            }
+            else if (useProxy)
+            {
+                // Reachable again: drop the remembered failure so the proxy keeps being used.
+                proxyFallbackConfiguration = null;
+            }
 
-                if (httpClient != null && httpClientConfiguration == configuration)
-                {
-                    return httpClient;
-                }
+            if (httpClient != null && httpClientConfiguration == configuration)
+            {
+                return httpClient;
             }
 
             var handler = new HttpClientHandler

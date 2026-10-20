@@ -180,10 +180,41 @@ public class UmaAssetManager : MonoBehaviour
 
         int completed = 0;
 
+        // Opening a bundle goes through UmaDatabaseEntry.FilePath, which downloads on demand and
+        // blocks the main thread for up to UmaViewerDownload.syncDownloadTimeoutSeconds per file.
+        // The asynchronous pass above only runs in Standalone work mode, which desktop does not use,
+        // so every missing bundle used to be fetched synchronously here — once per bundle, inside
+        // the load loop. Fetch whatever is about to be opened first, yielding instead of stalling.
+        if (Config.Instance.DownloadMissingResources)
+        {
+            List<UmaDatabaseEntry> missing = new List<UmaDatabaseEntry>();
+            HashSet<string> seenMissing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < loadItems.Count; i++)
+            {
+                UmaDatabaseEntry entry = loadItems[i].Entry;
+                if (entry == null)
+                    continue;
+                string path = entry.Path;
+                if (File.Exists(path) || !seenMissing.Add(path))
+                    continue;
+                missing.Add(entry);
+            }
+
+            if (missing.Count > 0)
+            {
+                if (_diagActive)
+                    Debug.Log($"[LiveDiag] preload_missing_downloads={missing.Count}");
+                Action<int, int, string> progress = UmaSceneController.instance != null
+                    ? new Action<int, int, string>(UmaSceneController.instance.LoadingProgressChange)
+                    : null;
+                yield return UmaViewerDownload.DownloadAssets(missing, progress);
+            }
+        }
+
         for (int i = 0; i < loadItems.Count; i++)
         {
             LoadItem item = loadItems[i];
-            AcquireOne(item.Entry, item.NeverUnload);
+            AcquireOne(item.Entry, item.NeverUnload, false);
 
             completed++;
             OnLoadProgressChange?.Invoke(completed, loadItems.Count, "Loading");
@@ -208,11 +239,20 @@ public class UmaAssetManager : MonoBehaviour
                 Handles.Count(kv => kv.Value.IsLoaded));
         }
 
-        OnLoadProgressChange?.Invoke(-1, loadItems.Count, null);
-        if (_diagActive)
-            Gallop.Live.LiveRuntimeDiagnostics.RecordProgress(-1, loadItems.Count, "complete");
+        // Building the stage and the timeline runs synchronously inside onDone, so the loading
+        // overlay has to stay up until it finishes. Signalling completion first hid the panel and
+        // made the last seconds look like a freeze over a half-built stage.
         LoadCoroutine = null;
+        OnLoadProgressChange?.Invoke(loadItems.Count, loadItems.Count, "Building stage");
         onDone?.Invoke();
+
+        // If onDone scheduled a nested preload, that one owns the overlay from here on.
+        if (LoadCoroutine == null)
+        {
+            OnLoadProgressChange?.Invoke(-1, loadItems.Count, null);
+            if (_diagActive)
+                Gallop.Live.LiveRuntimeDiagnostics.RecordProgress(-1, loadItems.Count, "complete");
+        }
     }
 
     public static AssetBundle LoadAssetBundle(
@@ -261,7 +301,7 @@ public class UmaAssetManager : MonoBehaviour
         }
     }
 
-    private static bool AcquireOne(UmaDatabaseEntry entry, bool neverUnload)
+    private static bool AcquireOne(UmaDatabaseEntry entry, bool neverUnload, bool allowDownload = true)
     {
         if (instance == null || entry == null || string.IsNullOrEmpty(entry.Name))
             return false;
@@ -289,7 +329,9 @@ public class UmaAssetManager : MonoBehaviour
             return true;
         }
 
-        string filePath = entry.FilePath;
+        // `FilePath` downloads on demand and blocks the main thread. Callers that already fetched
+        // the missing files ask for the plain path so a failed download cannot stall the frame.
+        string filePath = allowDownload ? entry.FilePath : entry.Path;
 
         if (!File.Exists(filePath))
         {

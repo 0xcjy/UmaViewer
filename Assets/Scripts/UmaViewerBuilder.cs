@@ -1129,8 +1129,17 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
     public static List<AudioClip> LoadAudio(UmaDatabaseEntry awb)
     {
         List<AudioClip> clips = new List<AudioClip>();
-        string awbPath = awb.FilePath;
-        if (!File.Exists(awbPath)) return clips;
+        if (awb == null) return clips;
+        // `FilePath` downloads on demand and blocks the main thread (up to
+        // UmaViewerDownload.syncDownloadTimeoutSeconds per file). The Live load calls this once per
+        // singer, so a missing .awb stalled the whole load once per singer. Ask for the file in the
+        // background instead and use it on the next load.
+        string awbPath = awb.Path;
+        if (!File.Exists(awbPath))
+        {
+            UmaViewerDownload.RequestDownload(awb);
+            return clips;
+        }
 
         FileStream awbFile = File.OpenRead(awbPath);
         AwbReader awbReader = new AwbReader(awbFile);

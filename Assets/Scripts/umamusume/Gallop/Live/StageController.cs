@@ -1557,7 +1557,7 @@ namespace Gallop.Live
                 }
                 rootRenderers.AddRange(instance.GetComponentsInChildren<Renderer>(true));
 
-                int missingCount = CountMissingScripts(instance);
+                int missingCount = Gallop.Live.LiveRuntimeDiagnostics.Enabled ? CountMissingScripts(instance) : 0;
                 if (missingCount > 0)
                 {
                     Debug.LogWarning($"[StageController] '{stage_part.name}' 实例化后有 {missingCount} 个 missing script 组件");
