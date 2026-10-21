@@ -10,6 +10,8 @@ public sealed class LiveCharacterLoadData
     public CharaEntry CharaEntry;
     public string CostumeId;
     public string HeadCostumeId;
+    // (Color) Color del traje comun (0 = el de siempre), igual que en LiveCharacterSelect.
+    public int CostumeColorIndex;
 
     public static LiveCharacterLoadData Capture(LiveCharacterSelect source)
     {
@@ -36,7 +38,8 @@ public sealed class LiveCharacterLoadData
         {
             CharaEntry = copiedChara,
             CostumeId = source.CostumeId,
-            HeadCostumeId = source.HeadCostumeId
+            HeadCostumeId = source.HeadCostumeId,
+            CostumeColorIndex = source.CostumeColorIndex
         };
     }
 

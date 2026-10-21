@@ -119,7 +119,7 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                 }
                 else
                 {
-                    LoadNormalUma(umaContainer, characters[i].CharaEntry, characters[i].CostumeId, false, characters[i].HeadCostumeId);
+                    LoadNormalUma(umaContainer, characters[i].CharaEntry, characters[i].CostumeId, false, characters[i].HeadCostumeId, null, characters[i].CostumeColorIndex);
                 }
 
                 if (umaContainer.UmaAnimator != null)
@@ -199,10 +199,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                 case "0003":
                     texPattern1 = $"tex_bdy{costumeIdShort}_00_{skin}_{bust}";
                     texPattern2 = $"tex_bdy{costumeIdShort}_00_0_{bust}";
-                    break;
-                case "0006": //last var is color?
-                    texPattern1 = $"tex_bdy{costumeId}_{skin}_{bust}_0{0}";
-                    texPattern2 = $"tex_bdy{costumeId}_0_{bust}_00_";
                     break;
                 default:
                     texPattern1 = $"tex_bdy{costumeId}_{skin}_{bust}";
@@ -481,10 +477,6 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
                 case "0003":
                     texPattern1 = $"tex_bdy{costumeIdShort}_00_{skin}_{bust}";
                     texPattern2 = $"tex_bdy{costumeIdShort}_00_0_{bust}";
-                    break;
-                case "0006": //last var is color?
-                    texPattern1 = $"tex_bdy{costumeId}_{skin}_{bust}_0{0}";
-                    texPattern2 = $"tex_bdy{costumeId}_0_{bust}_00_";
                     break;
                 default:
                     texPattern1 = $"tex_bdy{costumeId}_{skin}_{bust}";

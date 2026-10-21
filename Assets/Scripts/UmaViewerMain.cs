@@ -23,6 +23,20 @@ public class UmaViewerMain : MonoBehaviour
     public List<CharaEntry> MobCharacters = new List<CharaEntry>();
     public List<LiveEntry> Lives = new List<LiveEntry>();
     public List<CostumeEntry> Costumes = new List<CostumeEntry>();
+    // (Color) Colores de cada traje COMUN, por "<body_type>_<body_type_sub>" (p.ej. "0015_00").
+    // Es la lista BASE: se construye UNA vez al arrancar (paso "Loading Costumes Data") a partir de
+    // dress_data.color_num y de los iconos dress_<dressId>_0_<color>, y ya no cambia. El listado de
+    // trajes la consulta en vez de resolver el icono cada vez: así la variante de color está siempre,
+    // sin depender de si el traje tiene fila asignada, del estado de la UI ni de volver a listar.
+    public class CostumeColor
+    {
+        public int Index;           // 0 = el de siempre
+        public Sprite Icon;         // icono de ese color (dress_<id>_0_<color>)
+        public string DressName;    // nombre del traje (no hay nombres por color en el master)
+    }
+
+    public Dictionary<string, List<CostumeColor>> CostumeColorsByBody = new Dictionary<string, List<CostumeColor>>();
+
     public Dictionary<string,UmaDatabaseEntry> AbList = new Dictionary<string, UmaDatabaseEntry>();
     public List<UmaDatabaseEntry> AbMotions = new List<UmaDatabaseEntry>();
     public List<UmaDatabaseEntry> AbSounds = new List<UmaDatabaseEntry>();
@@ -211,6 +225,11 @@ public class UmaViewerMain : MonoBehaviour
             }
         }
 
+        // (Color) Lista BASE de colores de los trajes comunes. Se calcula aquí, con el master y los
+        // iconos ya cargados, y es lo que consulta el panel de trajes: así el color extra (p.ej. la
+        // camisa negra del 3.5周年) está siempre, en cualquier listado y en cualquier orden.
+        BuildCostumeColors();
+
         loadingUI.LoadingProgressChange(loadingStep++, loadingStepsTotal, "Loading Live Data");
         yield return null;
         var asset = AbList["livesettings"];
@@ -274,6 +293,78 @@ public class UmaViewerMain : MonoBehaviour
         Builder.ShaderList = new List<Shader>(shaders.LoadAllAssets<Shader>()); 
         Gallop.ShaderManager.InitManager();
         Gallop.ShaderManager.WarmupDofBloomShader();
+    }
+
+    //==========================================================================
+    // (Color) Colores de los trajes COMUNES: lista base que se construye al arrancar.
+    // Fuente de verdad: los iconos que el juego trae por color (outgame/dress/dress_<dressId>_0_<color>)
+    // más la fila de dress_data que identifica la malla. El color no forma parte del id del traje
+    // ("0015_00_00"), así que se guarda por "<body_type>_<body_type_sub>" ("0015_00"), que es lo que
+    // identifica el cuerpo y lo que usan los trajes comunes al cambiar de color.
+    //==========================================================================
+    void BuildCostumeColors()
+    {
+        CostumeColorsByBody.Clear();
+
+        var dressRows = UmaDatabaseController.Instance.DressData;
+        if (dressRows == null || Costumes == null) return;
+
+        // Iconos ya cargados (uno por traje de datos): "000050_0_00", "000050_0_01"...
+        var iconsById = new Dictionary<string, CostumeEntry>(StringComparer.Ordinal);
+        foreach (var costume in Costumes)
+        {
+            if (costume == null || string.IsNullOrEmpty(costume.Id)) continue;
+            if (!iconsById.ContainsKey(costume.Id)) iconsById[costume.Id] = costume;
+        }
+
+        foreach (var row in dressRows)
+        {
+            int bodyType, bodySub;
+            if (!int.TryParse(row["body_type"].ToString(), out bodyType)) continue;
+            if (!int.TryParse(row["body_type_sub"].ToString(), out bodySub)) continue;
+
+            // Solo hay un traje por (body_type, body_type_sub): se queda el primero, igual que el
+            // resto del programa al buscar su fila.
+            string key = bodyType.ToString("D4") + "_" + bodySub.ToString("D2");
+            if (CostumeColorsByBody.ContainsKey(key)) continue;
+
+            // El master no guarda nombres por color: todos los colores se llaman como el traje.
+            string dressName = row["dressname"].ToString();
+            int dressTextId;
+            if (Config.Instance.Language == Language.En && int.TryParse(row["id"].ToString(), out dressTextId))
+            {
+                dressName = GlobalNames.Get(GlobalNames.CategoryDress, dressTextId, dressName);
+            }
+
+            // Los colores que existen SON los iconos que trae el juego para ese traje, en orden
+            // (dress_<dressId>_0_00, _0_01...). dress_data.color_num cuadra con ellos, pero lo que
+            // manda aquí es que el icono exista: sin icono no hay item que enseñar.
+            string prefix = row["id"].ToString().PadLeft(6, '0') + "_0_";
+            var colors = new List<CostumeColor>();
+            for (int color = 0; color < 16; color++)
+            {
+                CostumeEntry icon;
+                if (!iconsById.TryGetValue(prefix + color.ToString("D2"), out icon) || icon.Icon == null) break;
+                colors.Add(new CostumeColor { Index = color, Icon = icon.Icon, DressName = dressName });
+            }
+
+            if (colors.Count <= 1) continue;   // sin colores extra no hace falta tabla
+            CostumeColorsByBody[key] = colors;
+        }
+    }
+
+    /// <summary>
+    /// (Color) Colores de un traje COMUN a partir de su id de listado ("0015_00_00"). Devuelve la
+    /// lista base con el color 0 (el de siempre) incluido, o null si ese traje no tiene más colores.
+    /// </summary>
+    public List<CostumeColor> GetCostumeColors(string costumeId)
+    {
+        if (string.IsNullOrEmpty(costumeId)) return null;
+        string[] parts = costumeId.Split('_');
+        if (parts.Length < 2) return null;
+
+        List<CostumeColor> colors;
+        return CostumeColorsByBody.TryGetValue(parts[0] + "_" + parts[1], out colors) ? colors : null;
     }
 
     private static bool TryParseEnglishNames(
