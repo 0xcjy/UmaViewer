@@ -178,12 +178,6 @@ public class UmaViewerUI : MonoBehaviour
     //Último frame en que se recargó la lista de trajes desde el buscador (evita recargarla dos veces
     //en el mismo frame: TMP puede disparar el callback dos veces).
     private int lastOtherCostumeFrame = -1;
-    //Estado del panel del Live (CharaSelect) en el último frame. Ese panel decide si el listado de
-    //trajes pinta los colores extra de los trajes comunes (dentro del Live se ocultan porque el slot
-    //sólo guarda el id del traje). Listar y abrir/cerrar el panel son cosas independientes, así que
-    //se vigila su estado para repintar la lista en cuanto cambie: si no, una lista construida con el
-    //panel abierto se queda sin los colores al volver al visor normal hasta clicar otro personaje.
-    private bool liveSelectPanelWasActive;
     //Opciones que se están viendo AHORA (filtradas o no); dd.value es un índice en ESTA lista.
     private readonly List<CharaEntry> otherOptionsVisible = new List<CharaEntry>();
 
@@ -407,87 +401,6 @@ public class UmaViewerUI : MonoBehaviour
         //(Segundo buscador del panel Sounds: filtra canciones por PJ cantante.)
         UpdateSearchByChara();
         UpdateSearchByCharaSearch();
-
-        //(El listado de trajes depende de si el panel del Live está abierto: se repinta al cambiar.)
-        RefreshCostumeListOnLivePanelChange();
-    }
-
-    //==========================================================================
-    // (Colores de trajes comunes: el listado se repinta al abrir/cerrar el panel del Live)
-    // ListCostumes() decide si crea los items de color mirando LiveSelectPannel.activeInHierarchy
-    // (dentro del Live no se crean: el slot sólo guarda el id). Antes esa decisión se tomaba en el
-    // instante de listar y nadie volvía a listar al cambiar el panel, así que la lista se quedaba
-    // "pegada": elegir el traje de un miembro del Live dejaba la lista sin colores también al volver
-    // al visor normal (el negro del 0015 aparecía y desaparecía a ratos, sólo tras clicar otro PJ).
-    // Aquí se vigila el estado del panel y se repinta en cuanto cambie, conservando las selecciones.
-    //==========================================================================
-    void RefreshCostumeListOnLivePanelChange()
-    {
-        bool liveActive = LiveSelectPannel != null && LiveSelectPannel.activeInHierarchy;
-        if (liveActive == liveSelectPanelWasActive) return;
-        liveSelectPanelWasActive = liveActive;
-
-        if (currentCostumeChara == null) return;   //todavía no hay ningún personaje listado
-
-        ScrollRect list = currentCostumeMini ? MiniCostumeList
-                        : currentCostumeChara.IsMob ? MobCostumeList
-                        : CostumeList;
-        if (list == null) return;
-
-        //ListCostumes() reconstruye la lista de cabeza (y reinicia CurrentHeadCostumeId): se guarda
-        //antes para volver a dejarla como estaba.
-        string headCostumeId = CurrentHeadCostumeId;
-
-        ListCostumes(currentCostumeChara, currentCostumeMini);
-
-        RestoreHeadCostumeHighlight(headCostumeId);
-        RestoreCostumeHighlight(list);
-    }
-
-    //Deja marcado otra vez el traje de cabeza que estaba elegido. ListCostumes() lo reinicia a ""
-    //(y para mobs/minis ni se toca la lista de cabeza, así que ahí no hay nada que restaurar).
-    void RestoreHeadCostumeHighlight(string headCostumeId)
-    {
-        if (string.IsNullOrEmpty(headCostumeId)) return;
-        if (currentCostumeChara == null || currentCostumeMini || currentCostumeChara.IsMob) return;
-        if (HeadCostumeList == null) return;
-
-        CurrentHeadCostumeId = headCostumeId;
-        foreach (var container in HeadCostumeList.content.GetComponentsInChildren<UmaUIContainer>())
-        {
-            if (container != null && container.Id == headCostumeId)
-            {
-                HighlightChildImage(HeadCostumeList.content, container);
-                break;
-            }
-        }
-    }
-
-    //Deja marcado otra vez el traje que se está viendo. Los items de un traje común con varios
-    //colores comparten Id y van seguidos (color 0, 1, 2...), así que el índice de color dice cuál
-    //de ellos es el elegido. Si ese color no está en la lista (p.ej. dentro del Live, donde no se
-    //crean), se marca el primero de ese traje.
-    void RestoreCostumeHighlight(ScrollRect list)
-    {
-        var uma = Builder.CurrentUMAContainer;
-        if (uma == null || string.IsNullOrEmpty(uma.VarCostumeIdLong)) return;
-
-        string costumeId = uma.VarCostumeIdLong;
-        int colorIndex = uma.VarColorIndex < 0 ? 0 : uma.VarColorIndex;
-        UmaUIContainer first = null;
-        int seen = 0;
-        foreach (var container in list.content.GetComponentsInChildren<UmaUIContainer>())
-        {
-            if (container == null || container.Id != costumeId) continue;
-            if (seen == 0) first = container;
-            if (seen == colorIndex)
-            {
-                HighlightChildImage(list.content, container);
-                return;
-            }
-            seen++;
-        }
-        if (first != null) HighlightChildImage(list.content, first);
     }
 
     /// <summary>Some settings may not be saved when set in Start()</summary>
