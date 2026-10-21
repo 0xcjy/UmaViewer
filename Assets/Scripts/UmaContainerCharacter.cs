@@ -61,6 +61,42 @@ public class UmaContainerCharacter : UmaContainer
     public GameObject TearPrefab_1;
     public List<TearController> TearControllers = new List<TearController>();
 
+    // Valor de stencil que aísla los "decals" de cara (cejas, lagrimas, rubor y efectos de
+    // ojos) de un personaje del resto. Tiene que ser UNICO por instancia: esos pases no se
+    // descartan por profundidad, solo por un test de stencil "igual", asi que dos personajes
+    // con el mismo valor se pintan los decals unos encima de otros (p.ej. las cejas de los
+    // bailarines de atras sobre la cara del de delante cuando todos son el mismo personaje).
+    // Antes se usaba CharaEntry.Id, que se repite entre copias del mismo personaje y ademas
+    // el buffer de stencil solo tiene 8 bits (los ids > 255 colisionan entre si).
+    private int _stencilId;
+    public int StencilId
+    {
+        get
+        {
+            if (_stencilId == 0)
+                _stencilId = AllocateStencilId();
+            return _stencilId;
+        }
+    }
+
+    // Rango alto (donde ya caian los ids reales al truncarse a 8 bits) y sin usar el 0 ni el
+    // 100 que llevan cuerpo y cola, para no habilitar los decals sobre ellos.
+    private const int StencilIdFirst = 200;
+    private const int StencilIdLast = 250;
+    private static int _nextStencilId = StencilIdFirst;
+
+    private static int AllocateStencilId()
+    {
+        int id = _nextStencilId;
+        _nextStencilId = id >= StencilIdLast ? StencilIdFirst : id + 1;
+        return id;
+    }
+
+    public static void ResetStencilAllocator()
+    {
+        _nextStencilId = StencilIdFirst;
+    }
+
     [Header("Generic")]
     public bool IsGeneric = false;
     public string VarCostumeIdShort, VarCostumeIdLong, VarSkin, VarHeight, VarSocks, VarBust;
@@ -4049,7 +4085,7 @@ public class UmaContainerCharacter : UmaContainer
 
                 }
 
-                m.SetFloat("_StencilMask", CharaEntry.Id);
+                m.SetFloat("_StencilMask", StencilId);
             }
         }
 
@@ -4675,7 +4711,7 @@ public class UmaContainerCharacter : UmaContainer
 
             var leftObj = Instantiate(obj, eyeLocator_L.transform);
             new List<Renderer>(leftObj.GetComponentsInChildren<Renderer>(true)).ForEach(a => {
-                a.material.SetFloat("_StencilMask", id);
+                a.material.SetFloat("_StencilMask", StencilId);
                 a.material.SetFloat("_StencilComp", (float)UnityEngine.Rendering.CompareFunction.Equal);
                 a.material.SetFloat("_StencilOp", (float)UnityEngine.Rendering.StencilOp.Keep);
                 a.material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
@@ -4689,7 +4725,7 @@ public class UmaContainerCharacter : UmaContainer
                     RightObj.transform.localScale = new Vector3(-1, 1, 1);
             }
             new List<Renderer>(RightObj.GetComponentsInChildren<Renderer>(true)).ForEach(a => {
-                a.material.SetFloat("_StencilMask", id);
+                a.material.SetFloat("_StencilMask", StencilId);
                 a.material.SetFloat("_StencilComp", (float)UnityEngine.Rendering.CompareFunction.Equal);
                 a.material.SetFloat("_StencilOp", (float)UnityEngine.Rendering.StencilOp.Keep);
                 a.material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
@@ -4712,10 +4748,10 @@ public class UmaContainerCharacter : UmaContainer
             var p0 = TearPrefab_0;
             var p1 = TearPrefab_1;
             var t = headBone.transform;
-            TearControllers.Add(new TearController(CharaEntry.Id, t, Instantiate(p0, t), Instantiate(p1, t), 0, 1));
-            TearControllers.Add(new TearController(CharaEntry.Id, t, Instantiate(p0, t), Instantiate(p1, t), 1, 1));
-            TearControllers.Add(new TearController(CharaEntry.Id, t, Instantiate(p0, t), Instantiate(p1, t), 0, 0));
-            TearControllers.Add(new TearController(CharaEntry.Id, t, Instantiate(p0, t), Instantiate(p1, t), 1, 0));
+            TearControllers.Add(new TearController(StencilId, t, Instantiate(p0, t), Instantiate(p1, t), 0, 1));
+            TearControllers.Add(new TearController(StencilId, t, Instantiate(p0, t), Instantiate(p1, t), 1, 1));
+            TearControllers.Add(new TearController(StencilId, t, Instantiate(p0, t), Instantiate(p1, t), 0, 0));
+            TearControllers.Add(new TearController(StencilId, t, Instantiate(p0, t), Instantiate(p1, t), 1, 0));
         }
 
         var firsehead = Head;

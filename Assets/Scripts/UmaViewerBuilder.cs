@@ -102,6 +102,10 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
 
     public void LoadLiveUma(List<LiveCharacterLoadData> characters)
     {
+        // El live arranca siempre en una escena nueva, asi que los ids de stencil se reparten
+        // desde el principio (evita que se vayan desplazando entre directos de una misma sesion).
+        UmaContainerCharacter.ResetStencilAllocator();
+
         for (int i = 0; i < characters.Count; i++)
         {
             if (characters[i].CharaEntry.Name != "")
