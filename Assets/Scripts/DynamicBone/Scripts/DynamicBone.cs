@@ -110,6 +110,18 @@ public class DynamicBone : MonoBehaviour
     public float m_DistanceToObject = 20;
     public List<Particle> Particles = new List<Particle>();
 
+    // =========================================================================================
+    // (SONDAS LATERALES) El hueso de pelo es una esfera ISOTROPA: su "ancho" y su "fondo" son el
+    // mismo radio, asi que engordarlo para cubrir el ancho del mechon empuja tambien en profundidad.
+    // Estas sondas anaden puntos de test VIRTUALES a los lados del hueso (sin crear huesos reales ni
+    // tocar el rig/malla): si un lateral entra en un colisor, la particula se aparta DE LADO lo
+    // justo. Las activa el cargador (UmaContainerCharacter) por hueso, no el componente.
+    // =========================================================================================
+    public int m_LateralProbeCount = 2;
+    /// <summary>Separacion EXTRA (m) de las sondas sobre la posicion tangente. 0 = las esferas se tocan.</summary>
+    public float m_LateralProbeOffset = 0.0f;
+    public float m_LateralProbeRadiusScale = 0.5f;
+
     Vector3 m_LocalGravity = Vector3.zero;
     Vector3 m_ObjectMove = Vector3.zero;
     Vector3 m_ObjectPrevPosition = Vector3.zero;
@@ -132,6 +144,12 @@ public class DynamicBone : MonoBehaviour
         public float m_Radius = 0;
         public float m_BoneLength = 0;
         public bool m_isCollide = false;
+
+        // (SONDAS LATERALES) Puntos virtuales a los lados del hueso. Los activa el cargador.
+        public bool m_LateralProbe = false;
+        public Vector3 m_LateralProbeAxisLocal = Vector3.right;
+        // Cuanto baja la sonda desde la posicion del hueso, a lo largo del mechon (local al hueso).
+        public float m_LateralProbeAlong = 0.0f;
 
 
         public Vector3 m_LimitAngel_Min = Vector3.zero;
@@ -276,6 +294,10 @@ public class DynamicBone : MonoBehaviour
         if (m_Root == null)
             return;
 
+        // (RENDIMIENTO) Sello de frame para la cache de colisores (se lee Time.frameCount una vez
+        // por cadena en lugar de una vez por colision).
+        DynamicBoneCollider.s_FrameStamp = Time.frameCount;
+
         m_ObjectScale = Mathf.Abs(transform.lossyScale.x);
         m_ObjectMove = transform.position - m_ObjectPrevPosition;
         m_ObjectPrevPosition = transform.position;
@@ -328,7 +350,183 @@ public class DynamicBone : MonoBehaviour
             SkipUpdateParticles();
         }
 
+        // (COLISION FINAL) El solver resuelve la colision antes de "keep length" y ese ultimo paso
+        // puede dejarla sin efecto; se repite aqui, ya con las posiciones definitivas del frame.
+        // Desde la optimizacion (cache de esferas por frame) cuesta ~1 ms con 239 cadenas.
+        ResolveCollisionsAfterSolve();
+
         ApplyParticlesToTransforms();
+    }
+
+    /// <summary>
+    /// Tope de desplazamiento por frame del pase de colision final, en metros (antes de la escala).
+    /// Evita que un colisor desproporcionado mueva el mechon de golpe: si hace falta mas, se
+    /// completa en los frames siguientes.
+    /// </summary>
+    const float MaxPostSolvePush = 0.06f;
+
+    /// <summary>
+    /// Pasadas del pase de colision final. Las esferas del pecho se solapan, asi que sacar la
+    /// particula de una la puede meter en la contigua: con una sola pasada queda residuo (medido
+    /// 4.4 mm), con dos baja a ~1-2 mm y cuesta la mitad que con tres.
+    /// </summary>
+    const int CollisionResolveIterations = 2;
+
+    // =========================================================================================
+    // (COLISION FINAL) Por que existe:
+    //   UpdateParticles2 hace, por particula:  keep shape -> COLLIDE -> keep length
+    // y el ultimo paso (linea ~612) proyecta la particula a `restLen` respecto a su padre sin
+    // mirar los colisores, asi que deshace el empuje y la deja dentro de la esfera. Medido en el
+    // live (Sp_He_Hair2_R_00 -> Col_HairChestDb_00_03): el collide sacaba la punta 2.14 cm y el
+    // "keep length" la devolvia 2.33 cm adentro. Empujando OTRA VEZ aqui, el frame termina sin
+    // penetracion; el hueso puede estirarse ~1 cm, invisible en pelo.
+    // Solo se aplican los colisores con `ResolveAfterSolve` (las esferas generadas del pelo).
+    // =========================================================================================
+    void ResolveCollisionsAfterSolve()
+    {
+        if (Particles.Count <= 1)
+            return;
+
+        float maxStep = MaxPostSolvePush * Mathf.Max(0.01f, Mathf.Abs(m_ObjectScale));
+
+        // (RENDIMIENTO) Cache de geometria: se refresca UNA vez por colisor y frame, no por
+        // particula x iteracion. Es lo que hace que el pase cueste ~1 ms en vez de ~20 ms.
+        int frame = DynamicBoneCollider.s_FrameStamp;
+        for (int i = 1; i < Particles.Count; ++i)
+        {
+            List<DynamicBoneColliderBase> colliders = Particles[i].m_Colliders;
+            if (colliders == null)
+                continue;
+
+            for (int j = 0; j < colliders.Count; ++j)
+            {
+                DynamicBoneCollider dc = colliders[j] as DynamicBoneCollider;
+                if (dc != null)
+                    dc.UpdateWorldCache(frame);
+            }
+        }
+
+        for (int i = 1; i < Particles.Count; ++i)
+        {
+            Particle p = Particles[i];
+            if (p.m_Colliders == null || p.m_Colliders.Count == 0)
+                continue;
+
+            float particleRadius = p.m_Radius * m_ObjectScale;
+            Vector3 start = p.m_Position;
+            bool moved = false;
+
+            for (int iter = 0; iter < CollisionResolveIterations; ++iter)
+            {
+                bool changedThisIteration = false;
+
+                for (int j = 0; j < p.m_Colliders.Count; ++j)
+                {
+                    DynamicBoneColliderBase c = p.m_Colliders[j];
+                    if (c == null || !c.enabled || !c.ResolveAfterSolve)
+                        continue;
+
+                    // Camino RAPIDO: las esferas generadas por el cargador (Bound.Outside y sin
+                    // altura) se resuelven con la cache por frame, sin tocar Transform. Es lo que
+                    // hace que este pase cueste ~1 ms en vez de ~20 ms con 239 cadenas.
+                    DynamicBoneCollider sphere = c as DynamicBoneCollider;
+                    if (sphere != null && sphere.m_Height <= 0f &&
+                        sphere.m_Bound == DynamicBoneColliderBase.Bound.Outside)
+                    {
+                        if (sphere.CollideCachedSphere(ref p.m_Position, particleRadius))
+                            changedThisIteration = true;
+                        continue;
+                    }
+
+                    Vector3 before = p.m_Position;
+                    if (c.Collide(ref p.m_Position, particleRadius) &&
+                        (p.m_Position - before).sqrMagnitude > 1e-10f)
+                        changedThisIteration = true;
+                }
+
+                if (!changedThisIteration)
+                    break;
+
+                moved = true;
+            }
+
+            if (!moved)
+                continue;
+
+            Vector3 total = p.m_Position - start;
+            float len = total.magnitude;
+            if (len > maxStep)
+                p.m_Position = start + total * (maxStep / len);
+        }
+    }
+
+    // =========================================================================================
+    // (SONDAS LATERALES) El hueso de pelo es una esfera isotropa, asi que su "ancho" y su
+    // "profundidad" son el mismo radio: engordarlo para cubrir el ancho del mechon empuja tambien de
+    // frente y de atras. Aqui se prueban puntos VIRTUALES a los lados del hueso a lo largo del eje de
+    // ANCHO de la malla (lo mide el cargador) y, si un lateral entra en un colisor, se aparta la
+    // particula DE LADO lo justo. Solo se aplica el componente LATERAL del empuje: el avance a lo
+    // largo del hueso lo sigue resolviendo la restriccion de longitud del solver.
+    // Devuelve true si movio la particula.
+    // =========================================================================================
+    bool ResolveLateralProbes(Particle p, DynamicBoneColliderBase c, float particleRadius)
+    {
+        int count = Mathf.Clamp(m_LateralProbeCount, 0, 4);
+        if (count <= 0)
+            return false;
+
+        float scale = Mathf.Abs(m_ObjectScale);
+
+        Vector3 axisWorld = Vector3.zero;
+        if (p.m_Transform != null)
+            axisWorld = p.m_Transform.TransformDirection(p.m_LateralProbeAxisLocal);
+        if (axisWorld.sqrMagnitude < 1e-8f)
+            return false;
+        axisWorld.Normalize();
+
+        // Direccion del hueso (hacia su hijo): el empuje se queda solo con la parte PERPENDICULAR,
+        // para no estirar el mechon ni pelearse con la restriccion de longitud.
+        Vector3 boneDir = axisWorld;
+        if (p.m_ParentIndex >= 0 && p.m_ParentIndex < Particles.Count)
+        {
+            Vector3 d = p.m_Position - Particles[p.m_ParentIndex].m_Position;
+            if (d.sqrMagnitude > 1e-10f)
+                boneDir = d.normalized;
+        }
+
+        float probeRadius = particleRadius * Mathf.Clamp(m_LateralProbeRadiusScale, 0.05f, 2.0f);
+
+        // Sondas TANGENTES al hueso: a la MISMA altura (solo el desplazamiento lateral) y a
+        // radio_hueso + radio_sonda del centro, de modo que las tres esferas se tocan y el ancho
+        // cubierto es el del mechon. `m_LateralProbeOffset` es separacion EXTRA (0 = tangentes).
+        float offset = particleRadius + probeRadius +
+                       m_LateralProbeOffset * Mathf.Max(0.01f, scale);
+
+        Vector3 center = p.m_Position + boneDir * (p.m_LateralProbeAlong * Mathf.Max(0.01f, scale));
+
+        bool moved = false;
+
+        for (int k = 1; k <= count; ++k)
+        {
+            int ring = (k + 1) / 2;                       // 1, 1, 2, 2...
+            float sign = (k & 1) == 1 ? 1.0f : -1.0f;     // +, -, +, -...
+
+            Vector3 probe = center + axisWorld * (ring * offset * sign);
+            Vector3 before = probe;
+
+            if (!c.Collide(ref probe, probeRadius))
+                continue;
+
+            Vector3 push = probe - before;
+            push -= boneDir * Vector3.Dot(push, boneDir);   // solo lateral
+            if (push.sqrMagnitude <= 1e-12f)
+                continue;
+
+            p.m_Position += push;
+            moved = true;
+        }
+
+        return moved;
     }
 
     public void SetupParticles()

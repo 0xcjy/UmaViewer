@@ -37,6 +37,13 @@ public class CySpringColliderVisualizer : MonoBehaviour
     /// <summary>Colisor del que leer el radio en cada dibujado (opcional, misma idea que BoneSource).</summary>
     public Gallop.CySpringCollisionRuntimeData ColliderSource;
 
+    /// <summary>
+    /// Colisor de DynamicBone del que leer el radio en cada dibujado. DynamicBone multiplica su
+    /// radio por la escala del objeto (ver DynamicBoneCollider.Collide), asi que el gizmo hace lo
+    /// mismo y el tamano dibujado es el que el solver esta usando de verdad.
+    /// </summary>
+    public DynamicBoneCollider DynamicBoneSource;
+
     /// <summary>Si es una capsula (True) o una esfera (False).</summary>
     public bool IsCapsule = false;
 
@@ -56,27 +63,33 @@ public class CySpringColliderVisualizer : MonoBehaviour
             if (ColliderSource != null)
                 return ColliderSource.Radius;
 
+            if (DynamicBoneSource != null)
+                return DynamicBoneSource.m_Radius * Mathf.Abs(transform.lossyScale.x);
+
             return Radius;
         }
     }
 
     private void OnDrawGizmos()
     {
-        if (IsBone ? !BonesEnabled : !CollidersEnabled)
-            return;
-
-        float radius = CurrentRadius;
-        if (radius <= 0.00001f)
-            return;
-
-        Gizmos.color = Color;
-        Gizmos.DrawWireSphere(transform.position, radius);
-
-        if (IsBone || !IsCapsule)
-            return;
-
-        Vector3 b = transform.TransformPoint(Offset2Local);
-        Gizmos.DrawLine(transform.position, b);
-        Gizmos.DrawWireSphere(b, radius);
+        // (OCULTO) Gizmos COMENTADOS a peticion: no deben aparecer en la Scene view. El codigo se
+        // queda intacto para poder reactivarlo (descomentar este metodo).
+        //
+        // if (IsBone ? !BonesEnabled : !CollidersEnabled)
+        //     return;
+        //
+        // float radius = CurrentRadius;
+        // if (radius <= 0.00001f)
+        //     return;
+        //
+        // Gizmos.color = Color;
+        // Gizmos.DrawWireSphere(transform.position, radius);
+        //
+        // if (IsBone || !IsCapsule)
+        //     return;
+        //
+        // Vector3 b = transform.TransformPoint(Offset2Local);
+        // Gizmos.DrawLine(transform.position, b);
+        // Gizmos.DrawWireSphere(b, radius);
     }
 }

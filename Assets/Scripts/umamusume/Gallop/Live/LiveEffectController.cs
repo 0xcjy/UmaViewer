@@ -284,7 +284,8 @@ namespace Gallop.Live
                 {
                     if (parameter == null || !namedParticles.TryGetValue(parameter.ObjectNameHash, out var particle)
                         || particle == null) continue;
-                    particle.gameObject.SetActive(parameter.IsEnabled);
+                    if (particle.gameObject.activeSelf != parameter.IsEnabled)
+                        particle.gameObject.SetActive(parameter.IsEnabled);
                     var main = particle.main;
                     if (!particle.isPlaying && !Mathf.Approximately(main.duration, parameter.MainDuration)) main.duration = parameter.MainDuration;
                     main.loop = parameter.MainLooping;

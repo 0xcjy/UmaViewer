@@ -181,7 +181,8 @@ namespace Gallop.Live
         private static void SetVisible(Binding binding, bool visible)
         {
             if (binding.instance != null && binding.instance.activeSelf != visible)
-                binding.instance.SetActive(visible);
+                if (binding.instance.activeSelf != visible)
+                    binding.instance.SetActive(visible);
         }
 
         public void Dispose()

@@ -102,8 +102,9 @@ public class TearController
         CurrentAssetHolder = (curObject < 1) ? AssetHolder0 : AssetHolder1;
         if (Weight > 0)
         {
-            TearObject_0.SetActive(curObject < 1);
-            TearObject_1.SetActive(curObject >= 1);
+            bool want0 = curObject < 1;
+            if (TearObject_0.activeSelf != want0) TearObject_0.SetActive(want0);
+            if (TearObject_1.activeSelf != !want0) TearObject_1.SetActive(!want0);
         }
     }
 
@@ -114,13 +115,14 @@ public class TearController
         Weight = weight;
         if (weight <= 0)
         {
-            TearObject_0.SetActive(false);
-            TearObject_1.SetActive(false);
+            if (TearObject_0.activeSelf) TearObject_0.SetActive(false);
+            if (TearObject_1.activeSelf) TearObject_1.SetActive(false);
         }
         else
         {
-            TearObject_0.SetActive(CurrenObject < 1);
-            TearObject_1.SetActive(CurrenObject >= 1);
+            bool want0 = CurrenObject < 1;
+            if (TearObject_0.activeSelf != want0) TearObject_0.SetActive(want0);
+            if (TearObject_1.activeSelf != !want0) TearObject_1.SetActive(!want0);
         }
     }
 

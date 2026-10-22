@@ -29,6 +29,20 @@ public class DynamicBoneColliderBase : MonoBehaviour
 #endif
     public Bound m_Bound = Bound.Outside;
 
+    /// <summary>
+    /// Volver a aplicar este colisor DESPUES de la restriccion de longitud del solver.
+    ///
+    /// Motivo: `DynamicBone.UpdateParticles2` resuelve la colision ANTES de "keep length", y ese
+    /// ultimo paso devuelve SIEMPRE la particula a `restLen` respecto a su padre, asi que la puede
+    /// meter otra vez dentro de la esfera (medido en el live: 2.3 cm dentro del colisor del pecho,
+    /// con `m_isCollide` a true). Marcando aqui el colisor, el frame termina sin penetracion
+    /// (ver `DynamicBone.ResolveCollisionsAfterSolve`).
+    ///
+    /// Apagado por defecto: los colisores del asset (esferas de hasta ~0.9 m) siguen comportandose
+    /// como siempre y sólo las esferas generadas por el cargador piden este segundo pase.
+    /// </summary>
+    public bool ResolveAfterSolve = false;
+
     public virtual bool Collide(ref Vector3 particlePosition, float particleRadius)
     {
         return false;

@@ -290,9 +290,9 @@ public class UmaContainerCharacter : UmaContainer
              "para todos los colisores del juego), que aplicaba el mismo radio a geometrias distintas.")]
     public bool CySpringArmColliderEnabled = true;
     [Header("DynamicBone - colisores generados: GIZMOS (solo editor)")]
-    [Tooltip("Dibuja en la SCENE VIEW las esferas generadas (brazo y pecho). Apagado por defecto:\n" +
-             "no se ve nada mientras se usa el viewer. No afecta a la física.")]
-    public bool DynamicBoneColliderGizmos = false;
+    [Tooltip("Dibuja en la SCENE VIEW las esferas generadas (brazo y pecho). Encendido por defecto;\n" +
+             "apagarlo deja el viewer limpio. No afecta a la fisica.")]
+    public bool DynamicBoneColliderGizmos = true;
 
     [Tooltip("Radio de cada esfera, en metros. Aproximadamente el grosor del brazo.\n" +
              "Referencia: el colisor de brazo del propio juego (Col_Arm_L_Hair) usa 0.04.\n" +
@@ -321,8 +321,14 @@ public class UmaContainerCharacter : UmaContainer
     [Tooltip("Sufijos de lado. El nombre del hueso es <base>_<sufijo>.")]
     public string[] CySpringArmColliderSides = new string[] { "L", "R" };
     [Tooltip("(TEMP) Dibuja en la SCENE VIEW los colisores generados y el radio propio de cada hueso\n" +
-             "de pelo. Solo editor y APAGADO por defecto: encenderlo solo para ajustar.")]
-    public bool CySpringHairColliderGizmos = false;
+             "de pelo. Solo editor. Encendido por defecto; apagarlo deja el viewer limpio.")]
+    public bool CySpringHairColliderGizmos = true;
+
+    /// <summary>
+    /// Si se DIBUJAN las esferas de colision (cualquiera de los dos interruptores vale). No tiene
+    /// nada que ver con que la fisica las use: los colisores se crean y se enganchan siempre.
+    /// </summary>
+    private bool ColliderGizmosVisible => CySpringHairColliderGizmos || DynamicBoneColliderGizmos;
 
     [Header("DynamicBone - colisores del PELO (esferas hombro -> codo)")]
     [Tooltip("Genera la MISMA rejilla de esferas hombro->codo que el camino nativo y la engancha a\n" +
@@ -347,6 +353,9 @@ public class UmaContainerCharacter : UmaContainer
     public float DynamicBoneChestColliderOverlap = 1f;
     [Tooltip("Separación (m) entre filas, hacia abajo.")]
     public float DynamicBoneChestColliderSpacing = 0.05f;
+    [Tooltip("Sube (m) TODAS las filas del pecho respecto a la línea de la clavícula (positivo = hacia\n" +
+             "arriba). Sirve para que la barrera quede a la altura real del pecho en vez de en la clavícula.")]
+    public float DynamicBoneChestColliderLiftY = 0.015f;
     [Tooltip("ANCHO (m) de la fila, de un lado al otro del pecho. Se multiplica por el BodyScale.")]
     public float DynamicBoneChestColliderWidth = 0.24f;
     [Tooltip("Opcional: si tiene DOS huesos válidos, el ancho se mide entre ellos en vez de usar\n" +
@@ -360,6 +369,32 @@ public class UmaContainerCharacter : UmaContainer
     [Tooltip("Nivel a partir del cual se añaden las filas laterales (0 = la de la clavícula).\n" +
              "1 = solo los dos niveles de abajo, como en el dibujo.")]
     public int DynamicBoneChestColliderSideFromRow = 1;
+    [Tooltip("Radio (m) de las esferas de la ESPALDA (las azules). Van aparte y más pequeñas que las\n" +
+             "del pecho a propósito: sobresalen menos del cuerpo, así que el pelo no se abomba hacia atrás.")]
+    public float DynamicBoneChestColliderBackRadius = 0.015f;
+    [Tooltip("Filas de la ESPALDA. Al ser la mitad de gruesas que las del busto hacen falta el doble de\n" +
+             "filas (4) para cubrir la misma altura.")]
+    public int DynamicBoneChestColliderBackRows = 4;
+
+    [Header("DynamicBone - RADIO PROPIO DEL PELO (las esferas blancas)")]
+    [Tooltip("Fija el radio propio de los huesos de pelo (el '_collisionRadius' del asset, que es lo que\n" +
+             "el solver suma al radio del colisor). Solo afecta a las cadenas cuyo hueso RAÍZ empieza por\n" +
+             "el filtro. El valor es el del componente a escala ×1: DynamicBone lo multiplica por la escala\n" +
+             "del traje (con 0.989, 0.0275 se dibuja como 0.0272). Lista vacía = no tocar.")]
+    public HairRadiusRule[] DynamicBoneHairRadiusOverrides = new HairRadiusRule[]
+    {
+        new HairRadiusRule { BoneFilter = "Sp_He_Hair4", Radius = 0.0275f },
+        new HairRadiusRule { BoneFilter = "Sp_He_Hair5", Radius = 0.0275f },
+    };
+
+    [System.Serializable]
+    public class HairRadiusRule
+    {
+        [Tooltip("Prefijo del nombre del hueso RAÍZ de la cadena (p. ej. 'Sp_He_Hair4').")]
+        public string BoneFilter = "Sp_He_Hair4";
+        [Tooltip("Radio para todos los huesos de esa cadena, a escala ×1 (se multiplica por la escala del traje).")]
+        public float Radius = 0.0275f;
+    }
 
     [Header("CySpring - colisores del CUERPO (clavicula y espalda)")]
     [Tooltip("Genera las esferas del CUERPO para que el pelo no entre en el (ni en la ropa pegada):\n" +
@@ -453,8 +488,13 @@ public class UmaContainerCharacter : UmaContainer
     public bool CySpringHairProbeEnabled = true;
     [Tooltip("Puntos laterales por hueso (ademas de la punta). 2 = uno a cada lado.")]
     public int CySpringHairProbeCount = 2;
-    [Tooltip("Distancia (m) de cada sonda al eje del hueso: el ANCHO que quieres cubrir.")]
+    [Tooltip("(Camino NATIVO) Distancia (m) de cada sonda al eje del hueso. En el camino DynamicBone la\n" +
+             "posicion es TANGENTE automatica: radio del hueso + radio de la sonda.\n" +
+             "Distancia (m) de cada sonda al eje del hueso: el ANCHO que quieres cubrir.")]
     public float CySpringHairProbeOffset = 0.04f;
+    [Tooltip("(Camino DynamicBone) Separacion EXTRA (m) de las sondas sobre la posicion tangente\n" +
+             "(radio_hueso + radio_sonda). 0 = las tres esferas se tocan, como en el esquema.")]
+    public float CySpringHairProbeGap = 0.0f;
     [Tooltip("Cuantos huesos CON Malla desde la punta llevan sondas. 1 (por defecto) = solo el nivel mas\n" +
              "profundo de la jerarquia; 2 añadiria tambien el tramo anterior.")]
     public int CySpringHairProbeLevelsFromTip = 1;
@@ -491,6 +531,7 @@ public class UmaContainerCharacter : UmaContainer
     private readonly Dictionary<Transform, int> _probeMeshVertCount = new Dictionary<Transform, int>();
     private readonly Dictionary<Transform, float> _probeMeshZMax = new Dictionary<Transform, float>();
     private CySpringHairProbeVisualizer _probeVisualizer;
+    private int _probeMeasureAttempts;
     private readonly List<Vector3> _probeWorldCache = new List<Vector3>();
     private readonly List<float> _probeRadiusCache = new List<float>();
     // GameObjects vacios (uno por sonda) para poder verlas/seleccionarlas en la jerarquia.
@@ -934,6 +975,14 @@ public class UmaContainerCharacter : UmaContainer
             container.InitializePhysics(dbBones, dbColliders);
         }
 
+        // (PELO) Radio propio de las esferas blancas del pelo: se fija DESPUES de InitializePhysics,
+        // que es quien copia el '_collisionRadius' del asset a cada hueso.
+        ApplyDynamicBoneHairRadiusOverrides(cySpringDataContainers);
+
+        // (SONDAS LATERALES) COMENTADO junto con el resto de las sondas (coste en el live).
+        // _probeMeasureAttempts = 0;
+        // MeasureDynamicBoneProbeAxes(cySpringDataContainers);
+
         // (DynamicBone) El pelo que simula DynamicBone solo recibía los colisores del asset, y para
         // el brazo es una esfera pequeña en el codo: el tramo hombro->codo no empujaba el mechón.
         // Se monta el "tubo" del brazo aquí, después de crear las cadenas, para poder engancharlo
@@ -1314,107 +1363,116 @@ public class UmaContainerCharacter : UmaContainer
             return;
 
         for (int ci = 0; ci < candidates.Count; ci++)
+            MeasureBoneWidth(candidates[ci], renderers);
+    }
+
+    // =========================================================================================
+    // (SONDAS LATERALES) Medicion de UN hueso, compartida por los dos caminos (nativo y DynamicBone):
+    //  - cuantos vertices domina la malla -> los huesos "fantasma" (0) no mueven nada visible y no
+    //    deben llevar sondas;
+    //  - el eje de ANCHO de la malla en local del hueso (autovector principal de la covarianza 2x2 de
+    //    los vertices en el plano perpendicular al mechon), que es por donde se ponen las sondas.
+    // =========================================================================================
+    private void MeasureBoneWidth(Transform bt, SkinnedMeshRenderer[] renderers)
+    {
+        if (bt == null || renderers == null)
+            return;
+
+        // Direccion del mechon en ese hueso: hacia su hijo; si es la punta, desde su padre.
+        // (Se ignoran los GameObjects de sonda, que son hijos nuestros.)
+        Vector3 dirW = Vector3.zero;
+        for (int k = 0; k < bt.childCount; k++)
         {
-            Transform bt = candidates[ci];
-            if (bt == null) continue;
-
-            // Direccion del mechon en ese hueso: hacia su hijo; si es la punta, desde su padre.
-            // (Se ignoran los GameObjects de sonda, que son hijos nuestros.)
-            Vector3 dirW = Vector3.zero;
-            for (int k = 0; k < bt.childCount; k++)
-            {
-                Transform ch = bt.GetChild(k);
-                if (ch == null || ch.name.StartsWith("Sonda_", StringComparison.Ordinal))
-                    continue;
-
-                dirW = ch.position - bt.position;
-                break;
-            }
-
-            if (dirW.sqrMagnitude < 1e-10f && bt.parent != null)
-                dirW = bt.position - bt.parent.position;
-
-            if (dirW.sqrMagnitude < 1e-10f)
+            Transform ch = bt.GetChild(k);
+            if (ch == null || ch.name.StartsWith("Sonda_", StringComparison.Ordinal))
                 continue;
 
-            Vector3 dirL = bt.InverseTransformDirection(dirW.normalized);
-
-            // Base perpendicular al mechon (en local).
-            Vector3 u = Vector3.Cross(dirL, Vector3.up);
-            if (u.sqrMagnitude < 1e-6f) u = Vector3.Cross(dirL, Vector3.right);
-            if (u.sqrMagnitude < 1e-6f) continue;
-            u.Normalize();
-            Vector3 w = Vector3.Cross(dirL, u).normalized;
-
-            float sx = 0f, sy = 0f, sxx = 0f, syy = 0f, sxy = 0f;
-            float zMax = 0f;
-            int n = 0;
-
-            for (int si = 0; si < renderers.Length; si++)
-            {
-                SkinnedMeshRenderer smr = renderers[si];
-                if (smr == null) continue;
-
-                Mesh mesh = smr.sharedMesh;
-                if (mesh == null) continue;
-
-                Transform[] bones = smr.bones;
-                Matrix4x4[] bind = mesh.bindposes;
-                if (bones == null || bind == null || bones.Length != bind.Length) continue;
-
-                int bi = -1;
-                for (int k = 0; k < bones.Length; k++)
-                {
-                    if (bones[k] == bt) { bi = k; break; }
-                }
-                if (bi < 0) continue;
-
-                Vector3[] verts = mesh.vertices;
-                BoneWeight[] bw = mesh.boneWeights;
-                if (bw == null || bw.Length != verts.Length) continue;
-
-                for (int v = 0; v < verts.Length; v++)
-                {
-                    BoneWeight weight = bw[v];
-                    bool dom0 = weight.weight0 >= weight.weight1;
-                    if (dom0 && (int)weight.boneIndex0 != bi) continue;
-                    if (!dom0 && (int)weight.boneIndex1 != bi) continue;
-
-                    Vector3 p = bind[bi].MultiplyPoint3x4(verts[v]);
-                    float px = Vector3.Dot(p, u);
-                    float py = Vector3.Dot(p, w);
-                    sx += px; sy += py; sxx += px * px; syy += py * py; sxy += px * py;
-
-                    // Hasta donde llega la malla a lo largo del mechon (eje local del hueso).
-                    float pz = Vector3.Dot(p, dirL);
-                    if (pz > zMax) zMax = pz;
-
-                    n++;
-                }
-            }
-
-            // Se guardan SIEMPRE (aunque haya pocos vertices): el recuento decide si el hueso tiene
-            // peso de malla (los "fantasma" no mueven nada y no deben llevar sondas).
-            _probeMeshVertCount[bt] = n;
-            _probeMeshZMax[bt] = zMax;
-
-            if (n < 6)
-                continue;
-
-            float mx = sx / n, my = sy / n;
-            float cxx = sxx / n - mx * mx;
-            float cyy = syy / n - my * my;
-            float cxy = sxy / n - mx * my;
-
-            // Autovector principal de la covarianza 2x2 = direccion en la que el mechon es mas ancho.
-            float theta = 0.5f * Mathf.Atan2(2.0f * cxy, cxx - cyy);
-            Vector3 axisLocal = (u * Mathf.Cos(theta) + w * Mathf.Sin(theta));
-            if (axisLocal.sqrMagnitude < 1e-8f)
-                continue;
-
-            _probeAxisLocal[bt] = axisLocal.normalized;
+            dirW = ch.position - bt.position;
+            break;
         }
 
+        if (dirW.sqrMagnitude < 1e-10f && bt.parent != null)
+            dirW = bt.position - bt.parent.position;
+
+        if (dirW.sqrMagnitude < 1e-10f)
+            return;
+
+        Vector3 dirL = bt.InverseTransformDirection(dirW.normalized);
+
+        // Base perpendicular al mechon (en local).
+        Vector3 u = Vector3.Cross(dirL, Vector3.up);
+        if (u.sqrMagnitude < 1e-6f) u = Vector3.Cross(dirL, Vector3.right);
+        if (u.sqrMagnitude < 1e-6f) return;
+        u.Normalize();
+        Vector3 w = Vector3.Cross(dirL, u).normalized;
+
+        float sx = 0f, sy = 0f, sxx = 0f, syy = 0f, sxy = 0f;
+        float zMax = 0f;
+        int n = 0;
+
+        for (int si = 0; si < renderers.Length; si++)
+        {
+            SkinnedMeshRenderer smr = renderers[si];
+            if (smr == null) continue;
+
+            Mesh mesh = smr.sharedMesh;
+            if (mesh == null) continue;
+
+            Transform[] bones = smr.bones;
+            Matrix4x4[] bind = mesh.bindposes;
+            if (bones == null || bind == null || bones.Length != bind.Length) continue;
+
+            int bi = -1;
+            for (int k = 0; k < bones.Length; k++)
+            {
+                if (bones[k] == bt) { bi = k; break; }
+            }
+            if (bi < 0) continue;
+
+            Vector3[] verts = mesh.vertices;
+            BoneWeight[] bw = mesh.boneWeights;
+            if (bw == null || bw.Length != verts.Length) continue;
+
+            for (int v = 0; v < verts.Length; v++)
+            {
+                BoneWeight weight = bw[v];
+                bool dom0 = weight.weight0 >= weight.weight1;
+                if (dom0 && (int)weight.boneIndex0 != bi) continue;
+                if (!dom0 && (int)weight.boneIndex1 != bi) continue;
+
+                Vector3 p = bind[bi].MultiplyPoint3x4(verts[v]);
+                float px = Vector3.Dot(p, u);
+                float py = Vector3.Dot(p, w);
+                sx += px; sy += py; sxx += px * px; syy += py * py; sxy += px * py;
+
+                // Hasta donde llega la malla a lo largo del mechon (eje local del hueso).
+                float pz = Vector3.Dot(p, dirL);
+                if (pz > zMax) zMax = pz;
+
+                n++;
+            }
+        }
+
+        // Se guardan SIEMPRE (aunque haya pocos vertices): el recuento decide si el hueso tiene
+        // peso de malla (los "fantasma" no mueven nada y no deben llevar sondas).
+        _probeMeshVertCount[bt] = n;
+        _probeMeshZMax[bt] = zMax;
+
+        if (n < 6)
+            return;
+
+        float mx = sx / n, my = sy / n;
+        float cxx = sxx / n - mx * mx;
+        float cyy = syy / n - my * my;
+        float cxy = sxy / n - mx * my;
+
+        // Autovector principal de la covarianza 2x2 = direccion en la que el mechon es mas ancho.
+        float theta = 0.5f * Mathf.Atan2(2.0f * cxy, cxx - cyy);
+        Vector3 axisLocal = (u * Mathf.Cos(theta) + w * Mathf.Sin(theta));
+        if (axisLocal.sqrMagnitude < 1e-8f)
+            return;
+
+        _probeAxisLocal[bt] = axisLocal.normalized;
     }
 
     private Vector3 GetProbeAxisLocal(CySpringBoneBase bone)
@@ -2126,20 +2184,309 @@ public class UmaContainerCharacter : UmaContainer
                 // Prefijo propio: el camino nativo usa "Col_HairArm_<lado>_<i>" como NOMBRE DE
                 // COLISIÓN del asset, y los dos caminos no deben compartir nombres.
                 string colliderName = DynamicBoneArmColliderPrefix + side + "_" + i.ToString("00");
-                CreateGeneratedSphere(colliderName, start, world, radius, hairChains);
+                CreateGeneratedSphere(colliderName, start, world, radius, hairChains,
+                    new Color(1f, 0.55f, 0.1f, 1f));   // naranja = brazo
                 arms++;
             }
         }
 
         int chest = DynamicBoneChestColliderEnabled ? BuildDynamicBoneChestColliders(bones, hairChains) : 0;
 
-        CySpringColliderVisualizer.CollidersEnabled = CySpringHairColliderGizmos;
+        CySpringColliderVisualizer.CollidersEnabled = ColliderGizmosVisible;
 
         if (arms > 0 || chest > 0)
         {
             Debug.Log($"[PeloCol] DynamicBone: {arms} esfera(s) hombro->codo + {chest} del pecho " +
                       $"enganchadas a {hairChains.Count} cadenas de pelo (radio {radius:0.###} m).");
         }
+    }
+
+    // =========================================================================================
+    // (PELO) RADIO PROPIO DE LAS CADENAS DE DynamicBone
+    //
+    // El radio de cada hueso de pelo no lo pone el campo 'Radius' del componente: lo copia
+    // InitializePhysics desde el '_collisionRadius' del asset (raiz x0.9, hijos x1.0), y cambia por
+    // hueso. Aqui se puede fijar un valor COMUN a toda una cadena (por prefijo del hueso raiz), tal
+    // cual (escala x1): DynamicBone lo multiplica por la escala del objeto, como siempre.
+    // =========================================================================================
+    private void ApplyDynamicBoneHairRadiusOverrides(List<CySpringDataContainer> containers)
+    {
+        if (DynamicBoneHairRadiusOverrides == null || DynamicBoneHairRadiusOverrides.Length == 0 ||
+            containers == null)
+            return;
+
+        for (int i = 0; i < containers.Count; i++)
+        {
+            CySpringDataContainer container = containers[i];
+            if (container == null || container.DynamicBones == null)
+                continue;
+
+            if (GuessCySpringContainerKind(container) != 0)
+                continue;   // 0 = head (pelo/orejas)
+
+            for (int b = 0; b < container.DynamicBones.Count; b++)
+            {
+                DynamicBone chain = container.DynamicBones[b];
+                if (chain == null || chain.m_Root == null)
+                    continue;
+
+                string rootName = chain.m_Root.name;
+
+                for (int r = 0; r < DynamicBoneHairRadiusOverrides.Length; r++)
+                {
+                    HairRadiusRule rule = DynamicBoneHairRadiusOverrides[r];
+                    if (rule == null || string.IsNullOrEmpty(rule.BoneFilter) || rule.Radius <= 0.0f)
+                        continue;
+
+                    if (!rootName.StartsWith(rule.BoneFilter, StringComparison.Ordinal))
+                        continue;
+
+                    // Se fija tambien el campo del componente para que el Inspector muestre el valor
+                    // real (si no, sigue con el del asset y confunde con lo que se ve en Scene).
+                    chain.m_Radius = rule.Radius;
+
+                    for (int p = 0; p < chain.Particles.Count; p++)
+                    {
+                        if (chain.Particles[p] != null)
+                            chain.Particles[p].m_Radius = rule.Radius;
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    // =========================================================================================
+    // (SONDAS LATERALES, camino DynamicBone) Misma medicion de malla que el camino nativo, pero para
+    // las cadenas que simula DynamicBone: cuantos vertices domina cada hueso (los "fantasma" no mueven
+    // nada visible y no deben llevar sondas) y el eje de ANCHO de la malla en local del hueso.
+    // =========================================================================================
+    private void MeasureDynamicBoneProbeAxes(List<CySpringDataContainer> containers)
+    {
+        _probeAxisLocal.Clear();
+        _probeMeshVertCount.Clear();
+        _probeMeshZMax.Clear();
+
+        if (!CySpringHairProbeEnabled || !CySpringHairProbeAxisFromMesh || containers == null)
+            return;
+
+        SkinnedMeshRenderer[] renderers = GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        if (renderers == null || renderers.Length == 0)
+            return;
+
+        for (int i = 0; i < containers.Count; i++)
+        {
+            CySpringDataContainer container = containers[i];
+            if (container == null || container.DynamicBones == null)
+                continue;
+
+            if (GuessCySpringContainerKind(container) != 0)
+                continue;   // 0 = head (pelo/orejas)
+
+            for (int b = 0; b < container.DynamicBones.Count; b++)
+            {
+                DynamicBone chain = container.DynamicBones[b];
+                if (chain == null || chain.m_Root == null)
+                    continue;
+
+                if (!PassesProbeFilter(chain.m_Root.name))
+                    continue;
+
+                for (int p = 0; p < chain.Particles.Count; p++)
+                {
+                    DynamicBone.Particle particle = chain.Particles[p];
+                    if (particle == null || particle.m_Transform == null)
+                        continue;
+
+                    MeasureBoneWidth(particle.m_Transform, renderers);
+                }
+            }
+        }
+    }
+
+    // =========================================================================================
+    // (SONDAS LATERALES, camino DynamicBone) Marca que particulas llevan sondas: las ultimas
+    // `CySpringHairProbeLevelsFromTip` de cada cadena filtrada (Hair4_R/L/C por defecto), o sea el
+    // NIVEL MAS PROFUNDO de la jerarquia (Sp_He_Hair4_*_03).
+    //
+    // Se reaplica cada frame: cualquier SetupParticles (p. ej. tocar un campo del componente en el
+    // Inspector durante el Play -> OnValidate) reconstruye la lista y se lleva las marcas.
+    // =========================================================================================
+    private void ApplyDynamicBoneLateralProbes()
+    {
+        RefreshDynamicBoneHairChains();
+
+        // La medicion de malla se hace al cargar, pero puede caer antes de que los SkinnedMeshRenderer
+        // tengan los huesos enlazados; si salio vacia se reintenta unas cuantas veces (no cada frame
+        // para siempre: recorrer todas las mallas no es gratis).
+        if (_probeMeshVertCount.Count == 0 && CySpringHairProbeAxisFromMesh && _probeMeasureAttempts < 90)
+        {
+            _probeMeasureAttempts++;
+            MeasureDynamicBoneProbeAxes(cySpringDataContainers);
+        }
+        else if (_probeMeshVertCount.Count > 0)
+        {
+            _probeMeasureAttempts = 0;
+        }
+
+        int levels = Mathf.Max(0, CySpringHairProbeLevelsFromTip);
+        bool enabled = CySpringHairProbeEnabled && CySpringHairProbeCount > 0 && levels > 0;
+
+        for (int i = 0; i < _dynamicBoneHairChains.Count; i++)
+        {
+            DynamicBone chain = _dynamicBoneHairChains[i];
+            if (chain == null || chain.Particles == null)
+                continue;
+
+            chain.m_LateralProbeCount = CySpringHairProbeCount;
+            chain.m_LateralProbeOffset = CySpringHairProbeGap;
+            chain.m_LateralProbeRadiusScale = CySpringHairProbeRadiusScale;
+
+            bool wanted = enabled && chain.m_Root != null && PassesProbeFilter(chain.m_Root.name);
+            int assigned = 0;
+
+            for (int p = chain.Particles.Count - 1; p >= 1; p--)
+            {
+                DynamicBone.Particle particle = chain.Particles[p];
+                if (particle == null)
+                    continue;
+
+                bool probe = wanted && assigned < levels;
+                if (probe)
+                    assigned++;
+
+                particle.m_LateralProbe = probe;
+
+                // A la MISMA altura del hueso: el desplazamiento es solo lateral (ver ResolveLateralProbes).
+                particle.m_LateralProbeAlong = 0.0f;
+
+                if (probe)
+                    particle.m_LateralProbeAxisLocal = GetDynamicBoneProbeAxisLocal(particle.m_Transform);
+            }
+        }
+    }
+
+    // Eje de ANCHO local del hueso: el medido de la malla; si el hueso no tiene medicion propia (el
+    // ultimo nivel suele no tener vertices), se HEREDA del ancestro mas cercano que si la tenga (el
+    // ancho del mechon es el mismo). Si no hay nada medido, cualquier perpendicular al mechon.
+    private Vector3 GetDynamicBoneProbeAxisLocal(Transform bone)
+    {
+        if (bone == null)
+            return Vector3.right;
+
+        Transform t = bone;
+        while (t != null)
+        {
+            Vector3 cached;
+            if (_probeAxisLocal.TryGetValue(t, out cached) && cached.sqrMagnitude > 1e-8f)
+            {
+                if (t == bone)
+                    return cached.normalized;
+
+                Vector3 world = t.TransformDirection(cached);
+                Vector3 local = bone.InverseTransformDirection(world);
+                if (local.sqrMagnitude > 1e-8f)
+                    return local.normalized;
+
+                break;
+            }
+
+            t = t.parent;
+        }
+
+        Vector3 dirW = Vector3.zero;
+        if (bone.childCount > 0)
+            dirW = bone.GetChild(0).position - bone.position;
+        if (dirW.sqrMagnitude < 1e-10f && bone.parent != null)
+            dirW = bone.position - bone.parent.position;
+        if (dirW.sqrMagnitude < 1e-10f)
+            return Vector3.right;
+
+        Vector3 dirL = bone.InverseTransformDirection(dirW.normalized);
+        Vector3 u = Vector3.Cross(dirL, Vector3.up);
+        if (u.sqrMagnitude < 1e-6f) u = Vector3.Cross(dirL, Vector3.right);
+        if (u.sqrMagnitude < 1e-6f) return Vector3.right;
+
+        return u.normalized;
+    }
+
+    // (TEMP) Gizmos de las sondas laterales del camino DynamicBone: magenta, con una linea del centro
+    // (la punta del hueso) a cada lateral. Reutiliza el visualizador del camino nativo.
+    private void RefreshDynamicBoneProbeVisualizer()
+    {
+        if (!ColliderGizmosVisible)
+        {
+            if (_probeVisualizer != null && _probeVisualizer.Positions != null && _probeVisualizer.Positions.Length > 0)
+            {
+                _probeVisualizer.Positions = new Vector3[0];
+                _probeVisualizer.Radii = new float[0];
+            }
+            return;
+        }
+
+        _probeWorldCache.Clear();
+        _probeRadiusCache.Clear();
+
+        for (int i = 0; i < _dynamicBoneHairChains.Count; i++)
+        {
+            DynamicBone chain = _dynamicBoneHairChains[i];
+            if (chain == null) continue;
+
+            float scale = Mathf.Max(0.01f, Mathf.Abs(chain.transform.lossyScale.x));
+
+            for (int p = 1; p < chain.Particles.Count; p++)
+            {
+                DynamicBone.Particle particle = chain.Particles[p];
+                if (particle == null || !particle.m_LateralProbe || particle.m_Transform == null)
+                    continue;
+
+                Vector3 axisWorld = particle.m_Transform.TransformDirection(particle.m_LateralProbeAxisLocal);
+                if (axisWorld.sqrMagnitude < 1e-8f) continue;
+                axisWorld.Normalize();
+
+                Vector3 boneDir = axisWorld;
+                Vector3 d = particle.m_Position - chain.Particles[particle.m_ParentIndex].m_Position;
+                if (d.sqrMagnitude > 1e-10f) boneDir = d.normalized;
+
+                Vector3 center = particle.m_Position + boneDir * (particle.m_LateralProbeAlong * scale);
+
+                // Mismas cuentas que ResolveLateralProbes: tangentes al hueso (radio_hueso + radio_sonda).
+                float boneRadius = particle.m_Radius * scale;
+                float probeRadius = boneRadius *
+                                    Mathf.Clamp(chain.m_LateralProbeRadiusScale, 0.05f, 2.0f);
+                float offset = boneRadius + probeRadius + chain.m_LateralProbeOffset * scale;
+
+                // Trio centro + 2 laterales (el visualizador dibuja las lineas de 3 en 3).
+                _probeWorldCache.Add(center);
+                _probeRadiusCache.Add(probeRadius);
+                _probeWorldCache.Add(center + axisWorld * offset);
+                _probeRadiusCache.Add(probeRadius);
+                _probeWorldCache.Add(center - axisWorld * offset);
+                _probeRadiusCache.Add(probeRadius);
+            }
+        }
+
+        if (_probeWorldCache.Count == 0)
+        {
+            if (_probeVisualizer != null && _probeVisualizer.Positions != null && _probeVisualizer.Positions.Length > 0)
+            {
+                _probeVisualizer.Positions = new Vector3[0];
+                _probeVisualizer.Radii = new float[0];
+            }
+            return;
+        }
+
+        if (_probeVisualizer == null)
+        {
+            _probeVisualizer = gameObject.GetComponent<CySpringHairProbeVisualizer>();
+            if (_probeVisualizer == null)
+                _probeVisualizer = gameObject.AddComponent<CySpringHairProbeVisualizer>();
+        }
+
+        _probeVisualizer.Positions = _probeWorldCache.ToArray();
+        _probeVisualizer.Radii = _probeRadiusCache.ToArray();
+        _probeVisualizer.Color = new Color(1.0f, 0.25f, 0.95f, 1.0f);
     }
 
     // =========================================================================================
@@ -2220,20 +2567,34 @@ public class UmaContainerCharacter : UmaContainer
         int perRow = Mathf.Clamp(
             CountArmCollidersFor(DynamicBoneChestColliderCount, width, radius, overlap), 1, 16);
 
-        // Profundidad: filas EXTRA a cada lado (adelante y atrás) desde cierto nivel hacia abajo.
+        // Profundidad: filas EXTRA a cada lado (busto y espalda) desde cierto nivel hacia abajo.
         // Visto de perfil, cada nivel pasa de 1 a 1 + SideRows esferas.
         int sideRows = Mathf.Clamp(DynamicBoneChestColliderSideRows, 0, 4);
         int sideFromRow = Mathf.Max(0, DynamicBoneChestColliderSideFromRow);
         float sideOffset = Mathf.Max(0f, DynamicBoneChestColliderSideOffset);
-        Vector3 forward = Vector3.Cross(Vector3.up, right);
-        if (forward.sqrMagnitude > 0.0001f)
-            forward.Normalize();
+
+        // FRENTE del cuerpo. El producto vectorial da la perpendicular en el plano horizontal, pero
+        // su SIGNO depende del eje derecho del rig, asi que se orienta con el forward del personaje:
+        // asi "frente" es siempre el busto y "detras" la espalda, sin depender del rig.
+        Vector3 frontDir = Vector3.Cross(Vector3.up, right);
+        if (frontDir.sqrMagnitude > 0.0001f)
+        {
+            frontDir.Normalize();
+            Vector3 rootFwd = transform.forward;
+            rootFwd.y = 0f;
+            if (rootFwd.sqrMagnitude > 0.0001f && Vector3.Dot(frontDir, rootFwd) < 0f)
+                frontDir = -frontDir;
+        }
+        else
+        {
+            frontDir = Vector3.forward;
+        }
 
         int created = 0;
 
         for (int r = 0; r < rows; r++)
         {
-            float rowY = clavicleY - r * spacing;
+            float rowY = clavicleY + DynamicBoneChestColliderLiftY - r * spacing;
             bool withSides = sideRows > 0 && sideOffset > 0f && r >= sideFromRow;
 
             for (int i = 0; i < perRow; i++)
@@ -2247,21 +2608,66 @@ public class UmaContainerCharacter : UmaContainer
                 world.y = rowY;
 
                 string colliderName = DynamicBoneChestColliderPrefix + r.ToString("00") + "_" + i.ToString("00");
-                CreateGeneratedSphere(colliderName, anchor, world, radius, hairChains);
+                CreateGeneratedSphere(colliderName, anchor, world, radius, hairChains,
+                    new Color(0.35f, 0.90f, 0.35f, 1f));   // verde = fila del pecho
                 created++;
 
                 if (!withSides)
                     continue;
 
+                // Busto: una esfera del mismo radio por capa de profundidad.
                 for (int k = 1; k <= sideRows; k++)
                 {
                     CreateGeneratedSphere(
-                        colliderName + "_a" + k, anchor, world + forward * (k * sideOffset),
-                        radius, hairChains);
-                    CreateGeneratedSphere(
-                        colliderName + "_b" + k, anchor, world - forward * (k * sideOffset),
-                        radius, hairChains);
-                    created += 2;
+                        colliderName + "_a" + k, anchor, world + frontDir * (k * sideOffset),
+                        radius, hairChains, new Color(0.25f, 0.80f, 0.95f, 1f));   // cian = busto
+                    created++;
+                }
+            }
+        }
+
+        // ESPALDA: pared propia con esferas MAS PEQUEÑAS y MAS FILAS. Antes cada nivel lateral ponia
+        // una esfera de `radius` (0.03) detras; con radio `BackRadius` (0.015) se necesitan el doble
+        // de filas para cubrir la MISMA altura, asi que la barrera no sobresale tanto del cuerpo.
+        if (sideRows > 0 && sideOffset > 0f && rows > 0)
+        {
+            float backRadius = Mathf.Max(0.001f, DynamicBoneChestColliderBackRadius);
+            int backRows = Mathf.Clamp(DynamicBoneChestColliderBackRows, 1, 8);
+
+            int firstSideRow = Mathf.Clamp(sideFromRow, 0, rows - 1);
+            float baseY = clavicleY + DynamicBoneChestColliderLiftY;
+            float topEdge = baseY - firstSideRow * spacing + radius;
+            float bottomEdge = baseY - (rows - 1) * spacing - radius;
+
+            float topCenter = topEdge - backRadius;
+            float bottomCenter = bottomEdge + backRadius;
+            float stepBack = backRows > 1 ? (topCenter - bottomCenter) / (backRows - 1) : 0f;
+
+            for (int k = 1; k <= sideRows; k++)
+            {
+                Vector3 depth = -frontDir * (k * sideOffset);
+
+                for (int br = 0; br < backRows; br++)
+                {
+                    float backY = topCenter - br * stepBack;
+
+                    for (int i = 0; i < perRow; i++)
+                    {
+                        float frac = perRow <= 1 ? 0.5f : (float)i / (perRow - 1);
+                        float x = (frac - 0.5f) * width;
+
+                        Vector3 world = anchor.position;
+                        world.x += right.x * x;
+                        world.z += right.z * x;
+                        world.y = backY;
+                        world += depth;
+
+                        string backName = DynamicBoneChestColliderPrefix + "bk" + k + "_" +
+                                          br.ToString("00") + "_" + i.ToString("00");
+                        CreateGeneratedSphere(backName, anchor, world, backRadius, hairChains,
+                            new Color(0.20f, 0.45f, 1.00f, 1f));   // azul = espalda
+                        created++;
+                    }
                 }
             }
         }
@@ -2276,7 +2682,8 @@ public class UmaContainerCharacter : UmaContainer
         Transform anchor,
         Vector3 world,
         float radius,
-        List<DynamicBone> hairChains)
+        List<DynamicBone> hairChains,
+        Color gizmoColor)
     {
         var colliderObject = new GameObject(colliderName);
         colliderObject.transform.SetParent(anchor, false);
@@ -2290,18 +2697,22 @@ public class UmaContainerCharacter : UmaContainer
         collider.m_Center = Vector3.zero;
         collider.m_Radius = radius;   // DynamicBone lo multiplica por la escala del traje
         collider.m_Height = 0f;       // esfera, no cápsula
+        // El solver resuelve la colision ANTES de la restriccion de longitud y esa la deshace; las
+        // esferas generadas piden el segundo pase (ver DynamicBone.ResolveCollisionsAfterSolve).
+        collider.ResolveAfterSolve = true;
         _dynamicBoneArmColliders.Add(collider);
 
-        // Gizmo SOLO si se pide (por defecto NO: el viewer se ve limpio). Es andamiaje de ajuste.
-        if (DynamicBoneColliderGizmos)
-        {
-            var visualizer = colliderObject.AddComponent<CySpringColliderVisualizer>();
-            visualizer.IsBone = false;
-            visualizer.ColliderSource = null;
-            visualizer.IsCapsule = false;
-            visualizer.Radius = radius;
-            visualizer.Color = new Color(1f, 0.55f, 0.1f, 1f);
-        }
+        // Gizmo SIEMPRE presente (es andamiaje de ajuste): quien decide si se dibuja es el flag
+        // estatico que fija AlterLateUpdatePostRuntime, asi el check del Inspector enciende y
+        // apaga las esferas al momento, tambien las que ya estaban creadas.
+        var visualizer = colliderObject.AddComponent<CySpringColliderVisualizer>();
+        visualizer.IsBone = false;
+        visualizer.BoneSource = null;
+        visualizer.DynamicBoneSource = collider;
+        visualizer.ColliderSource = null;
+        visualizer.IsCapsule = false;
+        visualizer.Radius = radius;
+        visualizer.Color = gizmoColor;
 
         for (int c = 0; c < hairChains.Count; c++)
         {
@@ -2365,6 +2776,26 @@ public class UmaContainerCharacter : UmaContainer
             if (chain == null)
                 continue;
 
+            // (RENDIMIENTO) Basta con mirar UNA particula: SetupParticles reconstruye la lista de
+            // TODAS a la vez, asi que o estan todas enganchadas o ninguna. Antes se hacia un
+            // List.Contains por particula y colisor (decenas de miles de comparaciones por frame).
+            int probeIndex = -1;
+            for (int p = 1; p < chain.Particles.Count; p++)
+            {
+                if (chain.Particles[p] != null)
+                {
+                    probeIndex = p;
+                    break;
+                }
+            }
+
+            if (probeIndex < 0)
+                continue;
+
+            DynamicBone.Particle first = chain.Particles[probeIndex];
+            if (first.m_Colliders != null && first.m_Colliders.Contains(_dynamicBoneArmColliders[0]))
+                continue;
+
             for (int p = 0; p < chain.Particles.Count; p++)
             {
                 DynamicBone.Particle particle = chain.Particles[p];
@@ -2373,9 +2804,6 @@ public class UmaContainerCharacter : UmaContainer
 
                 if (particle.m_Colliders == null)
                     particle.m_Colliders = new List<DynamicBoneColliderBase>();
-
-                if (particle.m_Colliders.Contains(_dynamicBoneArmColliders[0]))
-                    continue;
 
                 for (int a = 0; a < _dynamicBoneArmColliders.Count; a++)
                 {
@@ -2731,7 +3159,7 @@ public class UmaContainerCharacter : UmaContainer
     // del Inspector (los flags estaticos los leen todos los gizmos del proyecto).
     private void UpdateHairColliderGizmos()
     {
-        CySpringColliderVisualizer.CollidersEnabled = CySpringHairColliderGizmos;
+        CySpringColliderVisualizer.CollidersEnabled = ColliderGizmosVisible;
         CySpringColliderVisualizer.BonesEnabled = CySpringHairColliderGizmos;
 
         if (_hairRuntimeCollisions == null)
@@ -3276,7 +3704,6 @@ public class UmaContainerCharacter : UmaContainer
         EnablePhysics = true;
         SetDynamicBoneEnable(true);
     }
-
     public void ResetDynamicBone()
     {
         if (IsMini)
@@ -3356,12 +3783,24 @@ public class UmaContainerCharacter : UmaContainer
     {
         // (TEMP) Interruptor de gizmos, cada frame y barato (dos flags estaticos): asi el check del
         // Inspector enciende/apaga las esferas al momento, sin esperar a que cambie un valor.
-        CySpringColliderVisualizer.CollidersEnabled = CySpringHairColliderGizmos;
+        // Las esferas del camino DynamicBone tienen su propio interruptor; los radios de hueso
+        // (cian) solo existen en el camino nativo.
+        CySpringColliderVisualizer.CollidersEnabled = ColliderGizmosVisible;
         CySpringColliderVisualizer.BonesEnabled = CySpringHairColliderGizmos;
 
         // (DynamicBone) Si el pelo reconstruyó sus partículas después de engancharlas, se vuelven a
         // enganchar aquí. Sin esferas creadas (pelo nativo) esto sale en la primera línea.
         EnsureDynamicBoneArmCollidersAttached();
+
+        // Radio propio del pelo: se reaplica cada frame porque cualquier SetupParticles (p. ej. tocar
+        // un campo del componente en el Inspector durante el Play → OnValidate) lo devuelve al
+        // 'm_Radius' generico o al del asset. Son unas pocas decenas de asignaciones.
+        ApplyDynamicBoneHairRadiusOverrides(cySpringDataContainers);
+
+        // (SONDAS LATERALES) COMENTADO: costaba demasiado en el live (FPS). El codigo y los metodos
+        // se quedan para poder reactivarlo.
+        // ApplyDynamicBoneLateralProbes();
+        // RefreshDynamicBoneProbeVisualizer();
 
         // Ajuste EN CALIENTE de los colisores generados del pelo: si cambias radio, cantidad o solape
         // en el Inspector durante el Play, se recolocan al instante (y se reconstruye el array nativo).

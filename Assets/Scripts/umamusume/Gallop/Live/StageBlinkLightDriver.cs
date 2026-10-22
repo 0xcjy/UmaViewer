@@ -963,13 +963,15 @@ namespace Gallop.Live
                     continue;
                 }
 
-                string childName = ResolveIndexedOwnerName(r.transform, rc.rootGo.transform) ?? "";
-
-                if (!ReferenceEquals(childName, e.cachedChildName) && childName != e.cachedChildName)
+                // (RENDIMIENTO) El nombre del "owner" NO cambia en runtime: se resuelve una sola vez
+                // (BuildRootCache ya lo deja relleno). Antes se recorria la jerarquia y se comparaban
+                // strings por CADA renderer y frame, con cientos de renderers de blinklight.
+                if (string.IsNullOrEmpty(e.cachedChildName))
                 {
-                    e.cachedChildName = childName;
+                    string resolvedName = ResolveIndexedOwnerName(r.transform, rc.rootGo.transform) ?? "";
+                    e.cachedChildName = resolvedName;
 
-                    if (TryParseLightOwnerIndex(childName, out int idx))
+                    if (TryParseLightOwnerIndex(resolvedName, out int idx))
                     {
                         e.token = new IndexToken
                         {
@@ -1051,7 +1053,9 @@ namespace Gallop.Live
                     _registeredFlares?.SetBlinkColor(e.customLensFlare, currentColor * p);
 
                 int uvBias = (rc.rootIsUv || e.isUvAlphaMask) ? uvSortingBias : 0;
-                r.sortingOrder = baseOrder + uvBias + e.stableSlot * stride;
+                int wantSortingOrder = baseOrder + uvBias + e.stableSlot * stride;
+                if (r.sortingOrder != wantSortingOrder)
+                    r.sortingOrder = wantSortingOrder;
 
                 EnsureLightBlinkBlendState(r, ref e, rt.lightBlendMode);
 

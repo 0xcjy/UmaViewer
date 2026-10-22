@@ -20,29 +20,32 @@ public class CySpringHairProbeVisualizer : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if (Positions == null)
-            return;
-
-        Gizmos.color = Color;
-
-        for (int i = 0; i < Positions.Length; i++)
-        {
-            float radius = (Radii != null && i < Radii.Length) ? Radii[i] : 0.0f;
-            if (radius <= 0.00001f)
-                continue;
-
-            Gizmos.DrawWireSphere(Positions[i], radius);
-        }
-
-        // Lineas del centro a cada sonda, para ver a que hueso pertenecen.
-        Gizmos.color = new Color(Color.r, Color.g, Color.b, 0.35f);
-        for (int i = 0; i < Positions.Length; i += 3)
-        {
-            if (i + 1 >= Positions.Length || i + 2 >= Positions.Length)
-                break;
-
-            Gizmos.DrawLine(Positions[i], Positions[i + 1]);
-            Gizmos.DrawLine(Positions[i], Positions[i + 2]);
-        }
+        // (OCULTO) Gizmos COMENTADOS a peticion: las sondas laterales no deben aparecer en la Scene
+        // view. El codigo se queda para poder reactivarlo (descomentar este metodo).
+        //
+        // if (Positions == null)
+        //     return;
+        //
+        // Gizmos.color = Color;
+        //
+        // for (int i = 0; i < Positions.Length; i++)
+        // {
+        //     float radius = (Radii != null && i < Radii.Length) ? Radii[i] : 0.0f;
+        //     if (radius <= 0.00001f)
+        //         continue;
+        //
+        //     Gizmos.DrawWireSphere(Positions[i], radius);
+        // }
+        //
+        // // Lineas del centro a cada sonda, para ver a que hueso pertenecen.
+        // Gizmos.color = new Color(Color.r, Color.g, Color.b, 0.35f);
+        // for (int i = 0; i < Positions.Length; i += 3)
+        // {
+        //     if (i + 1 >= Positions.Length || i + 2 >= Positions.Length)
+        //         break;
+        //
+        //     Gizmos.DrawLine(Positions[i], Positions[i + 1]);
+        //     Gizmos.DrawLine(Positions[i], Positions[i + 2]);
+        // }
     }
 }

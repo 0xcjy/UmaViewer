@@ -449,7 +449,8 @@ namespace Gallop.Live
             if (!_isInitialized || _instance == null)
                 return;
 
-            _instance.SetActive(updateInfo.isEnabledRender);
+            if (_instance.activeSelf != updateInfo.isEnabledRender)
+                _instance.SetActive(updateInfo.isEnabledRender);
 
             if (!updateInfo.isEnabledRender)
                 return;
