@@ -42,9 +42,17 @@ public class TemporalIcon : MonoBehaviour
         go.AddComponent<TemporalIcon>();
     }
 
+    private float _nextButtonSearchTime;
+
     private void Update()
     {
         if (_button != null) return;
+
+        // (RENDIMIENTO) La busqueda recorre TODOS los Button de la escena (FindObjectsOfType, que
+        // ademas asigna un array cada vez), asi que no puede hacerse en cada frame: se reintenta
+        // cada 0,5 s hasta que el boton exista.
+        if (Time.unscaledTime < _nextButtonSearchTime) return;
+        _nextButtonSearchTime = Time.unscaledTime + 0.5f;
 
         var row = GameObject.Find(ButtonPath);
         if (row != null) _button = row.GetComponentInChildren<Button>(true);

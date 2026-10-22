@@ -85,9 +85,16 @@ namespace Gallop.Live
                 billboard.localScale = node.localScale;
                 Quaternion baseRotation = node.localRotation;
                 billboard.localRotation = baseRotation;
-                copy.gameObject.layer = source.gameObject.layer;
-                copy.gameObject.SetActive(node.gameObject.activeSelf);
-                copy.enabled = source.enabled;
+                if (copy.gameObject.layer != source.gameObject.layer)
+                    copy.gameObject.layer = source.gameObject.layer;
+
+                // (RENDIMIENTO) SetActive/enabled solo si cambian: esto corre por haz y frame, y antes
+                // activaba/desactivaba cientos de GameObjects en cada frame aunque no cambiara nada.
+                bool wantActive = node.gameObject.activeSelf;
+                if (copy.gameObject.activeSelf != wantActive)
+                    copy.gameObject.SetActive(wantActive);
+                if (copy.enabled != source.enabled)
+                    copy.enabled = source.enabled;
                 copy.forceRenderingOff = beam.SourceWasForcedOff;
                 if (!node.gameObject.activeInHierarchy || !source.enabled) continue;
                 if (copy.sharedMaterial != source.sharedMaterial) copy.sharedMaterial = source.sharedMaterial;

@@ -709,33 +709,70 @@ namespace Gallop.Live
             control.SetMultiCamera(cameras);
         }
 
+        // (RENDIMIENTO) Caches de UpdateMainCamera: el componente URP de cada camara y cual lleva el
+        // tag MainCamera. Antes se llamaba SetActive a TODOS los nodos y se escribia el tag de la
+        // camara activa en cada frame (escribir un tag y un SetActive son caros).
+        private UnityEngine.Rendering.Universal.UniversalAdditionalCameraData[] _cameraDataCache;
+        private int _taggedCameraIndex = -1;
+
         private void UpdateMainCamera()
         {
             if (_cameraObjects == null) return;
+
+            if (_cameraDataCache == null || _cameraDataCache.Length != _cameraObjects.Length)
+                _cameraDataCache = new UnityEngine.Rendering.Universal.UniversalAdditionalCameraData[_cameraObjects.Length];
+
             for (int i = 0; i < _cameraNodes.Length; i++)
             {
                 bool activeSelf = _cameraNodes[i].activeSelf;
                 bool flag = i == _activeCameraIndex;
-                _cameraNodes[i].SetActive(flag);
+
+                if (activeSelf != flag)
+                    _cameraNodes[i].SetActive(flag);
+
                 // Camera.main consumers (eye tracking) must follow the same presentation switch.
                 var camera = _cameraObjects[i];
-                if (camera != null)
+                if (camera != null && flag)
                 {
-                    if (flag) camera.gameObject.tag = "MainCamera";
-                    if (flag)
+                    var cameraData = _cameraDataCache[i];
+                    if (cameraData == null)
                     {
-                        var cameraData = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                        cameraData = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
                         if (cameraData == null)
                             cameraData = camera.gameObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
-                        cameraData.renderPostProcessing = true;
+                        _cameraDataCache[i] = cameraData;
                     }
-                    else if (camera.CompareTag("MainCamera")) camera.gameObject.tag = "Untagged";
+
+                    if (!cameraData.renderPostProcessing)
+                        cameraData.renderPostProcessing = true;
                 }
+
                 if (i == 0 && activeSelf != flag && flag && _cameraLookAt != null)
                 {
                     _cameraLookAt.ActivationUpdate();
                 }
             }
+
+            // El tag solo se toca cuando CAMBIA la camara activa.
+            if (_taggedCameraIndex != _activeCameraIndex)
+            {
+                if (_taggedCameraIndex >= 0 && _taggedCameraIndex < _cameraObjects.Length)
+                {
+                    var previous = _cameraObjects[_taggedCameraIndex];
+                    if (previous != null && previous.CompareTag("MainCamera"))
+                        previous.gameObject.tag = "Untagged";
+                }
+
+                if (_activeCameraIndex >= 0 && _activeCameraIndex < _cameraObjects.Length)
+                {
+                    var current = _cameraObjects[_activeCameraIndex];
+                    if (current != null)
+                        current.gameObject.tag = "MainCamera";
+                }
+
+                _taggedCameraIndex = _activeCameraIndex;
+            }
+
             _mainCameraTransform = _cameraTransforms[_activeCameraIndex];
             if (MultiCameraFinalComposite != null)
             {

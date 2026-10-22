@@ -510,7 +510,7 @@ namespace Gallop
                     case BindProperty.BindType.Texture:
                         if (property.Value > 0.01f)
                         {
-                            morph.BindGameObject.SetActive(true);
+                            if (!morph.BindGameObject.activeSelf) morph.BindGameObject.SetActive(true);
                             property.BindMaterial.mainTexture = property.BindTexture;
                             property.BindMaterial.SetFloat(property.PropertyName, property.Value);
                         }
@@ -518,7 +518,7 @@ namespace Gallop
                         {
                             if (morph.BindProperties.Find(p =>p.Value >0) == null)
                             {
-                                morph.BindGameObject.SetActive(false);
+                                if (morph.BindGameObject.activeSelf) morph.BindGameObject.SetActive(false);
                             }
                         }
                         break;
@@ -526,22 +526,38 @@ namespace Gallop
                         property.BindMaterial.SetFloat(property.PropertyName, property.Value);
                         break;
                     case BindProperty.BindType.Select:
-                        property.BindPrefabs.ForEach(a => a.SetActive((int)property.Value == property.BindPrefabs.IndexOf(a)));
+                        // (RENDIMIENTO) SetActive solo si cambia: este bucle corre por morph y frame.
+                        for (int i = 0; i < property.BindPrefabs.Count; i++)
+                        {
+                            var bindGo = property.BindPrefabs[i];
+                            bool want = (int)property.Value == i;
+                            if (bindGo != null && bindGo.activeSelf != want) bindGo.SetActive(want);
+                        }
                         break;
                     case BindProperty.BindType.EyeSelect:
                         var count = property.BindPrefabs.Count / 2;
                         var val = (int)property.Value;
-                        property.BindPrefabs.ForEach(a =>
-                        a.SetActive(val + count < property.BindPrefabs.Count && (val == property.BindPrefabs.IndexOf(a) || val + count == property.BindPrefabs.IndexOf(a))));
+                        for (int i = 0; i < property.BindPrefabs.Count; i++)
+                        {
+                            var bindGo = property.BindPrefabs[i];
+                            bool want = val + count < property.BindPrefabs.Count && (val == i || val + count == i);
+                            if (bindGo != null && bindGo.activeSelf != want) bindGo.SetActive(want);
+                        }
                         break;
                     case BindProperty.BindType.Enable:
                         if(property.BindPrefabs.Count == 1)
                         {
-                            property.BindPrefabs.ForEach(a => a.SetActive(property.Value > 0));
+                            var bindGo = property.BindPrefabs[0];
+                            bool want = property.Value > 0;
+                            if (bindGo != null && bindGo.activeSelf != want) bindGo.SetActive(want);
                         }
                         else if(property.Value <= 0)
                         {
-                            property.BindPrefabs.ForEach(a => a.SetActive(false));
+                            for (int i = 0; i < property.BindPrefabs.Count; i++)
+                            {
+                                var bindGo = property.BindPrefabs[i];
+                                if (bindGo != null && bindGo.activeSelf) bindGo.SetActive(false);
+                            }
                         }
                         break;
                     case BindProperty.BindType.TearSide:
