@@ -58,6 +58,14 @@ public class LiveViewerUI : MonoBehaviour
         if (CurrentTimeLabel == null) CurrentTimeLabel = FindTimeLabel("CurrentTime");
         if (TotalTimeLabel == null) TotalTimeLabel = FindTimeLabel("TotalTime");
 
+        //Las etiquetas cuelgan del slider y su rect se sale del rect de la barra (CurrentTime por la
+        //izquierda, justo encima del boton de play/pausa). Con el raycast del texto activo se comian
+        //el click: el evento subia al Slider, que lo interpretaba como un salto a esa posicion de la
+        //barra y, al quedar a la izquierda del relleno, recortaba el valor a 0 (el show volvia al
+        //principio). Son solo texto: se les apaga el raycast para que el click llegue al boton.
+        if (CurrentTimeLabel != null) CurrentTimeLabel.raycastTarget = false;
+        if (TotalTimeLabel != null) TotalTimeLabel.raycastTarget = false;
+
         // Cablea el boton de salir del live que haya en la escena (el onClick trae un binding roto:
         //se sustituye entero por la salida real). Si no se encuentra, avisa: el Esc sigue saliendo.
         WireCancelButton();
@@ -154,6 +162,10 @@ public class LiveViewerUI : MonoBehaviour
         //entero por la salida real del live.
         bn.onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
         bn.onClick.AddListener(OnExitLiveButtonClick);
+
+        //El boton de salir tambien cuelga del slider: se le corta el arrastre para que pulsarlo no
+        //mueva la barra de progreso. Ver SliderDragBlocker.cs.
+        SliderDragBlocker.Ensure(bn.gameObject);
     }
 
     //Busca el Button de salir del live. Primero por ruta exacta (su sitio en LiveScene.unity) y, si

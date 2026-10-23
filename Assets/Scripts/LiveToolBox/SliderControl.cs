@@ -38,6 +38,11 @@ public class SliderControl : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         if (PauseButton != null)
         {
             PauseButton.onClick.AddListener(OnPauseButtonClick);
+
+            //El boton cuelga del slider: sin esto, arrastrarlo (aunque sea unos pixeles) mueve la
+            //barra y, como esta a su izquierda, el valor se recortaba a 0 (el show volvia al
+            //principio al reanudar). Ver SliderDragBlocker.cs.
+            SliderDragBlocker.Ensure(PauseButton.gameObject);
         }
 
         _label = PauseButton != null ? PauseButton.GetComponentInChildren<Text>() : null;

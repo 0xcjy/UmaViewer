@@ -1132,7 +1132,12 @@ namespace Gallop.Live
                     }
                     else if (sliderControl.is_Outed)
                     {
-                        _liveCurrentTime = UI.ProgressBar.value * totalTime;
+                        //La reanudacion usa el tiempo que ya seguia el show, no vuelve a leer la
+                        //barra: mientras esta pausado (rama is_Touched) `_liveCurrentTime` ya se
+                        //sincroniza cada frame con la posicion elegida (boton o arrastre), asi que
+                        //un valor estropeado de la barra no puede mandar la reproduccion al
+                        //principio.
+                        _liveCurrentTime = Mathf.Clamp(_liveCurrentTime, 0f, Mathf.Max(0f, totalTime - 0.001f));
 
                         if (liveMusic != null)
                         {
