@@ -15,6 +15,10 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
     private static readonly string[] AnisoOptions = { "Off", "Per Texture", "Force On" };
     private static readonly string[] TextureQualityOptions = { "Full", "Half", "Quarter", "Eighth" };
 
+    // (VIDEO SPEED) Velocidades del live (Time.timeScale). 1 = normal, <1 = camara lenta.
+    private static readonly float[] VideoSpeedValues = { 0.1f, 0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f };
+    private static readonly string[] VideoSpeedLabels = { "0.10x", "0.25x", "0.50x", "0.75x", "1.00x", "1.50x", "2.00x" };
+
     private const int MinRenderScale = 50;
     private const int MaxRenderScale = 200;
 
@@ -28,6 +32,7 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
 
     private TypeInDropdown _frameRate;
     private TypeInDropdown _renderScale;
+    private Dropdown _videoSpeedDropdown;
     private bool _applied;
 
     // Idempotente: lo llama LiveViewerUI cuando Config ya existe.
@@ -94,6 +99,88 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
                 ShadowDistance.SetTextWithoutNotify(Config.Instance.ShadowDistance.ToString(CultureInfo.InvariantCulture));
             });
         }
+
+        CreateVideoSpeedRow();
+    }
+
+    // =========================================================================================
+    // (VIDEO SPEED) Fila nueva "Video speed" clonada de la fila de "MAX fps".
+    //
+    // El panel es un ScrollRect (Viewport -> Content) con VerticalLayoutGroup + ContentSizeFitter,
+    // asi que basta con anadir el clon como hermano de la fila original: el layout lo coloca y el
+    // contenido crece solo (si no cabe, se desplaza con el scroll). No hace falta tocar la escena.
+    // =========================================================================================
+    private void CreateVideoSpeedRow()
+    {
+        if (FrameRateDropdown == null) return;
+
+        Transform sourceRow = FrameRateDropdown.transform.parent;
+        if (sourceRow == null || sourceRow.parent == null) return;
+
+        GameObject rowClone = Instantiate(sourceRow.gameObject, sourceRow.parent, false);
+        rowClone.name = "VideoSpeedRow";
+        rowClone.transform.SetSiblingIndex(sourceRow.GetSiblingIndex() + 1);
+
+        Dropdown dropdown = rowClone.GetComponentInChildren<Dropdown>(true);
+        if (dropdown == null)
+        {
+            Destroy(rowClone);
+            return;
+        }
+
+        RenameRowLabel(rowClone, dropdown, "Video speed");
+
+        dropdown.ClearOptions();
+        dropdown.AddOptions(new List<string>(VideoSpeedLabels));
+        dropdown.SetValueWithoutNotify(IndexOfVideoSpeed(Config.Instance.GetVideoSpeed()));
+        dropdown.onValueChanged.AddListener(delegate (int value)
+        {
+            int index = Mathf.Clamp(value, 0, VideoSpeedValues.Length - 1);
+            Config.Instance.VideoSpeed = VideoSpeedValues[index];
+            Config.Instance.UpdateConfig(false);
+
+            var director = Gallop.Live.Director.instance;
+            if (director != null) director.ApplyVideoSpeed();
+        });
+
+        _videoSpeedDropdown = dropdown;
+    }
+
+    // La etiqueta de la fila es el texto que NO esta dentro del desplegable (el resto son el
+    // caption y los items del propio Dropdown).
+    private static void RenameRowLabel(GameObject row, Dropdown dropdown, string text)
+    {
+        var texts = row.GetComponentsInChildren<Text>(true);
+        for (int i = 0; i < texts.Length; i++)
+        {
+            if (texts[i] == null || texts[i].transform.IsChildOf(dropdown.transform)) continue;
+            texts[i].text = text;
+            return;
+        }
+
+        var tmpTexts = row.GetComponentsInChildren<TMPro.TMP_Text>(true);
+        for (int i = 0; i < tmpTexts.Length; i++)
+        {
+            if (tmpTexts[i] == null || tmpTexts[i].transform.IsChildOf(dropdown.transform)) continue;
+            tmpTexts[i].text = text;
+            return;
+        }
+    }
+
+    private static int IndexOfVideoSpeed(float speed)
+    {
+        int best = 4;   // 1.00x
+        float bestDelta = float.MaxValue;
+        for (int i = 0; i < VideoSpeedValues.Length; i++)
+        {
+            float delta = Mathf.Abs(VideoSpeedValues[i] - speed);
+            if (delta < bestDelta)
+            {
+                bestDelta = delta;
+                best = i;
+            }
+        }
+        return best;
     }
 
     private void Update()

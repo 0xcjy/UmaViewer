@@ -147,8 +147,10 @@ public class CameraOrbit : MonoBehaviour
         }
         if (Input.GetMouseButton(0) && FreeCamLeft)
         {
-            transform.position += Input.GetAxis("Vertical") * transform.forward * Time.deltaTime * moveSpeed;
-            transform.position += Input.GetAxis("Horizontal") * transform.right * Time.deltaTime * moveSpeed;
+            // (VIDEO SPEED) Tiempo SIN escalar: la camara se mueve igual de rapido aunque el live vaya
+            // a camara lenta (Time.timeScale < 1).
+            transform.position += Input.GetAxis("Vertical") * transform.forward * Time.unscaledDeltaTime * moveSpeed;
+            transform.position += Input.GetAxis("Horizontal") * transform.right * Time.unscaledDeltaTime * moveSpeed;
 
             lookRotation.x -= Input.GetAxis("Mouse Y") * rotateSpeed;
             lookRotation.y += Input.GetAxis("Mouse X") * rotateSpeed;
@@ -167,8 +169,9 @@ public class CameraOrbit : MonoBehaviour
         }
         if (Input.GetMouseButton(1) && FreeCamRight)
         {
-            transform.position += Input.GetAxis("Mouse X") * transform.right  * Time.deltaTime * moveSpeed;
-            transform.position += Input.GetAxis("Mouse Y") * transform.up * Time.deltaTime * moveSpeed;
+            // (VIDEO SPEED) Tiempo SIN escalar para que la camara no vaya a camara lenta.
+            transform.position += Input.GetAxis("Mouse X") * transform.right  * Time.unscaledDeltaTime * moveSpeed;
+            transform.position += Input.GetAxis("Mouse Y") * transform.up * Time.unscaledDeltaTime * moveSpeed;
         }
         else
         {

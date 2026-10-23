@@ -67,6 +67,9 @@ public class Config
     public string TargetFrameRateTip = "Live scene frame rate: positive integer FPS, 0 = unlimited (desktop). Changed only by the Live settings panel.";
     public int TargetFrameRate = 60;
 
+    public string VideoSpeedTip = "Live playback speed: 1 = normal, 0.25 = slow motion (audio is pitched down to stay in sync). Changed only by the Live settings panel.";
+    public float VideoSpeed = 1f;
+
     public string MaxSimultaneousVoiceOnSoloConcertTip = "Max voice tracks sounding at once in Solo concert. When more are active, the rest are muted. Default: 2.";
     public int MaxSimultaneousVoiceOnSoloConcert = 2;
 
@@ -288,6 +291,12 @@ public class Config
     public int GetTargetFrameRate()
     {
         return TargetFrameRate <= 0 ? -1 : TargetFrameRate;
+    }
+
+    /// <summary>Velocidad de reproduccion del live, ya limitada al rango util (0.1 - 2).</summary>
+    public float GetVideoSpeed()
+    {
+        return Mathf.Clamp(VideoSpeed <= 0f ? 1f : VideoSpeed, 0.1f, 2f);
     }
 
     public int GetUIFrameRate()

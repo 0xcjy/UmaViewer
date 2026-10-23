@@ -714,6 +714,41 @@ namespace Gallop.Live
         // camara activa en cada frame (escribir un tag y un SetActive son caros).
         private UnityEngine.Rendering.Universal.UniversalAdditionalCameraData[] _cameraDataCache;
         private int _taggedCameraIndex = -1;
+        // (VIDEO SPEED) Ultima velocidad aplicada, para reaplicar solo cuando cambia.
+        private float _appliedVideoSpeed = -1f;
+
+        /// <summary>Velocidad que deberia tener el live ahora mismo (grabando siempre va a 1).</summary>
+        private float GetWantedVideoSpeed()
+        {
+            float speed = Config.Instance != null ? Config.Instance.GetVideoSpeed() : 1f;
+            if (IsOfflineRender || IsRecordVMD) speed = 1f;
+            return speed;
+        }
+
+        /// <summary>
+        /// (VIDEO SPEED) Aplica la velocidad del live: `Time.timeScale` para animacion, fisicas,
+        /// pelo, ropa y particulas, y pitch en musica/voces para que el audio siga sincronizado.
+        /// </summary>
+        public void ApplyVideoSpeed()
+        {
+            float speed = GetWantedVideoSpeed();
+            _appliedVideoSpeed = speed;
+            Time.timeScale = speed;
+            UmaViewerAudio.SetPlaybackSpeed(liveMusic, speed);
+
+            if (liveVocal != null)
+            {
+                for (int i = 0; i < liveVocal.Count; i++)
+                    UmaViewerAudio.SetPlaybackSpeed(liveVocal[i], speed);
+            }
+        }
+
+        private void ApplyVideoSpeedIfChanged()
+        {
+            float wanted = GetWantedVideoSpeed();
+            if (!Mathf.Approximately(wanted, _appliedVideoSpeed))
+                ApplyVideoSpeed();
+        }
 
         private void UpdateMainCamera()
         {
@@ -969,6 +1004,8 @@ namespace Gallop.Live
 
             _isLiveSetup = true;
             _liveCurrentTime = 0;
+            // (VIDEO SPEED) Las pistas de audio existen a partir de aqui: aplicar ya la velocidad.
+            ApplyVideoSpeed();
             LiveRuntimeDiagnostics.RecordPhase("play_started", this);
 
             if (IsRecordVMD)
@@ -1157,6 +1194,10 @@ namespace Gallop.Live
                 if (UI != null)
                     UI.UpdateTimeLabels(_liveCurrentTime, totalTime);
 
+                // (VIDEO SPEED) Cambia en caliente si se toca el ajuste (y reaplica el pitch cuando
+                // las pistas de audio se acaban de crear).
+                ApplyVideoSpeedIfChanged();
+
                 LiveRuntimeDiagnostics.RecordFrame(this);
             }
         }
@@ -1190,6 +1231,8 @@ namespace Gallop.Live
         private void ExitLive()
         {
             isExit = true;
+            // (VIDEO SPEED) Al salir del live se vuelve a velocidad normal (el timeScale es global).
+            Time.timeScale = 1f;
             if (_liveTimelineControl.IsRecordVMD)
             {
                 ExitTime = DateTime.Now;

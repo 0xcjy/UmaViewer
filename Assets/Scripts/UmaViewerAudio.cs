@@ -122,6 +122,22 @@ public class UmaViewerAudio
         }
     }
 
+    /// <summary>
+    /// (VIDEO SPEED) Cambia la velocidad de reproduccion de una fuente bajando/subiendo su pitch:
+    /// Unity no escala el audio con `Time.timeScale`, asi que sin esto el show se desincroniza.
+    /// </summary>
+    public static void SetPlaybackSpeed(CuteAudioSource sourceList, float speed)
+    {
+        if (sourceList == null || sourceList.sourceList == null) return;
+
+        float pitch = Mathf.Clamp(speed, 0.1f, 3f);
+        for (int i = 0; i < sourceList.sourceList.Count; i++)
+        {
+            var source = sourceList.sourceList[i];
+            if (source != null) source.pitch = pitch;
+        }
+    }
+
     public enum PartForm
     {
         center = 0,

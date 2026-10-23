@@ -36,6 +36,8 @@ public class LiveViewerUI : MonoBehaviour
 
     float targetHeight = 0;
     float height;
+    // (VIDEO SPEED) Momento (reloj de pared) en el que la barra se oculta sola.
+    float _hideAtUnscaledTime = -1f;
     private void Awake()
     {
         if (Config.Instance == null)
@@ -49,7 +51,7 @@ public class LiveViewerUI : MonoBehaviour
 
         height = BottonUITransform.rect.height;
         targetHeight = 0;
-        Invoke(nameof(HideSlider), 1.5f);
+        _hideAtUnscaledTime = Time.unscaledTime + 1.5f;
         Instance = this;
 
         // Se descubren las etiquetas de tiempo de la barra si el YAML no las deja cableadas.
@@ -212,17 +214,27 @@ public class LiveViewerUI : MonoBehaviour
         if (isEnter)
         {
             targetHeight = 0;
-            CancelInvoke();
+            _hideAtUnscaledTime = -1f;
         }
         else
         {
-            Invoke(nameof(HideSlider), 2.5f);
+            _hideAtUnscaledTime = Time.unscaledTime + 2.5f;
         }
     }
 
-    private void FixedUpdate()
+    private void Update()
     {
-        BottonUITransform.anchoredPosition = Vector2.Lerp(BottonUITransform.anchoredPosition, new Vector2(0, targetHeight), Time.fixedDeltaTime * 5);
+        // (VIDEO SPEED) La barra se anima con tiempo SIN escalar: si el live va a camara lenta
+        // (Time.timeScale < 1) mostrar/ocultar debe seguir siendo inmediato.
+        float t = 1f - Mathf.Exp(-5.3f * Time.unscaledDeltaTime);
+        BottonUITransform.anchoredPosition = Vector2.Lerp(BottonUITransform.anchoredPosition, new Vector2(0, targetHeight), t);
+
+        // El auto-ocultado tambien va por reloj de pared, no por tiempo escalado.
+        if (_hideAtUnscaledTime >= 0f && Time.unscaledTime >= _hideAtUnscaledTime)
+        {
+            _hideAtUnscaledTime = -1f;
+            HideSlider();
+        }
     }
 
     private void HideSlider()
