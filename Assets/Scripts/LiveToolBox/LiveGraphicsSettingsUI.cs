@@ -12,8 +12,6 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
     private static readonly int[] FrameRatePresets = { 30, 60, 90, 120, 180, 240, 0 };
     private static readonly int[] RenderScalePresets = { 50, 75, 100, 150, 200 };
     private static readonly string[] MsaaOptions = { "Off", "2x", "4x", "8x" };
-    private static readonly string[] AnisoOptions = { "Off", "Per Texture", "Force On" };
-    private static readonly string[] TextureQualityOptions = { "Full", "Half", "Quarter", "Eighth" };
 
     // (VIDEO SPEED) Velocidades del live (Time.timeScale). 1 = normal, <1 = camara lenta.
     private static readonly float[] VideoSpeedValues = { 0.1f, 0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f };
@@ -25,10 +23,7 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
     public Dropdown FrameRateDropdown;
     public Dropdown RenderScaleDropdown;
     public Dropdown MsaaDropdown;
-    public Dropdown AnisoDropdown;
-    public Dropdown TextureQualityDropdown;
-    public InputField LodBias;
-    public InputField ShadowDistance;
+    public Toggle PostEffectsToggle;
 
     private TypeInDropdown _frameRate;
     private TypeInDropdown _renderScale;
@@ -53,52 +48,25 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
             _renderScale.SetValue(Config.Instance.RenderScalePercent);
         }
 
-        if (LodBias != null)
-            LodBias.SetTextWithoutNotify(Config.Instance.LodBias.ToString(CultureInfo.InvariantCulture));
-        if (ShadowDistance != null)
-            ShadowDistance.SetTextWithoutNotify(Config.Instance.ShadowDistance.ToString(CultureInfo.InvariantCulture));
-
         FillChoice(MsaaDropdown, MsaaOptions, Config.Instance.AntiAliasing, delegate (int value)
         {
             Config.Instance.AntiAliasing = value;
             UISettingsGraphics.SaveGraphics();
         });
 
-        FillChoice(AnisoDropdown, AnisoOptions, Config.Instance.AnisotropicFiltering, delegate (int value)
+        if (PostEffectsToggle != null)
         {
-            Config.Instance.AnisotropicFiltering = value;
-            UISettingsGraphics.SaveGraphics();
-        });
-
-        FillChoice(TextureQualityDropdown, TextureQualityOptions, Config.Instance.TextureMipmapLimit, delegate (int value)
-        {
-            Config.Instance.TextureMipmapLimit = value;
-            UISettingsGraphics.SaveGraphics();
-        });
-
-        if (LodBias != null)
-        {
-            LodBias.onEndEdit.AddListener(delegate (string raw)
+            PostEffectsToggle.SetIsOnWithoutNotify(Config.Instance.PostEffects);
+            PostEffectsToggle.onValueChanged.AddListener(delegate (bool value)
             {
-                float value;
-                if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && value >= 0.3f && value <= 2f)
-                    Config.Instance.LodBias = value;
-                UISettingsGraphics.SaveGraphics();
-                LodBias.SetTextWithoutNotify(Config.Instance.LodBias.ToString(CultureInfo.InvariantCulture));
+                Config.Instance.PostEffects = value;
+                Config.Instance.UpdateConfig(false);
+                UISettingsGraphics.ApplyLivePostEffects();
             });
         }
 
-        if (ShadowDistance != null)
-        {
-            ShadowDistance.onEndEdit.AddListener(delegate (string raw)
-            {
-                float value;
-                if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && value >= 0 && value <= 150)
-                    Config.Instance.ShadowDistance = value;
-                UISettingsGraphics.SaveGraphics();
-                ShadowDistance.SetTextWithoutNotify(Config.Instance.ShadowDistance.ToString(CultureInfo.InvariantCulture));
-            });
-        }
+        //Aplica el estado guardado nada mas entrar al live (el interruptor puede venir apagado).
+        UISettingsGraphics.ApplyLivePostEffects();
 
         CreateVideoSpeedRow();
     }

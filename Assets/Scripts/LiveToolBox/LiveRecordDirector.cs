@@ -1715,7 +1715,10 @@ public class LiveRecordDirector : MonoBehaviour
         if (_savedHasFeature)
         {
             var feature = PostImageEffectFeature.Instance;
-            if (feature != null) feature.EnableRendering = _savedEnableRendering;
+            //Si el panel del live cambió el interruptor durante la grabación, manda el panel;
+            //si no, se devuelve tal y como estaba antes de grabar.
+            bool restore = Config.Instance != null ? Config.Instance.PostEffects : _savedEnableRendering;
+            if (feature != null) feature.EnableRendering = restore;
         }
 
         if (_frameCamera != null) _frameCamera.targetTexture = _savedCameraTarget;

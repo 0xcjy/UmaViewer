@@ -80,10 +80,11 @@ public class Config
     public int UIRenderScalePercent = 100;
 
     public int RenderScalePercent = 100;
-    public int AnisotropicFiltering = 2;
-    public int TextureMipmapLimit = 0;
     public float LodBias = 2f;
     public float ShadowDistance = 50f;
+
+    public string PostEffectsTip = "Live presentation post effects (DOF, bloom/diffusion, radial blur, color correction, exposure/tone curve, sun shafts, light shafts). Off gives the same unprocessed look as the free camera. Changed only by the Live settings panel.";
+    public bool PostEffects = true;
 
     public bool RegionDetectionPassed = false;
 

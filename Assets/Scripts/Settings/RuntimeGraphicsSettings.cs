@@ -28,8 +28,8 @@ public static class RuntimeGraphicsSettings
         if (config == null) return;
         int samples = Samples[Mathf.Clamp(config.AntiAliasing, 0, 3)];
         QualitySettings.antiAliasing = samples == 1 ? 0 : samples;
-        QualitySettings.anisotropicFiltering = (AnisotropicFiltering)Mathf.Clamp(config.AnisotropicFiltering, 0, 2);
-        QualitySettings.globalTextureMipmapLimit = Mathf.Clamp(config.TextureMipmapLimit, 0, 3);
+        //Anisotropico y limite de mipmaps ya no se tocan desde la app: quedan como los fije el
+        //nivel de calidad del proyecto, que es el unico sitio donde se ajustan.
         QualitySettings.lodBias = Mathf.Clamp(config.LodBias, 0.3f, 2f);
 
         var active = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
