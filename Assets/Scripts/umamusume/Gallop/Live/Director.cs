@@ -434,7 +434,12 @@ namespace Gallop.Live
 
             _liveTimelineControl.OnUpdateGlobalLight += delegate (ref GlobalLightUpdateInfo updateInfo)
             {
-                var tmpPos = -(updateInfo.lightRotation * Vector3.forward).normalized;
+                // (LUZ) La direccion que recibe el material del personaje se deriva de la CAMARA
+                // (foco pegado a la camara), no del `lightRotation` del timeline. Motivo medido con
+                // el Frame Debugger: el shader del ojo (ToonEye/T) usa esta direccion cuando
+                // `_UseOriginalDirectionalLight` = 1, y con la del timeline (Y positiva) el iris cae
+                // al escalon de sombra y se pinta NEGRO. Con la de la camara (Y negativa) se ve bien.
+                var tmpPos = GetCameraFacingLightDir();
                 foreach (var locator in _liveTimelineControl.liveCharactorLocators)
                 {
                     if (locator != null && updateInfo.flags.hasFlag(locator.liveCharaStandingPosition) && locator is LiveTimelineCharaLocator charaLocator)
@@ -814,6 +819,23 @@ namespace Gallop.Live
                 MainRenderCamera.depth = (_multiCameras != null ? _multiCameras.Length : 0) + 1;
                 MultiCameraFinalComposite.SetRenderCamera(MainRenderCamera);
             }
+        }
+
+        // (LUZ) Direccion de luz ESTABLE respecto a la CAMARA para los shaders del personaje
+        // (`Gallop/3D/Chara/Toon*`). Se devuelve la direccion DESDE la que llega la luz
+        // (camara + un poco de arriba), en el mismo espacio que espera el shader.
+        private Vector3 GetCameraFacingLightDir()
+        {
+            var cam = MainRenderCamera;
+            if (cam == null && _cameraObjects != null && _activeCameraIndex >= 0 && _activeCameraIndex < _cameraObjects.Length)
+                cam = _cameraObjects[_activeCameraIndex];
+            if (cam == null)
+                cam = Camera.main;
+            if (cam == null)
+                return new Vector3(0f, -0.3f, -1f).normalized;
+
+            var dirFromCamera = (cam.transform.forward + cam.transform.up * 0.35f).normalized;
+            return -dirFromCamera;
         }
 
         private void SetupCharacterLocator()
@@ -1704,12 +1726,15 @@ namespace Gallop.Live
             {
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
                 RenderSettings.fogDensity = key.heightDensity;
-                // Forward height and fog length as globals so stage shaders can consume them.
-                float fogLength = Mathf.Max(0.001f, key.end - key.start);
+                // Forward height and world origin as globals so stage shaders can consume them.
                 Shader.SetGlobalFloat("_Global_FogHeight", key.height);
                 Shader.SetGlobalFloat("_Global_FogHeightDensity", key.heightDensity);
-                Shader.SetGlobalVector("_Global_FogLength",
-                    new Vector4(fogLength, fogLength, fogLength, fogLength));
+                // (OJOS) NO escribir `_Global_FogLength`: el shader del ojo
+                // (`Gallop/3D/Chara/ToonEye/T`) lo usa como rango de su degradado y, en cuanto vale
+                // (300,300,300,300), el iris se pinta NEGRO (y el valor no se restaura nunca: se queda
+                // roto para el resto de la sesion). Comprobado con el Frame Debugger y en caliente:
+                // poniendolo a 0 el iris vuelve al instante. El juego lo deja a 0.
+                Shader.SetGlobalVector("_Global_FogLength", Vector4.zero);
                 Shader.SetGlobalVector("_Global_FogWorld_Origin", Vector4.zero);
             }
             else if (applyDistanceFog)
