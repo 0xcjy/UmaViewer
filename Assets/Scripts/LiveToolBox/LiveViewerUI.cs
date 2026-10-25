@@ -79,6 +79,11 @@ public class LiveViewerUI : MonoBehaviour
         // pista está sonando), que se enciende y apaga con Ctrl+F8. Ver LiveVocalDebugOverlay.cs.
         LiveVocalDebugOverlay.Ensure();
 
+        // (Grabación de pantalla del live) Grabador de clips EN TIEMPO REAL: Ctrl+Shift+Enter
+        // empieza/para un clip de hasta 30 s de lo que se ve. Es independiente del Record offline
+        // de abajo. Ver LiveClipRecorder.cs.
+        LiveClipRecorder.Ensure();
+
         //(Grabación del live) Si el panel del viewer dejó una grabación pendiente, aquí se arranca el
         //grabador offline del show. Ver LiveRecordDirector.cs.
         LiveRecordDirector.TryStart();
