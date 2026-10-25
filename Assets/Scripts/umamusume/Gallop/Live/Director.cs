@@ -1126,6 +1126,13 @@ namespace Gallop.Live
                     {
                         _syncTime = true;
                     }
+                    //(Final del show) Si la musica ya no esta sonando no hay reloj al que engancharse
+                    //(su clip ha terminado antes que el timeline o el seek cayo fuera de el): se sigue
+                    //con el tiempo que ya lleva el show en vez de saltar atras o volver a cero.
+                    else if (liveMusic.sourceList[0] == null || !liveMusic.sourceList[0].isPlaying)
+                    {
+                        _syncTime = true;
+                    }
                     else if (liveMusic.sourceList[0].time > 0.01)
                     {
                         _liveCurrentTime = UI.ProgressBar.value * totalTime;
@@ -1170,11 +1177,14 @@ namespace Gallop.Live
                                 UmaViewerAudio.SetTime(vocal, _liveCurrentTime);
                             }
 
-                            UmaViewerAudio.Play(liveMusic);
+                            //Se pasa el tiempo para no reanudar las pistas que ya han terminado: al
+                            //final del show el timeline sigue mas alla de algunas ondas y Unity, al
+                            //no poder posicionarlas, las reiniciaba desde el principio.
+                            UmaViewerAudio.Play(liveMusic, _liveCurrentTime);
 
                             foreach (var vocal in liveVocal)
                             {
-                                UmaViewerAudio.Play(vocal);
+                                UmaViewerAudio.Play(vocal, _liveCurrentTime);
                             }
                         }
 

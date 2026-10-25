@@ -98,27 +98,45 @@ public class UmaViewerAudio
         return cute;
     }
 
-    public static void Play(CuteAudioSource sourceList)
+    //(Live) Margen que se resta al final de cada clip al posicionarlo. Unity rechaza un seek
+    //exactamente en `clip.length` ("An invalid seek position was passed to this function") y la
+    //pista acaba sonando desde el principio.
+    const float ClipEndGuard = 0.05f;
+
+    //(Live) `time` < 0 = reproducir desde donde este cada pista (inicio del show). Con `time` >= 0
+    //las pistas que ya han terminado en ese instante NO se reproducen: no se pueden posicionar y
+    //volverian a sonar desde el principio.
+    public static void Play(CuteAudioSource sourceList, float time = -1f)
     {
+        if (sourceList == null || sourceList.sourceList == null) return;
         foreach(var source in sourceList.sourceList)
         {
+            if (source == null || source.clip == null) continue;
+            if (time >= 0f && time >= source.clip.length) continue;
             source.Play();
         }
     }
 
     public static void Stop(CuteAudioSource sourceList)
     {
+        if (sourceList == null || sourceList.sourceList == null) return;
         foreach (var source in sourceList.sourceList)
         {
+            if (source == null) continue;
             source.Stop();
         }
     }
 
     public static void SetTime(CuteAudioSource sourceList, float time)
     {
+        if (sourceList == null || sourceList.sourceList == null) return;
         foreach (var source in sourceList.sourceList)
         {
-            source.time = time;
+            if (source == null || source.clip == null) continue;
+            //Cada onda del AWB tiene su propia duracion y al final del show el timeline sigue mas
+            //alla de algunas de ellas: el tiempo se acota al clip de cada pista.
+            float max = Mathf.Max(0f, source.clip.length - ClipEndGuard);
+            source.time = Mathf.Clamp(time, 0f, max);
         }
     }
 
