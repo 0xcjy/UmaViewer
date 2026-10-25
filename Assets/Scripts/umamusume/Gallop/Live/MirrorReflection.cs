@@ -23,6 +23,7 @@ public class MirrorReflection : MonoBehaviour
     private const float MIRROR_CAMERA_FOV_MAX = 179f;
     private const float MIRROR_TEXTURE_SIZE_RATE_MIN = 0.01f;
     private const int MIRROR_CAMERA_DEPTH_OFFSET = -100;
+    private const float MIRROR_PROJECTION_DEGENERATE_EPSILON = 1e-7f;
 
     private static readonly Vector4 DEFAULT_DIST_POWER_VALUE = Vector4.zero;
     private static readonly Vector4 DEFAULT_DIST_MAP_TILE_OFFSET_VALUE = new Vector4(1f, 1f, 0f, 0f);
@@ -915,6 +916,27 @@ public class MirrorReflection : MonoBehaviour
         reflectionMat.m33 = 1f;
     }
 
+    // La matriz oblícua se degenera cuando el plano de recorte acaba pasando por el origen de la
+    // cámara del espejo: la fila de profundidad queda a cero y el reflejo de ese frame es
+    // inservible. Además Unity falla al calcular el plano lejano de una cámara con projectionMatrix
+    // propia en ese estado ("Screen position out of view frustum"), así que ese frame no se envía.
+    private bool IsMirrorProjectionDegenerate()
+    {
+        if (_mirrorCamera == null)
+            return true;
+
+        Matrix4x4 projection = _mirrorCamera.projectionMatrix;
+        for (int i = 0; i < 16; i++)
+        {
+            float value = projection[i];
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return true;
+        }
+
+        return Mathf.Abs(projection.m22) < MIRROR_PROJECTION_DEGENERATE_EPSILON &&
+               Mathf.Abs(projection.m23) < MIRROR_PROJECTION_DEGENERATE_EPSILON;
+    }
+
     private bool TrySubmitSingleCameraRequest()
     {
         if (_mirrorCamera == null || _mirrorTexture == null)
@@ -957,6 +979,12 @@ public class MirrorReflection : MonoBehaviour
                 return;
 
             UpdateProjectionMatrix();
+
+            if (IsMirrorProjectionDegenerate())
+            {
+                Log("ForceRenderOnce skipped: degenerate oblique projection matrix.");
+                return;
+            }
 
             OnPreDraw?.Invoke(this);
             _beginCameraRenderingCallbacks?.Invoke(default, _mirrorCamera);
