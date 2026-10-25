@@ -405,6 +405,8 @@ namespace Gallop.Live.Cutt
 
         [SerializeField] public LiveTimelineFacialData facial1Set;
         [SerializeField] public LiveTimelineFacialData[] other4FacialArray;
+        // Pista de sombreado facial del live (umbrales de mejilla/nariz, blends y luz facial).
+        [SerializeField] public LiveTimelineFacialToonData facialToonSet;
         [SerializeField] public LiveTimelineFormationOffsetData formationOffsetSet;
 
         [SerializeField] public List<LiveTimelineGlobalFogData> globalFogDataLists;

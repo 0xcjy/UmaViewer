@@ -1,4 +1,5 @@
 using Gallop;
+using Gallop.Live.Cutt;
 using RootMotion;
 using RootMotion.Dynamics;
 using RootMotion.FinalIK;
@@ -236,6 +237,11 @@ public class UmaContainerCharacter : UmaContainer
     private static readonly int ID_FaceUp = Shader.PropertyToID("_FaceUp");
     private static readonly int ID_FaceForward = Shader.PropertyToID("_FaceForward");
     private static readonly int ID_FaceShadowHeadMat = Shader.PropertyToID("_faceShadowHeadMat");
+    private static readonly int ID_CheekPretenseThreshold = Shader.PropertyToID("_CheekPretenseThreshold");
+    private static readonly int ID_NosePretenseThreshold = Shader.PropertyToID("_NosePretenseThreshold");
+    private static readonly int ID_NoseVisibility = Shader.PropertyToID("_NoseVisibility");
+    private static readonly int ID_CylinderBlend = Shader.PropertyToID("_CylinderBlend");
+    private static readonly int ID_HairNormalBlend = Shader.PropertyToID("_HairNormalBlend");
 
     [Header("Physics")]
     public bool EnablePhysics = true;
@@ -3993,6 +3999,43 @@ public class UmaContainerCharacter : UmaContainer
             mat.SetVector(ID_FaceUp, up);
             mat.SetVector(ID_FaceForward, forward);
             mat.SetMatrix(ID_FaceShadowHeadMat, headMat);
+        }
+    }
+
+    // (DATAMINE) Aplica la pista FacialToon del live al material de la cara. El cliente deriva
+    // _NoseVisibility del umbral: con NosePretenseThreshold = 0 la sombra falsa de la nariz se
+    // apaga (asi no aparece a saltos cuando el angulo cruza el umbral del shader).
+    public void ApplyFacialToon(ref FacialToonDataUpdateInfo info)
+    {
+        if (IsMini)
+            return;
+
+        if (_faceMaterials == null || _faceMaterials.Length == 0)
+        {
+            if (FaceRenderer == null)
+                return;
+            _faceMaterials = FaceRenderer.materials;
+        }
+
+        float noseVisibility = info.NosePretenseThreshold > 0.0001f ? 1f : 0f;
+
+        for (int i = 0; i < _faceMaterials.Length; i++)
+        {
+            var mat = _faceMaterials[i];
+            if (mat == null || mat.shader == null)
+                continue;
+
+            string shaderName = mat.shader.name;
+            string matName = mat.name.ToLower();
+
+            if (!shaderName.Contains("ToonFace") && !matName.Contains("face"))
+                continue;
+
+            mat.SetFloat(ID_CheekPretenseThreshold, info.CheekPretenseThreshold);
+            mat.SetFloat(ID_NosePretenseThreshold, info.NosePretenseThreshold);
+            mat.SetFloat(ID_NoseVisibility, noseVisibility);
+            mat.SetFloat(ID_CylinderBlend, info.CylinderBlend);
+            mat.SetFloat(ID_HairNormalBlend, info.HairNormalBlend);
         }
     }
 

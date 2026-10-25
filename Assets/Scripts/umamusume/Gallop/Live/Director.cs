@@ -474,6 +474,21 @@ namespace Gallop.Live
                 }
             };
 
+            // (FacialToon) Aplica los parametros de sombreado facial del timeline al personaje
+            // cuya posicion marca el bit de CharacterPos (igual que el cliente).
+            _liveTimelineControl.OnUpdateFacialToon += delegate (ref FacialToonDataUpdateInfo updateInfo)
+            {
+                for (int i = 0; i < CharaContainerScript.Count; i++)
+                {
+                    if (((updateInfo.CharacterPos >> i) & 1) == 0)
+                        continue;
+
+                    var container = CharaContainerScript[i];
+                    if (container != null)
+                        container.ApplyFacialToon(ref updateInfo);
+                }
+            };
+
             _liveTimelineControl.OnUpdateBgColor1 += delegate (ref BgColor1UpdateInfo updateInfo)
             {
                 if (updateInfo.TimelineName != "CharaCenter" && updateInfo.TimelineName != "CharaLeft" &&

@@ -325,6 +325,8 @@ namespace Gallop.Live.Cutt
 
         public event GlobalLightUpdateInfoDelegate OnUpdateGlobalLight;
 
+        public event FacialToonUpdateInfoDelegate OnUpdateFacialToon;
+
         public event EnvironmentMirrorDelegate OnEnvironmentMirror;
 
         public event BgColor1UpdateInfoDelegate OnUpdateBgColor1;
@@ -694,6 +696,7 @@ namespace Gallop.Live.Cutt
             AlterUpdate_MultiCamera(camSheet, _currentFrame);
 
             AlterUpdate_GlobalLight(camSheet, _currentFrame);
+            AlterUpdate_FacialToon(camSheet, _currentFrame);
             AlterUpdate_EnvironmentMirror(camSheet, _currentFrame);
             AlterUpdate_MirrorReflection(camSheet, _currentFrame);
             AlterUpdate_HdrBloom(camSheet, Mathf.RoundToInt(_currentFrame));
@@ -2223,6 +2226,75 @@ namespace Gallop.Live.Cutt
                     OnUpdateGlobalLight.Invoke(ref updateInfo);
                 }
             }
+        }
+
+        // (FacialToon) Muestrea la pista de sombreado facial del live y la emite por posicion de
+        // personaje. Equivalente a AlterUpdate_FacialToon del cliente: recorre las 20 listas
+        // (center/left1/right1/left2/right2 + motion5..motion19), busca key actual/siguiente y
+        // solo interpola cuando la siguiente key lo pide.
+        private void AlterUpdate_FacialToon(LiveTimelineWorkSheet sheet, float currentFrame)
+        {
+            if (sheet == null || sheet.facialToonSet == null)
+                return;
+
+            for (int i = 0; i < LiveTimelineFacialToonData.DATA_LIST_SIZE; i++)
+            {
+                ILiveTimelineKeyDataList keys = sheet.facialToonSet.GetKeyList(i);
+                if (keys == null)
+                    continue;
+                if (keys.HasAttribute(LiveTimelineKeyDataListAttr.Disable) || !keys.EnablePlayModeTimeline(_playMode))
+                    continue;
+
+                FindTimelineKey(out var curKey, out var nextKey, keys, currentFrame);
+                if (!(curKey is LiveTimelineKeyFacialToonData cur))
+                    continue;
+
+                FacialToonDataUpdateInfo updateInfo = default;
+                updateInfo.CharacterPos = GetCharacterFlagFromMotionSequenceIndex(i);
+                updateInfo.CheekPretenseThreshold = cur.CheekPretenseThreshold;
+                updateInfo.NosePretenseThreshold = cur.NosePretenseThreshold;
+                updateInfo.CylinderBlend = cur.CylinderBlend;
+                updateInfo.HairNormalBlend = cur.HairNormalBlend;
+                updateInfo.UseOriginalDirectionalLight = cur.UseOriginalDirectionalLight;
+                updateInfo.OriginalDirectionalLightDir = cur.OriginalDirectionalLightDir;
+                updateInfo.EyeToonStep = cur.EyeToonStep;
+                updateInfo.EyeToonFeather = cur.EyeToonFeather;
+
+                if (nextKey is LiveTimelineKeyFacialToonData next && next.interpolateType != 0)
+                {
+                    float t = CalculateInterpolationValue(cur, next, currentFrame);
+                    updateInfo.CheekPretenseThreshold = LerpWithoutClamp(cur.CheekPretenseThreshold, next.CheekPretenseThreshold, t);
+                    updateInfo.NosePretenseThreshold = LerpWithoutClamp(cur.NosePretenseThreshold, next.NosePretenseThreshold, t);
+                    updateInfo.CylinderBlend = LerpWithoutClamp(cur.CylinderBlend, next.CylinderBlend, t);
+                    updateInfo.HairNormalBlend = LerpWithoutClamp(cur.HairNormalBlend, next.HairNormalBlend, t);
+                    updateInfo.OriginalDirectionalLightDir = Vector3.Lerp(cur.OriginalDirectionalLightDir, next.OriginalDirectionalLightDir, t);
+                    updateInfo.EyeToonStep = LerpWithoutClamp(cur.EyeToonStep, next.EyeToonStep, t);
+                    updateInfo.EyeToonFeather = LerpWithoutClamp(cur.EyeToonFeather, next.EyeToonFeather, t);
+                    // UseOriginalDirectionalLight no se interpola (igual que el cliente: toma la key actual).
+                }
+
+                OnUpdateFacialToon?.Invoke(ref updateInfo);
+            }
+        }
+
+        // Equivalente a LiveTimelineCharacterSettings.GetCharacterFlagFromMotionSequenceIndex:
+        // la pista FacialToon indexa por indice de secuencia de movimiento y el flag resultante
+        // marca las posiciones de personaje que usan esa secuencia.
+        private int GetCharacterFlagFromMotionSequenceIndex(int motionSequenceIndex)
+        {
+            int[] indices = data != null && data.characterSettings != null
+                ? data.characterSettings.motionSequenceIndices
+                : null;
+            if (indices == null)
+                return 0;
+
+            int flag = 0;
+            for (int i = 0; i < indices.Length; i++)
+            {
+                if (indices[i] == motionSequenceIndex)
+                    flag |= 1 << i;
+            }
+            return flag;
         }
 
 
