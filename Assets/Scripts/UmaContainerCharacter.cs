@@ -4084,7 +4084,11 @@ public class UmaContainerCharacter : UmaContainer
 
             var cam = Camera.main;
             //LookAt Camera
-            TrackTarget.position = Vector3.Lerp(TrackTarget.position, cam.transform.position, Time.fixedDeltaTime * 3);
+            // Camera.main puede ser null (p. ej. en el live, con las camaras gestionadas por Director):
+            // sin esta guarda se lanzaba NullReferenceException en cada FixedUpdate y el look-at se quedaba
+            // congelado en el ultimo valor.
+            if (cam)
+                TrackTarget.position = Vector3.Lerp(TrackTarget.position, cam.transform.position, Time.fixedDeltaTime * 3);
         }
         else
         {
