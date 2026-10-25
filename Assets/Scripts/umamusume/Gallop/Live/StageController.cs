@@ -1572,6 +1572,19 @@ namespace Gallop.Live
                 }
             }
 
+            // (Live) La pista `objectList` puede animar la RAÍZ del escenario, no solo sus
+            // sub-piezas: en el live 1156 `pfb_env_live10144_controller000` se desplaza
+            // +9,29 en Z entre los frames 6048 y 6734 (todo el decorado se acerca a la
+            // cámara mientras el personaje anda hasta la plaza). Esa raíz es este mismo
+            // GameObject y hasta ahora no se registraba en ningún mapa, así que
+            // LiveTimelineControl.AlterUpdate_ObjectControl descartaba su entrada por el
+            // guard de nombres y el escenario se quedaba clavado en el origen (el personaje
+            // se veía "corto" y la cámara acababa atravesando el portal).
+            // Solo la raíz: registrar el árbol entero duplicaría las sub-piezas ya
+            // registradas arriba (y con OffsetType.Add se aplicarían dos veces). Los hijos
+            // propios de la raíz son contenedores vacíos (Sunshafts, LensFlare).
+            RegisterObjectTransform(transform, string.Empty);
+
             if (_stageObjectUnits != null)
                 foreach (var unit in _stageObjectUnits)
                 {
