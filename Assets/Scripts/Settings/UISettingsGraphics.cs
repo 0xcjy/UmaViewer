@@ -18,6 +18,8 @@ public static class UISettingsGraphics
     //justo lo que la camara libre no recibe. Es el mismo interruptor que usa el grabador.
     public static void ApplyLivePostEffects()
     {
+        // Loads the per-effect switches from Config the first time the chain is applied.
+        Gallop.RenderPipeline.PostEffectSelection.LoadFromConfig();
         var feature = Gallop.RenderPipeline.PostImageEffectFeature.Instance;
         if (feature == null) return;
         feature.EnableRendering = Config.Instance == null || Config.Instance.PostEffects;

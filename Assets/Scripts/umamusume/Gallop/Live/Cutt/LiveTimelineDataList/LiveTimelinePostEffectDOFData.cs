@@ -12,6 +12,11 @@ namespace Gallop.Live.Cutt
         public int dofBlurType;
         public int dofQuality;
         public float dofForegroundSize;
+        // Present in the original key (LiveTimelineKeyPostEffectDOFData, +0x48, between
+        // dofForegroundSize at +0x44 and dofFocalPoint at +0x4C). The native consumer is not
+        // identified yet -- most likely the old-DOF foreground blur extrude -- so it is declared
+        // for schema parity and not read by any handler.
+        public float dofFgBlurSpread;
         public float dofFocalPoint;
         public float dofSmoothness;
         public float BallBlurPowerFactor;

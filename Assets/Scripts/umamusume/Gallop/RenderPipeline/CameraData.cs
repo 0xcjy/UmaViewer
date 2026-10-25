@@ -36,8 +36,11 @@ namespace Gallop.RenderPipeline
             ref var dof = ref Parameter.DofDiffuionBloomOverlay;
             dof.IsDisableDofTemporary = dof.IsEnableDofAutoDisable &&
                 dof.DofFocalSize >= dof.DofMaxFocalSize;
-            dof.DecideDrawType(dof.IsEnableDof && !dof.IsDisableDofTemporary &&
-                GallopImageEffect.UserDofEnabled);
+            // Per-effect switch of the live settings panel (Bloom/Diffusion/PostFilm are masked
+            // inside DecideDrawType, which reads this parameter's own flags).
+            dof.DecideDrawType(
+                dof.IsEnableDof && !dof.IsDisableDofTemporary && GallopImageEffect.UserDofEnabled &&
+                Gallop.RenderPipeline.PostEffectSelection.IsEnabled(Gallop.RenderPipeline.PostEffectId.Dof));
         }
 
         private void Awake()

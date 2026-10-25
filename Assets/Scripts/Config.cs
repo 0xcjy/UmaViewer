@@ -86,6 +86,9 @@ public class Config
     public string PostEffectsTip = "Live presentation post effects (DOF, bloom/diffusion, radial blur, color correction, exposure/tone curve, sun shafts, light shafts). Off gives the same unprocessed look as the free camera. Changed only by the Live settings panel.";
     public bool PostEffects = true;
 
+    public string PostEffectsDisabledTip = "Individual live post effects switched off. An effect is drawn only when 'Post effects' and its own switch are both on.";
+    public List<string> PostEffectsDisabled = new List<string>();
+
     public bool RegionDetectionPassed = false;
 
     public string VmdMorphConvertSettingTip = "The mapping of MMD mprphs to UMA mprphs during VMD recording, multiple UMA expression weights will be combined (not exceeding 1)";

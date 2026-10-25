@@ -114,15 +114,18 @@ namespace Gallop.RenderPipeline
         public static Func<float> OldDofNearClipOffsetResolver;
 
         /// <summary>
-        /// The static Vector4 at the official constants class static-fields + 0x14.
-        /// z/w are used by DOF; x/y are used by FastBloom.
-        /// Replace this value after the static field is identified.
+        /// The static Vector4 the original reads as [static_fields + 0x14] of Gallop.Math.
+        /// z/w are used by the rich DOF (_InvRenderTargetSize, _CurveParams.w); y is used by the
+        /// diffusion-fast-bloom (_Parameter.y); z/w again by its _PixelSize. Identified on 2025-10-25
+        /// against a runtime image of the same build: Gallop.Math had already run its cctor
+        /// (initialized flag at +0xE0 == 1) and the whole 16-byte field is zero, so this is a plain
+        /// zero vector, not (0,0,0,1).
         /// </summary>
-        public static Vector4 DefaultShaderParameter = new Vector4(0f, 0f, 0f, 1f);
+        public static Vector4 DefaultShaderParameter = new Vector4(0f, 0f, 0f, 0f);
 
         /// <summary>
-        /// Official constants static-fields + 0x08 (12-byte Vector3), copied by Parameter.Default.
-        /// Replace after dumping the three floats from that static field.
+        /// Gallop.Math static-fields + 0x08 (12-byte Vector3), copied by Parameter.Default.
+        /// Verified all-zero in the same runtime image; Vector3.zero is correct.
         /// </summary>
         public static Vector3 DefaultDofFocalPosition = Vector3.zero;
 
@@ -2016,6 +2019,9 @@ namespace Gallop.RenderPipeline
             int overlay1Pass,
             int overlay2Pass)
         {
+            // Per-effect switch of the live settings panel ("Post film").
+            if (!PostEffectSelection.IsEnabled(PostEffectId.PostFilm))
+                return false;
             if (_overlayRender == null)
                 return false;
 
@@ -2392,6 +2398,13 @@ namespace Gallop.RenderPipeline
 
             public void DecideDrawType(bool isDof)
             {
+                // Per-effect switches of the live settings panel. The flags below are re-copied from
+                // the timeline parameter by Setup(src) every frame, so masking them here is
+                // per-frame and self-healing.
+                if (!PostEffectSelection.IsEnabled(PostEffectId.Bloom)) IsEnableBloom = false;
+                if (!PostEffectSelection.IsEnabled(PostEffectId.Diffusion)) IsEnableDiffusion = false;
+                // "Post film" is gated in InvokePostFilmBlit (IsEnableOverlay is read-only).
+
                 bool useBloom =
                     IsEnableBloom &&
                     EnableBloomCapability;      // static-fields +0x04

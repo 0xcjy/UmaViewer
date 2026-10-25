@@ -62,11 +62,15 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
                 Config.Instance.PostEffects = value;
                 Config.Instance.UpdateConfig(false);
                 UISettingsGraphics.ApplyLivePostEffects();
+                SetPostEffectRowsInteractable(value);
             });
         }
 
+        WirePostEffectRows();
+
         //Aplica el estado guardado nada mas entrar al live (el interruptor puede venir apagado).
         UISettingsGraphics.ApplyLivePostEffects();
+        if (PostEffectsToggle != null) SetPostEffectRowsInteractable(Config.Instance.PostEffects);
 
         CreateVideoSpeedRow();
     }
@@ -114,6 +118,113 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
         _videoSpeedDropdown = dropdown;
     }
 
+    // =========================================================================================
+    // (POST EFFECTS) Elemento unico con listado emergente (estilo Dropdown) y multiseleccion.
+    //
+    // Los objetos viven en la escena `LiveScene`:
+    //  - `PostEffectListButton`  fila "Post effects list" (boton; caption = "N/16")
+    //  - `PostEffectListPopup`   panel flotante fuera del Viewport (para que el RectMask2D no lo
+    //                            recorte) con una fila label + tick por efecto
+    //  - `PostEffectListBlocker` capa transparente a pantalla completa que cierra al clicar fuera
+    // Aqui solo se cablean, se posiciona el panel bajo el boton y se sincroniza con `Config`.
+    // Un efecto se dibuja solo si el interruptor global Y el suyo estan activos.
+    // =========================================================================================
+    [Header("Post effects list (scene objects)")]
+    public Button PostEffectListButton;
+    public Text PostEffectListCaption;
+    public GameObject PostEffectListPopup;
+    public GameObject PostEffectListBlocker;
+    public Toggle[] PostEffectToggles;
+
+    private void WirePostEffectRows()
+    {
+        if (PostEffectListButton != null)
+            PostEffectListButton.onClick.AddListener(TogglePostEffectList);
+
+        if (PostEffectListBlocker != null)
+        {
+            var button = PostEffectListBlocker.GetComponent<Button>();
+            if (button == null) button = PostEffectListBlocker.AddComponent<Button>();
+            button.onClick.AddListener(ClosePostEffectList);
+        }
+
+        ClosePostEffectList();
+
+        if (PostEffectToggles == null)
+        {
+            UpdatePostEffectCaption();
+            return;
+        }
+
+        var ids = Gallop.RenderPipeline.PostEffectSelection.All;
+        int count = Mathf.Min(PostEffectToggles.Length, ids.Length);
+        for (int i = 0; i < count; i++)
+        {
+            Toggle toggle = PostEffectToggles[i];
+            if (toggle == null) continue;
+
+            Gallop.RenderPipeline.PostEffectId captured = ids[i];
+            toggle.SetIsOnWithoutNotify(Gallop.RenderPipeline.PostEffectSelection.IsEnabled(captured));
+            toggle.onValueChanged.AddListener(delegate (bool value)
+            {
+                Gallop.RenderPipeline.PostEffectSelection.SetEnabled(captured, value);
+                UpdatePostEffectCaption();
+            });
+        }
+
+        UpdatePostEffectCaption();
+    }
+
+    private void TogglePostEffectList()
+    {
+        if (PostEffectListPopup == null) return;
+        if (PostEffectListPopup.activeSelf) ClosePostEffectList();
+        else OpenPostEffectList();
+    }
+
+    private void OpenPostEffectList()
+    {
+        if (PostEffectListPopup == null) return;
+
+        // The popup keeps the anchored placement authored in the scene (anchor top-left of the
+        // panel, pivot top-left); it is not repositioned at runtime so the panel layout stays as
+        // designed.
+        if (PostEffectListBlocker != null) PostEffectListBlocker.SetActive(true);
+        PostEffectListPopup.SetActive(true);
+        PostEffectListPopup.transform.SetAsLastSibling();
+    }
+
+    private void ClosePostEffectList()
+    {
+        if (PostEffectListPopup != null) PostEffectListPopup.SetActive(false);
+        if (PostEffectListBlocker != null) PostEffectListBlocker.SetActive(false);
+    }
+
+    private void UpdatePostEffectCaption()
+    {
+        if (PostEffectListCaption == null) return;
+        int total = PostEffectToggles != null ? PostEffectToggles.Length : 0;
+        int on = 0;
+        if (PostEffectToggles != null)
+        {
+            for (int i = 0; i < PostEffectToggles.Length; i++)
+                if (PostEffectToggles[i] != null && PostEffectToggles[i].isOn) on++;
+        }
+        PostEffectListCaption.text = on + "/" + total;
+    }
+
+    // Con el interruptor global apagado ningun efecto se dibuja: se dejan visibles pero no
+    // editables, para que quede claro que el apagado manda.
+    private void SetPostEffectRowsInteractable(bool interactable)
+    {
+        if (PostEffectListButton != null) PostEffectListButton.interactable = true;
+        if (PostEffectToggles == null) return;
+        for (int i = 0; i < PostEffectToggles.Length; i++)
+        {
+            if (PostEffectToggles[i] != null) PostEffectToggles[i].interactable = interactable;
+        }
+    }
+
     // La etiqueta de la fila es el texto que NO esta dentro del desplegable (el resto son el
     // caption y los items del propio Dropdown).
     private static void RenameRowLabel(GameObject row, Dropdown dropdown, string text)
@@ -153,6 +264,11 @@ public class LiveGraphicsSettingsUI : MonoBehaviour
 
     private void Update()
     {
+        // El listado de post efectos se cierra con Escape (o clic fuera, via el blocker).
+        if (PostEffectListPopup != null && PostEffectListPopup.activeSelf &&
+            Input.GetKeyDown(KeyCode.Escape))
+            ClosePostEffectList();
+
         // Un clic dentro de uno de los desplegables escribibles empieza a escuchar el teclado; un
         // clic fuera adopta lo que hubiera escrito.
         if (Input.GetMouseButtonDown(0))

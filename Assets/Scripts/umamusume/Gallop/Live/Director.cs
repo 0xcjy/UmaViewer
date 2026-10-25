@@ -634,6 +634,10 @@ namespace Gallop.Live
             _liveTimelineControl.OnUpdatePostFilm += OnUpdatePostFilm;
             _liveTimelineControl.OnUpdateRadialBlur += OnUpdateRadialBlur;
             _liveTimelineControl.OnUpdateColorCorrection += OnUpdateColorCorrection;
+            _liveTimelineControl.OnUpdateChromaticAberration += OnUpdateChromaticAberration;
+            _liveTimelineControl.OnUpdateTiltShift += OnUpdateTiltShift;
+            _liveTimelineControl.OnUpdateVortex += OnUpdateVortex;
+            _liveTimelineControl.OnUpdateFluctuation += OnUpdateFluctuation;
             _liveTimelineControl.OnUpdateGlobalFog += OnUpdateGlobalFog;
 
             // [A7b][原生订阅点] Director.InitializeTimeline 在
@@ -1734,6 +1738,34 @@ namespace Gallop.Live
             Gallop.RenderPipeline.PostImageEffectFeature.RuntimeParameter.RadialBlur = sample;
         }
 
+        // Native Director.OnUpdateTiltShift (0x7ffffc798490): copies mode, quality, blurArea,
+        // maxBlurSize, downsample, offset and roll into GallopImageEffect.TiltShiftParam, gated by
+        // the param's UnlinkCutt flag (an authored override keeps the timeline from writing).
+        private void OnUpdateTiltShift(Gallop.RenderPipeline.TiltShiftPass.Parameter sample)
+        {
+            Gallop.RenderPipeline.PostImageEffectFeature.RuntimeParameter.TiltShift = sample;
+        }
+
+        // Native hook: LiveImageEffect._vortex is drawn from the after-lensflare command buffer
+        // (EntryAfterLensflareCommandBuffer walks _effectCommandBufferList), i.e. after the chain.
+        private void OnUpdateVortex(Gallop.RenderPipeline.VortexPass.Parameter sample)
+        {
+            Gallop.RenderPipeline.PostImageEffectFeature.RuntimeParameter.Vortex = sample;
+        }
+
+        private void OnUpdateFluctuation(Gallop.RenderPipeline.FluctuationPass.Parameter sample)
+        {
+            Gallop.RenderPipeline.PostImageEffectFeature.RuntimeParameter.Fluctuation = sample;
+        }
+
+        // Native Director.OnUpdateChromaticAberration (0x7ffffc7990c0): copies the authored
+        // per-channel offsets scaled by 0.01 and packs _Parameter as (0, 0, power, clip).
+        private void OnUpdateChromaticAberration(ref ChromaticAberrationUpdateInfo info)
+        {
+            Gallop.RenderPipeline.PostImageEffectFeature.RuntimeParameter.ChromaticAberration =
+                Gallop.RenderPipeline.ChromaticAberrationPass.FromUpdateInfo(info);
+        }
+
         private void OnUpdateGlobalFog(LiveTimelineGlobalFogData fogData, LiveTimelineKeyGlobalFogData key)
         {
             if (key == null) return;
@@ -1781,6 +1813,24 @@ namespace Gallop.Live
                         break;
                 }
             }
+
+            // Native GlobalFog is an image effect (GlobalFog.OnRenderImage 0x7ffffc97fa80) drawn with
+            // the frustum corners; feed the recovered pass with the same authored values.
+            Gallop.RenderPipeline.PostImageEffectFeature.RuntimeParameter.GlobalFog =
+                new Gallop.RenderPipeline.GlobalFogPass.Parameter
+                {
+                    DistanceFog = applyDistanceFog,
+                    HeightFog = applyHeightFog,
+                    UseRadialDistance = false,
+                    FogHeight = key.height,
+                    FogHeightDensity = key.heightDensity,
+                    StartDistance = key.startDistance,
+                    FogColor = key.color,
+                    SceneFogMode = key.fogMode == 1 ? 1 : key.fogMode == 2 ? 2 : 3,
+                    SceneFogDensity = key.expDensity,
+                    SceneFogStart = key.start,
+                    SceneFogEnd = key.end
+                };
         }
 
         private void OnUpdatePostFilm(int layer, Gallop.ImageEffect.ScreenOverlay.Overlay sample)
@@ -1891,6 +1941,10 @@ namespace Gallop.Live
             _liveTimelineControl.OnUpdatePostFilm -= OnUpdatePostFilm;
             _liveTimelineControl.OnUpdateRadialBlur -= OnUpdateRadialBlur;
             _liveTimelineControl.OnUpdateColorCorrection -= OnUpdateColorCorrection;
+            _liveTimelineControl.OnUpdateChromaticAberration -= OnUpdateChromaticAberration;
+            _liveTimelineControl.OnUpdateTiltShift -= OnUpdateTiltShift;
+            _liveTimelineControl.OnUpdateVortex -= OnUpdateVortex;
+            _liveTimelineControl.OnUpdateFluctuation -= OnUpdateFluctuation;
             _liveTimelineControl.OnUpdateGlobalFog -= OnUpdateGlobalFog;
             _liveTimelineControl.OnUpdatePostEffect_BloomDiffusion -=
                 OnUpdatePostEffect_BloomDiffusion;

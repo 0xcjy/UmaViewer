@@ -41,6 +41,10 @@ namespace Gallop.Live.Cutt
 
         public Action<Gallop.RenderPipeline.RadialBlurPass.Parameter> OnUpdateRadialBlur;
         public Action<Gallop.RenderPipeline.SimpleColorCorrectionPass.Parameter> OnUpdateColorCorrection;
+        public event ChromaticAberrationUpdateInfoDelegate OnUpdateChromaticAberration;
+        public Action<Gallop.RenderPipeline.TiltShiftPass.Parameter> OnUpdateTiltShift;
+        public Action<Gallop.RenderPipeline.VortexPass.Parameter> OnUpdateVortex;
+        public Action<Gallop.RenderPipeline.FluctuationPass.Parameter> OnUpdateFluctuation;
         public event Action<LiveTimelineGlobalFogData, LiveTimelineKeyGlobalFogData> OnUpdateGlobalFog;
 
         // 子系统 A7b：原生 LiveTimelineControl 持有 OnUpdateExposure/OnUpdateToneCurve
@@ -714,10 +718,21 @@ namespace Gallop.Live.Cutt
             // AlterUpdate_BgColor1(0x1ac9e39) 之前。
             AlterUpdate_Exposure(camSheet, _currentFrame);
             AlterUpdate_ToneCurve(camSheet, _currentFrame);
+            OnUpdateTiltShift?.Invoke(LiveTiltShiftTimeline.Evaluate(
+                camSheet != null ? camSheet.tiltShiftKeys : null, _currentFrame, _playMode));
             OnUpdateRadialBlur?.Invoke(LiveRadialBlurTimeline.Evaluate(
                 camSheet != null ? camSheet.radialBlurKeys : null, _currentFrame, _playMode));
             OnUpdateColorCorrection?.Invoke(LiveColorCorrectionTimeline.Evaluate(
                 camSheet != null ? camSheet.colorCorrectionDataLists : null, _currentFrame, _playMode));
+            var chromaticAberration = LiveChromaticAberrationTimeline.Evaluate(
+                camSheet != null ? camSheet.chromaticAberrationList : null, _currentFrame, _playMode);
+            OnUpdateChromaticAberration?.Invoke(ref chromaticAberration);
+            // Native Vortex is drawn from LiveImageEffect's after-lensflare command buffer, so it
+            // runs after the whole image-effect chain.
+            OnUpdateVortex?.Invoke(LiveVortexTimeline.Evaluate(
+                camSheet != null ? camSheet.VortexKeys : null, _currentFrame, _playMode));
+            OnUpdateFluctuation?.Invoke(LiveFluctuationTimeline.Evaluate(
+                camSheet != null ? camSheet.FluctuationKeys : null, _currentFrame, _playMode));
             AlterUpdate_GlobalFogControl(camSheet, _currentFrame);
 
             // [REPORT §10.4-C5] 原生 AlterLateUpdate(RVA 0x1ac9460) 只调用 AlterUpdate_BgColor1 一次；

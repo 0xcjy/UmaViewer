@@ -32,6 +32,11 @@ namespace Gallop.RenderPipeline
             _dofDiffusionBloomOverlayPass;
         private FinalBlitPass _finalBlitPass;
         private RadialBlurPass _radialBlurPass;
+        private ChromaticAberrationPass _chromaticAberrationPass;
+        private TiltShiftPass _tiltShiftPass;
+        private GlobalFogPass _globalFogPass;
+        private VortexPass _vortexPass;
+        private FluctuationPass _fluctuationPass;
         private SimpleColorCorrectionPass _colorCorrectionPass;
         private FinalBlitPass _colorEarlyResolvePass;
         private ExposureToneCurvePass _exposurePass, _toneCurvePass;
@@ -127,6 +132,11 @@ namespace Gallop.RenderPipeline
             _dofDiffusionBloomOverlayPass = new DofDiffusionBloomOverlayPass(passEvent);
             _finalBlitPass = new FinalBlitPass(this, passEvent);
             _radialBlurPass = new RadialBlurPass(passEvent);
+            _chromaticAberrationPass = new ChromaticAberrationPass(passEvent);
+            _tiltShiftPass = new TiltShiftPass(passEvent);
+            _globalFogPass = new GlobalFogPass(passEvent);
+            _vortexPass = new VortexPass(passEvent);
+            _fluctuationPass = new FluctuationPass(passEvent);
             _colorCorrectionPass = new SimpleColorCorrectionPass();
             _colorEarlyResolvePass = new FinalBlitPass(this, passEvent, "ColorEarlyResolve");
             _exposurePass = new ExposureToneCurvePass(false);
@@ -262,14 +272,32 @@ namespace Gallop.RenderPipeline
             }
 
             bool dofReady = _dofDiffusionBloomOverlayPass.Setup(cameraData, this);
-            bool radialReady = _radialBlurPass != null && _radialBlurPass.Setup(parameter.RadialBlur, this);
-            bool colorReady = _colorCorrectionPass != null && _colorCorrectionPass.Setup(parameter.ColorCorrection, this);
-            bool exposureReady = _exposurePass != null && _exposurePass.Setup(parameter.ExposureParam, parameter.ToneCurveParam, this);
-            bool toneReady = _toneCurvePass != null && _toneCurvePass.Setup(parameter.ExposureParam, parameter.ToneCurveParam, this);
-            bool sunReady = _sunShaftsPass != null && _sunShaftsPass.Setup(parameter.SunShafts, this);
-            bool shaftsReady = _indirectLightShaftsPass != null && _indirectLightShaftsPass.Setup(parameter.LightShafts, this);
+            bool radialReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.RadialBlur) &&
+                _radialBlurPass != null && _radialBlurPass.Setup(parameter.RadialBlur, this);
+            bool chromaticReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.ChromaticAberration) &&
+                                  _chromaticAberrationPass != null &&
+                                  _chromaticAberrationPass.Setup(parameter.ChromaticAberration, this);
+            bool tiltReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.TiltShift) &&
+                _tiltShiftPass != null && _tiltShiftPass.Setup(parameter.TiltShift, this);
+            bool fogReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.GlobalFog) &&
+                _globalFogPass != null && _globalFogPass.Setup(parameter.GlobalFog, this);
+            bool vortexReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.Vortex) &&
+                _vortexPass != null && _vortexPass.Setup(parameter.Vortex, this);
+            bool fluctuationReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.Fluctuation) &&
+                                    _fluctuationPass != null &&
+                                    _fluctuationPass.Setup(parameter.Fluctuation, this);
+            bool colorReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.ColorCorrection) &&
+                _colorCorrectionPass != null && _colorCorrectionPass.Setup(parameter.ColorCorrection, this);
+            bool exposureReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.Exposure) &&
+                _exposurePass != null && _exposurePass.Setup(parameter.ExposureParam, parameter.ToneCurveParam, this);
+            bool toneReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.ToneCurve) &&
+                _toneCurvePass != null && _toneCurvePass.Setup(parameter.ExposureParam, parameter.ToneCurveParam, this);
+            bool sunReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.SunShafts) &&
+                _sunShaftsPass != null && _sunShaftsPass.Setup(parameter.SunShafts, this);
+            bool shaftsReady = Gallop.RenderPipeline.PostEffectSelection.IsEnabled(PostEffectId.LightShafts) &&
+                _indirectLightShaftsPass != null && _indirectLightShaftsPass.Setup(parameter.LightShafts, this);
             bool correctionReady = colorReady || exposureReady || toneReady;
-            if (!dofReady && !radialReady && !correctionReady && !sunReady && !shaftsReady)
+            if (!dofReady && !radialReady && !chromaticReady && !tiltReady && !fogReady && !vortexReady && !fluctuationReady && !correctionReady && !sunReady && !shaftsReady)
             {
                 if (!_loggedSetupFailed)
                 {
@@ -295,9 +323,22 @@ namespace Gallop.RenderPipeline
 
             // 同一 RenderPassEvent 下按 Enqueue 顺序执行。
             _registerPass.Add(_sourceSetupPass);
+            // Native GallopImageEffect order: GlobalFog before SunShafts and the light shafts.
+            if (fogReady)
+            {
+                _globalFogPass.renderPassEvent = effectEvent;
+                _globalFogPass.ConfigureInput(ScriptableRenderPassInput.Depth);
+                _registerPass.Add(_globalFogPass);
+            }
             if (sunReady) _registerPass.Add(_sunShaftsPass);
             if (shaftsReady) _registerPass.Add(_indirectLightShaftsPass);
             if (dofReady) _registerPass.Add(_dofDiffusionBloomOverlayPass);
+            // Native GallopImageEffect chain order: DOF/Diffusion/Bloom -> TiltShift -> RadialBlur.
+            if (tiltReady)
+            {
+                _tiltShiftPass.renderPassEvent = effectEvent;
+                _registerPass.Add(_tiltShiftPass);
+            }
             if (radialReady)
             {
                 _radialBlurPass.renderPassEvent = effectEvent;
@@ -305,12 +346,28 @@ namespace Gallop.RenderPipeline
                     ? ScriptableRenderPassInput.Depth : ScriptableRenderPassInput.None);
                 _registerPass.Add(_radialBlurPass);
             }
-
+            // Native GallopImageEffect order: RadialBlur -> Fluctuation -> LensDistortion -> CA.
+            if (fluctuationReady)
+            {
+                _fluctuationPass.renderPassEvent = effectEvent;
+                _registerPass.Add(_fluctuationPass);
+            }
+            if (chromaticReady)
+            {
+                _chromaticAberrationPass.renderPassEvent = effectEvent;
+                _registerPass.Add(_chromaticAberrationPass);
+            }
             if (toneReady) _registerPass.Add(_toneCurvePass);
             if (exposureReady) _registerPass.Add(_exposurePass);
             if (colorReady)
             {
                 _registerPass.Add(_colorCorrectionPass);
+            }
+            // Native Vortex lives in LiveImageEffect's after-lensflare command buffer: last.
+            if (vortexReady)
+            {
+                _vortexPass.renderPassEvent = effectEvent;
+                _registerPass.Add(_vortexPass);
             }
             // All native event550 corrections must resolve before a late DOF draw.
             if (schedule.EarlyResolve)
@@ -401,6 +458,16 @@ namespace Gallop.RenderPipeline
             _registerPass = null;
             _radialBlurPass?.Dispose();
             _radialBlurPass = null;
+            _chromaticAberrationPass?.Dispose();
+            _chromaticAberrationPass = null;
+            _tiltShiftPass?.Dispose();
+            _tiltShiftPass = null;
+            _globalFogPass?.Dispose();
+            _globalFogPass = null;
+            _vortexPass?.Dispose();
+            _vortexPass = null;
+            _fluctuationPass?.Dispose();
+            _fluctuationPass = null;
             _colorCorrectionPass?.Dispose();
             _colorCorrectionPass = null;
             _colorEarlyResolvePass = null;
@@ -598,6 +665,11 @@ namespace Gallop.RenderPipeline
                 DofDiffuionBloomOverlay;
 
             public RadialBlurPass.Parameter RadialBlur = RadialBlurPass.Parameter.Default();
+            public ChromaticAberrationPass.Parameter ChromaticAberration = default;
+            public TiltShiftPass.Parameter TiltShift;
+            public GlobalFogPass.Parameter GlobalFog;
+            public VortexPass.Parameter Vortex;
+            public FluctuationPass.Parameter Fluctuation;
             public SimpleColorCorrectionPass.Parameter ColorCorrection;
             public SunShaftsPass.Parameter SunShafts = SunShaftsPass.Parameter.Default();
             public IndirectLightShaftsPass.Parameter LightShafts;
@@ -672,6 +744,11 @@ namespace Gallop.RenderPipeline
                 DofDiffuionBloomOverlay =
                     src.DofDiffuionBloomOverlay;
                 RadialBlur = src.RadialBlur;
+                ChromaticAberration = src.ChromaticAberration;
+                TiltShift = src.TiltShift;
+                GlobalFog = src.GlobalFog;
+                Vortex = src.Vortex;
+                Fluctuation = src.Fluctuation;
                 ColorCorrection = src.ColorCorrection;
                 SunShafts = src.SunShafts;
                 LightShafts = src.LightShafts;

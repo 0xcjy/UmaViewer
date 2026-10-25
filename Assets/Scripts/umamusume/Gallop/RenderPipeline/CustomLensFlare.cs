@@ -107,6 +107,12 @@ namespace Gallop.RenderPipeline
 
         private void LateUpdate()
         {
+            // Per-effect switch of the live settings panel ("Lens flare").
+            if (!PostEffectSelection.IsEnabled(PostEffectId.LensFlare))
+            {
+                SetAllQuadsActive(false);
+                return;
+            }
             if (!EnsureElements())
             {
                 SetAllQuadsActive(false);
