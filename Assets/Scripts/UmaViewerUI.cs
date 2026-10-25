@@ -116,6 +116,17 @@ public class UmaViewerUI : MonoBehaviour
     //El desplegable se cierra y reabre en cada tecla al buscar; a 0.15 s (valor por defecto) la lista
     //parpadearía. 0.05 s lo deja en 3-4 frames, imperceptible.
     private const float VocalListFadeSpeed = 0.05f;
+
+    //(Remarcado de los buscadores) El item elegido lleva el check de siempre MÁS un marco de borde.
+    //El marco se genera por código (4 franjas, sin sprites): grueso y negro para que destaque.
+    private const string SelectionFrameName = "SearchSelectionFrame";
+    private const float SelectionFrameThickness = 4f;
+    //El mismo marco, más fino, para el item preseleccionado dentro de la lista del desplegable.
+    private const float SelectionPopupThickness = 2f;
+    private static readonly Color SelectionFrameColor = Color.black;
+    //Opción 0 del desplegable por personaje de Sounds: quita el filtro (todas las canciones y voces).
+    private const string SearchByCharaAllLabel = "Todos";
+
     private List<int> vocalOptions = new List<int>();
     private int vocalSongId = -1;
     private int vocalDropdownCount = 3;              //3 siempre visibles; los extras aparecen si SingerCount > 3
@@ -338,6 +349,10 @@ public class UmaViewerUI : MonoBehaviour
         //(Fuentes: cadena de respaldo + reparación de atlas con huecos nulos. Ver SetupFontFallbacks.)
         SetupFontFallbacks();
 
+        //(Desplegables: etiquetas en una sola línea con marquesina; si no, los nombres largos se
+        //parten y se solapan con la fila siguiente. Ver RepairAllDropdownLabels.)
+        RepairAllDropdownLabels();
+
         OtherSettings.ApplySettings();
         SetupJukeboxSoundUI();
         CameraSettings.AAModeDropdown.SetValueWithoutNotify(Config.Instance.AntiAliasing);
@@ -414,11 +429,193 @@ public class UmaViewerUI : MonoBehaviour
 
     public void HighlightChildImage(Transform mainObject, UmaUIContainer child)
     {
+        if (mainObject == null) return;
         foreach (var t in mainObject.GetComponentsInChildren<UmaUIContainer>())
         {
             if (t.transform.parent != mainObject) continue;
-            t.ToggleImage.enabled = (t == child);
+            if (t.ToggleImage != null) t.ToggleImage.enabled = (t == child);
         }
+    }
+
+    //Remarca el item elegido en una lista: el check de siempre (HighlightChildImage) MÁS un marco de
+    //borde, para que se vea de un vistazo qué entrada han dejado elegida los buscadores. El marco sólo
+    //se crea en el item que se marca y muere con él (las listas que se reconstruyen no dejan restos).
+    void MarkSearchSelection(Transform content, UmaUIContainer child)
+    {
+        if (content == null) return;
+        HighlightChildImage(content, child);
+        foreach (var t in content.GetComponentsInChildren<UmaUIContainer>())
+        {
+            if (t.transform.parent != content) continue;
+            bool seleccionado = (t == child);
+            var marco = t.transform.Find(SelectionFrameName);
+            if (seleccionado)
+            {
+                if (marco == null) marco = CreateSelectionFrame(t.transform);
+                if (!marco.gameObject.activeSelf) marco.gameObject.SetActive(true);
+            }
+            else if (marco != null && marco.gameObject.activeSelf)
+            {
+                marco.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    //Marco del item: 4 franjas estiradas al rect del contenedor, sin sprite (un Image blanco tintado).
+    //No recibe clics para no robarle el del item.
+    static Transform CreateSelectionFrame(Transform parent)
+    {
+        return CreateSelectionFrame(parent, SelectionFrameThickness);
+    }
+
+    static Transform CreateSelectionFrame(Transform parent, float grosor)
+    {
+        var go = new GameObject(SelectionFrameName, typeof(RectTransform));
+        go.layer = parent.gameObject.layer;
+        var rt = go.GetComponent<RectTransform>();
+        rt.SetParent(parent, false);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        rt.SetAsLastSibling();
+
+        AddSelectionFrameEdge(rt, new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(0f, grosor), new Vector2(0f, -grosor * 0.5f));
+        AddSelectionFrameEdge(rt, new Vector2(0f, 0f), new Vector2(1f, 0f),
+            new Vector2(0f, grosor), new Vector2(0f, grosor * 0.5f));
+        AddSelectionFrameEdge(rt, new Vector2(0f, 0f), new Vector2(0f, 1f),
+            new Vector2(grosor, 0f), new Vector2(grosor * 0.5f, 0f));
+        AddSelectionFrameEdge(rt, new Vector2(1f, 0f), new Vector2(1f, 1f),
+            new Vector2(grosor, 0f), new Vector2(-grosor * 0.5f, 0f));
+
+        return rt;
+    }
+
+    static void AddSelectionFrameEdge(RectTransform parent, Vector2 anchorMin, Vector2 anchorMax,
+        Vector2 sizeDelta, Vector2 anchoredPosition)
+    {
+        var go = new GameObject("Edge", typeof(RectTransform), typeof(Image));
+        go.layer = parent.gameObject.layer;
+        var rt = go.GetComponent<RectTransform>();
+        rt.SetParent(parent, false);
+        rt.anchorMin = anchorMin;
+        rt.anchorMax = anchorMax;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = sizeDelta;
+        rt.anchoredPosition = anchoredPosition;
+        var img = go.GetComponent<Image>();
+        img.color = SelectionFrameColor;
+        img.raycastTarget = false;
+    }
+
+    //==========================================================================
+    // (Teclado en los desplegables-buscador)
+    //  · Al filtrar, el primer item visible queda PRESELECCIONADO (dd.value = 0 y TMP lo marca al
+    //    abrir la lista).
+    //  · Flechas arriba/abajo mueven esa preselección dentro de la lista abierta, sin cerrarla.
+    //  · Enter la aplica (antes sólo cerraba la lista y no elegía nada).
+    // La preselección se ve con el mismo marco de borde que los items de los paneles.
+    //==========================================================================
+
+    static bool EnterPulsado()
+    {
+        return Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+    }
+
+    //Content de la lista ABIERTA del desplegable (la copia que Show() cuelga junto a la plantilla).
+    Transform OpenDropdownList(TMP_Dropdown dd)
+    {
+        if (dd == null || dd.template == null || dd.template.parent == null) return null;
+        var parent = dd.template.parent;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var t = parent.GetChild(i);
+            if (t != null && t.name == "Dropdown List" && t.gameObject.activeInHierarchy)
+                return t.Find("Viewport/Content");
+        }
+        return null;
+    }
+
+    //Marca el item preseleccionado (dd.value) dentro de la lista abierta: borde, check y foco de
+    //teclado. El Content clonado conserva la plantilla "Item" INACTIVA como primer hijo: se salta.
+    void RefreshDropdownPreselection(TMP_Dropdown dd, bool scroll)
+    {
+        if (dd == null) return;
+        var content = OpenDropdownList(dd);
+        if (content == null) return;
+
+        int valor = dd.value;
+        int indice = 0;
+        Transform elegido = null;
+        for (int i = 0; i < content.childCount; i++)
+        {
+            var item = content.GetChild(i);
+            if (item == null || !item.gameObject.activeSelf) continue;   //plantilla inactiva
+
+            bool seleccionado = (indice == valor);
+            if (seleccionado) elegido = item;
+
+            var marco = item.Find(SelectionFrameName);
+            if (seleccionado)
+            {
+                if (marco == null) marco = CreateSelectionFrame(item, SelectionPopupThickness);
+                if (!marco.gameObject.activeSelf) marco.gameObject.SetActive(true);
+            }
+            else if (marco != null && marco.gameObject.activeSelf)
+            {
+                marco.gameObject.SetActive(false);
+            }
+
+            var toggle = item.GetComponent<Toggle>();
+            if (toggle != null && toggle.isOn != seleccionado) toggle.SetIsOnWithoutNotify(seleccionado);
+
+            indice++;
+        }
+
+        if (elegido == null) return;
+
+        //El foco de teclado va con la preselección: así el Enter de TMP actúa sobre ESTE item.
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        if (es != null && es.currentSelectedGameObject != elegido.gameObject)
+            es.SetSelectedGameObject(elegido.gameObject);
+
+        if (scroll) ScrollListToItem(elegido);
+    }
+
+    //Flechas arriba/abajo: mueven la preselección sin cerrar la lista. Devuelve true si era una flecha.
+    bool HandleDropdownArrows(TMP_Dropdown dd)
+    {
+        if (dd == null) return false;
+
+        int delta = 0;
+        if (Input.GetKeyDown(KeyCode.DownArrow)) delta = 1;
+        else if (Input.GetKeyDown(KeyCode.UpArrow)) delta = -1;
+        if (delta == 0) return false;
+
+        if (dd.options.Count > 0)
+        {
+            int nuevo = Mathf.Clamp(dd.value + delta, 0, dd.options.Count - 1);
+            if (nuevo != dd.value)
+            {
+                dd.SetValueWithoutNotify(nuevo);
+                RefreshDropdownPreselection(dd, true);
+            }
+        }
+        return true;
+    }
+
+    //El "Item Checkmark" de la plantilla es blanco sobre un fondo casi blanco (no se ve). Se pinta
+    //negro para que el item marcado del desplegable se distinga también al moverse con flechas.
+    void PrepareDropdownCheckmark(TMP_Dropdown dd)
+    {
+        if (dd == null || dd.template == null) return;
+        var item = dd.template.Find("Viewport/Content/Item");
+        if (item == null) return;
+        var check = item.Find("Item Checkmark");
+        if (check == null) return;
+        var img = check.GetComponent<Image>();
+        if (img != null) img.color = Color.black;
     }
 
     public void LoadModelPanels()
@@ -462,7 +659,7 @@ public class UmaViewerUI : MonoBehaviour
             container3.Name = container3.name = chara.Id + " " + chara.GetName();
             container3.Button.onClick.AddListener(() =>
             {
-                HighlightChildImage(CharactersList.content, container3);
+                MarkSearchSelection(CharactersList.content, container3);
                 ListCostumes(charaInstance, false);
             });
 
@@ -508,7 +705,7 @@ public class UmaViewerUI : MonoBehaviour
                 mobContainer.Name = mobContainer.name = chara.GetName();
                 mobContainer.Button.onClick.AddListener(() =>
                 {
-                    HighlightChildImage(MobCharactersList.content, mobContainer);
+                    MarkSearchSelection(MobCharactersList.content, mobContainer);
                     ListCostumes(charaInstance, false);
                 });
                 if (chara.Icon)
@@ -526,7 +723,7 @@ public class UmaViewerUI : MonoBehaviour
             pageentry.EnablePressScaleFeedback = true;
             pageentry.OnClick = (container) =>
             {
-                HighlightChildImage(MobCharactersList.content, container);
+                MarkSearchSelection(MobCharactersList.content, container);
                 ListCostumes(charaInstance, false);
             };
             if (chara.Icon)
@@ -559,7 +756,7 @@ public class UmaViewerUI : MonoBehaviour
             
             container2.Button.onClick.AddListener(() =>
             {
-                HighlightChildImage(MiniCharactersList.content, container2);
+                MarkSearchSelection(MiniCharactersList.content, container2);
                 ListCostumes(charaInstance, true);
             });
 
@@ -774,7 +971,7 @@ public class UmaViewerUI : MonoBehaviour
             container.Image.enabled = container.Image.sprite;
             container.Button.onClick.AddListener(() =>
             {
-                HighlightChildImage(parent.content, container);
+                MarkSearchSelection(parent.content, container);
                 onClickAction.Invoke();
             });
         };
@@ -796,7 +993,7 @@ public class UmaViewerUI : MonoBehaviour
             pageentry.Name = Path.GetFileNameWithoutExtension(entry.Name);
             pageentry.OnClick = (container) =>
             {
-                HighlightChildImage(NormalSoundList.content, container);
+                MarkSearchSelection(NormalSoundList.content, container);
                 ListNormalSubSounds(entry);
             };
             pageentrys.Add(pageentry);
@@ -1535,10 +1732,15 @@ public class UmaViewerUI : MonoBehaviour
             Destroy(LiveCharaSoundList.content.GetChild(i).gameObject);
         }
         string nameVar = $"snd_bgm_live_{songid}_chara";
+        //Con un PJ elegido en "SearchSoundsbyCharacter" esta lista enseña SÓLO las voces de ese PJ.
+        UmaUIContainer marcado = null;
         foreach (var entry in Main.AbSounds.Where(a => a.Name.Contains(nameVar) && a.Name.EndsWith("awb")))
         {
-            var container = Instantiate(UmaContainerPrefab, LiveCharaSoundList.content).GetComponent<UmaUIContainer>();
             string[] split = Path.GetFileNameWithoutExtension(entry.Name).Split('_');
+            int cantanteId = LiveSoundSingerId(entry.Name);
+            if (searchByCharaSelectedCharaId >= 0 && cantanteId != searchByCharaSelectedCharaId) continue;
+
+            var container = Instantiate(UmaContainerPrefab, LiveCharaSoundList.content).GetComponent<UmaUIContainer>();
             string name = $"{split[split.Length - 2]} {getCharaName(split[split.Length - 2])}";
             container.Name = name;
 
@@ -1549,13 +1751,17 @@ public class UmaViewerUI : MonoBehaviour
                 container.Image.enabled = true;
             }
 
+            //Con el filtro por PJ el listado se queda en un único item: se deja marcado.
+            if (searchByCharaSelectedCharaId >= 0) marcado = container;
+
             container.Button.onClick.AddListener(() =>
             {
-                HighlightChildImage(LiveCharaSoundList.content, container);
+                MarkSearchSelection(LiveCharaSoundList.content, container);
                 Builder.LoadLiveSound(songid, entry);
             });
         }
 
+        if (marcado != null) MarkSearchSelection(LiveCharaSoundList.content, marcado);
     }
 
     void ListNormalSubSounds(UmaDatabaseEntry awb)
@@ -2075,7 +2281,23 @@ public class UmaViewerUI : MonoBehaviour
             return;
         }
 
-        //--- 2) El teclado: cada carácter añadido o borrado refiltra la lista abierta.
+        //--- 2) El teclado: Enter aplica la preselección y las flechas la mueven. La lista abierta
+        //mantiene marcado el item preseleccionado (borde + check + foco).
+        RefreshDropdownPreselection(activo, false);
+        if (EnterPulsado())
+        {
+            int slotElegido = vocalEscuchando;
+            SetVocalChara(slotElegido, activo.value);
+            activo.Hide();
+            return;
+        }
+        if (HandleDropdownArrows(activo))
+        {
+            RefreshVocalComboText(vocalEscuchando);
+            return;
+        }
+
+        //--- 3) Lo tecleado: cada carácter añadido o borrado refiltra la lista abierta.
         string tecleado = Input.inputString;
         if (string.IsNullOrEmpty(tecleado)) return;
 
@@ -2232,6 +2454,7 @@ public class UmaViewerUI : MonoBehaviour
             VocalModeDropdown.onValueChanged.AddListener(SetVocalMode);
             PrepareDropdownScroll(VocalModeDropdown);
             PrepareDropdownFont(VocalModeDropdown);
+            PrepareDropdownMarquee(VocalModeDropdown);
         }
         else
         {
@@ -2564,6 +2787,7 @@ public class UmaViewerUI : MonoBehaviour
         if (dd == null) return;
         PrepareDropdownScroll(dd);
         PrepareDropdownFont(dd);
+        PrepareDropdownMarquee(dd);
 
         var cap = dd.captionText;
         if (cap == null)
@@ -3073,16 +3297,20 @@ public class UmaViewerUI : MonoBehaviour
         PrepareDropdownMarquee(dd);
         PrepareDropdownScroll(dd);
         PrepareDropdownFont(dd);
+        PrepareDropdownCheckmark(dd);
     }
 
-    //La rueda del ratón mueve muy poco las listas de los desplegables: se multiplica por 10 la
-    //sensibilidad de scroll. Se aplica a la plantilla, así lo heredan las listas que Show() clona.
+    //La rueda del ratón movía muy poco las listas de los desplegables (1 px por muesca): ahora cada
+    //muesca desplaza 50 px (~2-3 filas). Se fija un VALOR, no un multiplicador, para que aplicarlo
+    //varias veces no lo dispare. Se hace en la plantilla, así lo heredan las listas que Show() clona.
+    private const float DropdownScrollSensitivity = 50f;
+
     void PrepareDropdownScroll(TMP_Dropdown dd)
     {
         if (dd == null || dd.template == null) return;
         var scroll = dd.template.GetComponentInChildren<ScrollRect>(true);
         if (scroll == null) return;
-        scroll.scrollSensitivity *= 10f;
+        scroll.scrollSensitivity = DropdownScrollSensitivity;
     }
 
     //El rótulo y la lista de los desplegables deben usar la fuente del juego ("dynamic01 SDF"). Al
@@ -3210,6 +3438,21 @@ public class UmaViewerUI : MonoBehaviour
             }
         }
         return false;
+    }
+
+    //Aplica la etiqueta de una sola línea (marquesina + recorte) a TODOS los desplegables de la
+    //escena, no sólo a los que pasan por RepairDropdownTemplate. Los de voz (VocalSelect) y los de
+    //Ajustes se quedaban fuera y, con un nombre más ancho que la fila, el texto se partía en dos
+    //líneas y se solapaba con la de al lado. Es idempotente: no toca opciones ni plantillas.
+    void RepairAllDropdownLabels()
+    {
+        foreach (var dd in FindObjectsOfType<TMP_Dropdown>(true))
+        {
+            PrepareDropdownMarquee(dd);
+            PrepareDropdownCheckmark(dd);
+            //La rueda de la lista, con la misma "fuerza" en todos los desplegables.
+            PrepareDropdownScroll(dd);
+        }
     }
 
     //(Tarea 2) Un texto demasiado largo para una línea se parte y se solapa con la fila siguiente.
@@ -3612,6 +3855,26 @@ public class UmaViewerUI : MonoBehaviour
             return;
         }
 
+        //La lista abierta mantiene marcado el item preseleccionado; Enter lo aplica y las flechas
+        //lo mueven (antes, Enter sólo cerraba la lista).
+        RefreshDropdownPreselection(dd, false);
+        if (EnterPulsado())
+        {
+            var elegido = OtherCharaOfItem(dd.value);
+            if (elegido != null)
+            {
+                pendingOtherChara = elegido;
+                ApplyOtherCharaSelection(elegido);
+                EndOtherSearch();
+            }
+            return;
+        }
+        if (HandleDropdownArrows(dd))
+        {
+            RefreshOtherComboText();
+            return;
+        }
+
         string tecleado = Input.inputString;
         if (string.IsNullOrEmpty(tecleado)) return;
 
@@ -3948,6 +4211,10 @@ public class UmaViewerUI : MonoBehaviour
         if (btn == null) btn = item.GetComponentInChildren<Button>(true);
         if (btn != null && btn.IsInteractable()) btn.onClick.Invoke();
 
+        //Reafirma el marcado (borde + check): no depende de lo que haga el click del item.
+        if (container == null) container = item.GetComponent<UmaUIContainer>();
+        if (container != null) MarkSearchSelection(item.parent, container);
+
         //Desplaza el ScrollRect de la lista activa hasta la entrada elegida para dejarla a la vista.
         ScrollListToItem(item);
 
@@ -4041,6 +4308,21 @@ public class UmaViewerUI : MonoBehaviour
         if (dd == null || !dd.gameObject.activeInHierarchy || !dd.IsInteractable())
         {
             EndSearchCharacterSearch();
+            return;
+        }
+
+        //La lista abierta mantiene marcado el item preseleccionado; Enter lo aplica y las flechas
+        //lo mueven (antes, Enter sólo cerraba la lista).
+        RefreshDropdownPreselection(dd, false);
+        if (EnterPulsado())
+        {
+            ApplySearchCharacterSelection(dd.value);
+            EndSearchCharacterSearch();
+            return;
+        }
+        if (HandleDropdownArrows(dd))
+        {
+            RefreshSearchComboText();
             return;
         }
 
@@ -4299,6 +4581,10 @@ public class UmaViewerUI : MonoBehaviour
         if (btn == null) btn = item.GetComponentInChildren<Button>(true);
         if (btn != null && btn.IsInteractable()) btn.onClick.Invoke();
 
+        //Reafirma el marcado (borde + check): no depende de lo que haga el click del item.
+        if (container == null) container = item.GetComponent<UmaUIContainer>();
+        if (container != null) MarkSearchSelection(item.parent, container);
+
         ScrollListToItem(item);
 
         searchLiveSelectedItemIndex = itemIndex;
@@ -4384,6 +4670,21 @@ public class UmaViewerUI : MonoBehaviour
         if (!dd.gameObject.activeInHierarchy || !dd.IsInteractable())
         {
             EndSearchLiveSearch();
+            return;
+        }
+
+        //La lista abierta mantiene marcado el item preseleccionado; Enter lo aplica y las flechas
+        //lo mueven (antes, Enter sólo cerraba la lista).
+        RefreshDropdownPreselection(dd, false);
+        if (EnterPulsado())
+        {
+            ApplySearchLiveSelection(dd.value);
+            EndSearchLiveSearch();
+            return;
+        }
+        if (HandleDropdownArrows(dd))
+        {
+            RefreshSearchLiveComboText();
             return;
         }
 
@@ -4678,6 +4979,10 @@ public class UmaViewerUI : MonoBehaviour
         if (btn == null) btn = item.GetComponentInChildren<Button>(true);
         if (btn != null && btn.IsInteractable()) btn.onClick.Invoke();
 
+        //Reafirma el marcado (borde + check): no depende de lo que haga el click del item.
+        if (container == null) container = item.GetComponent<UmaUIContainer>();
+        if (container != null) MarkSearchSelection(item.parent, container);
+
         ScrollListToItem(item);
 
         searchSoundsSelectedItemIndex = itemIndex;
@@ -4763,6 +5068,21 @@ public class UmaViewerUI : MonoBehaviour
         if (!dd.gameObject.activeInHierarchy || !dd.IsInteractable())
         {
             EndSearchSoundsSearch();
+            return;
+        }
+
+        //La lista abierta mantiene marcado el item preseleccionado; Enter lo aplica y las flechas
+        //lo mueven (antes, Enter sólo cerraba la lista).
+        RefreshDropdownPreselection(dd, false);
+        if (EnterPulsado())
+        {
+            ApplySearchSoundsSelection(dd.value);
+            EndSearchSoundsSearch();
+            return;
+        }
+        if (HandleDropdownArrows(dd))
+        {
+            RefreshSearchSoundsComboText();
             return;
         }
 
@@ -4955,16 +5275,8 @@ public class UmaViewerUI : MonoBehaviour
         {
             searchByCharaNeedsRefresh = false;
             searchByCharaFilter = "";
+            //El propio rebuild deja el valor en el PJ elegido (o en "Todos" si no hay filtro).
             RebuildSearchByCharaOptions(false);
-            int pos = searchByCharaSelectedItemIndex >= 0
-                ? searchByCharaVisible.IndexOf(searchByCharaSelectedItemIndex)
-                : -1;
-            if (pos >= 0)
-            {
-                SearchByCharaDropdown.SetValueWithoutNotify(pos);
-                SearchByCharaDropdown.RefreshShownValue();
-                RefreshSearchByCharaComboText();
-            }
         }
 
         var content = GetCharacterListContent();
@@ -4995,6 +5307,8 @@ public class UmaViewerUI : MonoBehaviour
         string f = (searchByCharaFilter ?? "").Trim();
         searchByCharaVisible.Clear();
         dd.options.Clear();
+        //Opción 0 = "Todos": sin filtro (todas las canciones y todas las voces).
+        dd.options.Add(new TMP_Dropdown.OptionData(SearchByCharaAllLabel));
         for (int i = 0; i < searchByCharaNames.Count; i++)
         {
             string nombre = searchByCharaNames[i] ?? "";
@@ -5003,20 +5317,31 @@ public class UmaViewerUI : MonoBehaviour
             dd.options.Add(new TMP_Dropdown.OptionData(nombre));
         }
 
-        if (dd.options.Count > 0) dd.SetValueWithoutNotify(0);
+        //dd.value indexa dd.options (0 = "Todos"): va +1 respecto a searchByCharaVisible.
+        int pos = 0;
+        if (searchByCharaSelectedItemIndex >= 0)
+        {
+            int visiblePos = searchByCharaVisible.IndexOf(searchByCharaSelectedItemIndex);
+            if (visiblePos >= 0) pos = visiblePos + 1;
+        }
+        dd.SetValueWithoutNotify(pos);
         dd.RefreshShownValue();
         RefreshSearchByCharaComboText();
     }
 
-    //El rótulo enseña lo tecleado; si no hay filtro, el PJ elegido; si no hay PJ, vacío.
+    //El rótulo enseña lo tecleado; si no hay filtro, el PJ elegido; si no hay PJ, "Todos".
     void RefreshSearchByCharaComboText()
     {
         var dd = SearchByCharaDropdown;
         if (dd == null || dd.captionText == null) return;
 
         string texto = searchByCharaFilter ?? "";
-        if (texto.Length == 0 && searchByCharaSelectedCharaId >= 0 && dd.value >= 0 && dd.value < dd.options.Count)
-            texto = dd.options[dd.value].text;
+        if (texto.Length == 0)
+        {
+            texto = (searchByCharaSelectedCharaId >= 0 && dd.value > 0 && dd.value < dd.options.Count)
+                ? dd.options[dd.value].text
+                : SearchByCharaAllLabel;
+        }
 
         if (!string.Equals(dd.captionText.text, texto, StringComparison.Ordinal))
             dd.captionText.text = texto;
@@ -5030,8 +5355,33 @@ public class UmaViewerUI : MonoBehaviour
 
     void ApplySearchByCharaSelection(int value)
     {
-        if (value < 0 || value >= searchByCharaVisible.Count) return;
-        int itemIndex = searchByCharaVisible[value];
+        //Opción 0 ("Todos"): se quita el filtro y vuelven las listas completas.
+        if (value == 0)
+        {
+            searchByCharaSelectedItemIndex = -1;
+            searchByCharaSelectedCharaId = -1;
+            searchByCharaActive = false;
+            //El rebuild de UpdateSearchByChara limpia también lo tecleado (no se toca dd.options aquí,
+            //que sería en mitad del callback del propio Dropdown).
+            searchByCharaFilter = "";
+            searchByCharaNeedsRefresh = true;
+
+            var dd = SearchByCharaDropdown;
+            if (dd != null)
+            {
+                dd.SetValueWithoutNotify(0);
+                dd.RefreshShownValue();
+            }
+            RefreshSearchByCharaComboText();
+
+            RebuildLiveSoundList(-1);
+            if (selectedLiveSound != null) ListLiveSounds(selectedLiveSound.MusicId);
+            return;
+        }
+
+        int visiblePos = value - 1;   //dd.options lleva "Todos" delante
+        if (visiblePos < 0 || visiblePos >= searchByCharaVisible.Count) return;
+        int itemIndex = searchByCharaVisible[visiblePos];
         if (itemIndex < 0 || itemIndex >= searchByCharaItems.Count) return;
 
         searchByCharaSelectedItemIndex = itemIndex;
@@ -5039,9 +5389,20 @@ public class UmaViewerUI : MonoBehaviour
         searchByCharaActive = false;
         searchByCharaNeedsRefresh = true;
 
-        //Deja en "Sounds/LiveSound List" sólo las canciones de ese PJ; "SearchSounds" se recarga solo
-        //al detectar el cambio de contenido.
+        //Deja en "Sounds/LiveSound List" sólo las canciones de ese PJ (y en "LiveCharaSound List" sólo
+        //sus voces de la canción actual); "SearchSounds" se recarga solo al detectar el cambio.
         RebuildLiveSoundList(searchByCharaSelectedCharaId);
+        if (selectedLiveSound != null) ListLiveSounds(selectedLiveSound.MusicId);
+    }
+
+    //id de la cantante de un awb de canción: "snd_bgm_live_{songid}_chara_..._{id}" (penúltimo token).
+    static int LiveSoundSingerId(string awbName)
+    {
+        if (string.IsNullOrEmpty(awbName)) return -1;
+        string[] split = Path.GetFileNameWithoutExtension(awbName).Split('_');
+        if (split.Length < 2) return -1;
+        int id;
+        return int.TryParse(split[split.Length - 2], out id) ? id : -1;
     }
 
     //¿Canta este PJ (charaId) en esta canción? Misma lógica que ListLiveSounds: los ids de cantante
@@ -5050,12 +5411,10 @@ public class UmaViewerUI : MonoBehaviour
     {
         if (charaId < 0) return true;
         string nameVar = "snd_bgm_live_" + musicId + "_chara";
-        string idStr = charaId.ToString();
         foreach (var a in Main.AbSounds)
         {
             if (a == null || !a.Name.Contains(nameVar) || !a.Name.EndsWith("awb")) continue;
-            var split = Path.GetFileNameWithoutExtension(a.Name).Split('_');
-            if (split.Length >= 2 && split[split.Length - 2] == idStr) return true;
+            if (LiveSoundSingerId(a.Name) == charaId) return true;
         }
         return false;
     }
@@ -5068,6 +5427,7 @@ public class UmaViewerUI : MonoBehaviour
         for (int i = LiveSoundList.content.childCount - 1; i >= 0; i--)
             Destroy(LiveSoundList.content.GetChild(i).gameObject);
 
+        UmaUIContainer seleccionado = null;
         foreach (var live in Main.Lives.OrderBy(c => c.MusicId))
         {
             if (!LiveSongHasSinger(live.MusicId, charaId)) continue;
@@ -5078,11 +5438,16 @@ public class UmaViewerUI : MonoBehaviour
             container.Image.enabled = container.Image.sprite;
             container.Button.onClick.AddListener(() =>
             {
-                HighlightChildImage(LiveSoundList.content, container);
+                MarkSearchSelection(LiveSoundList.content, container);
                 selectedLiveSound = liveEntry;
                 ListLiveSounds(liveEntry.MusicId);
             });
+            if (selectedLiveSound != null && selectedLiveSound.MusicId == liveEntry.MusicId)
+                seleccionado = container;
         }
+
+        //La lista se ha rehecho: se recupera el marcado de la canción que ya estaba elegida.
+        if (seleccionado != null) MarkSearchSelection(LiveSoundList.content, seleccionado);
     }
 
     //===== Búsqueda por teclado del buscador por PJ =====
@@ -5163,6 +5528,21 @@ public class UmaViewerUI : MonoBehaviour
         if (!dd.gameObject.activeInHierarchy || !dd.IsInteractable())
         {
             EndSearchByCharaSearch();
+            return;
+        }
+
+        //La lista abierta mantiene marcado el item preseleccionado; Enter lo aplica y las flechas
+        //lo mueven (antes, Enter sólo cerraba la lista).
+        RefreshDropdownPreselection(dd, false);
+        if (EnterPulsado())
+        {
+            ApplySearchByCharaSelection(dd.value);
+            EndSearchByCharaSearch();
+            return;
+        }
+        if (HandleDropdownArrows(dd))
+        {
+            RefreshSearchByCharaComboText();
             return;
         }
 
