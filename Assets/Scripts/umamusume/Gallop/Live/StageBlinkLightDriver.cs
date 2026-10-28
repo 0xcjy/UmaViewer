@@ -295,14 +295,27 @@ namespace Gallop.Live
         internal void RegisterRoot(GameObject root, string nameSuffixToken,
             Gallop.RenderPipeline.RecoveredLensFlareController flares)
         {
-            string name = root.name.Replace("(Clone)", string.Empty) + nameSuffixToken;
+            if (root == null) return;
+            RegisterRootAs(root, root.name.Replace("(Clone)", string.Empty) + nameSuffixToken, flares);
+        }
+
+        // Registro con el nombre de la pista explicito. Los objetos del escenario se llaman
+        // `light000_blinkbeamlight_...` mientras que el timeline usa
+        // `pfb_env_live<BackGroundId>_blinkbeamlight_...`, asi que el nombre de coincidencia no se
+        // puede derivar del nombre del objeto.
+        internal void RegisterRootAs(GameObject root, string matchName,
+            Gallop.RenderPipeline.RecoveredLensFlareController flares)
+        {
+            if (root == null || string.IsNullOrEmpty(matchName)) return;
             _registeredFlares = flares;
-            if (!_registeredRoots.TryGetValue(name, out var roots))
+            if (!_registeredRoots.TryGetValue(matchName, out var roots))
             {
                 roots = new List<RootCache>();
-                _registeredRoots.Add(name, roots);
+                _registeredRoots.Add(matchName, roots);
             }
-            string runtimeKey = name + "__U" + root.GetInstanceID();
+            for (int i = 0; i < roots.Count; i++)
+                if (roots[i].rootGo == root) return;
+            string runtimeKey = matchName + "__U" + root.GetInstanceID();
             var cache = GetOrBuildRootCache(runtimeKey, root);
             roots.Add(cache);
             ApplyRootOffCached(runtimeKey, root);

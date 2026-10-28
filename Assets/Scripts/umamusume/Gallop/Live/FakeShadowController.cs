@@ -4,6 +4,8 @@ namespace Gallop.Live
 {
     // Field spelling/defaults are the shadow000 prefab TypeTree. The authored cross mesh
     // is already enabled; its optional CustomProjector is authored disabled.
+    // En este visor no se instancia: su malla es una cruz y la sombra del personaje la genera
+    // el shadow map real (ver PENDIENTE_SOMBRA_PERSONAJE.md). Se conserva como clase del juego.
     [DisallowMultipleComponent]
     public sealed class FakeShadowController : MonoBehaviour
     {

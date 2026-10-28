@@ -27,6 +27,7 @@ namespace Gallop.Live
         private string[] _clipNames = new string[0];
         private int _currentClip = -1;
         private bool _initialized;
+        private bool _driven;
 
         public bool IsInitialized { get { return _initialized; } }
 
@@ -82,6 +83,7 @@ namespace Gallop.Live
         /// </summary>
         public void UpdateStatus(ref AnimationUpdateInfo info)
         {
+            _driven = true;
             if (!_initialized)
                 Initialize();
 
@@ -125,6 +127,23 @@ namespace Gallop.Live
             else
                 time = Mathf.Clamp(time, 0f, length);
             state.time = time;
+        }
+
+        // Objetos que NO reciben ninguna clave de animationList (los haces del escenario:
+        // `anm_<stage>_blinkbeamlight_..._loop_000`). Su clip nunca se reproduce porque el prefab no
+        // lo tiene asignado como clip por defecto, asi que se quedaban en la pose de reposo
+        // (apuntando arriba). Aqui se reproduce su propio clip en bucle. Si la pista los controla
+        // (_driven), no se toca nada.
+        private void LateUpdate()
+        {
+            if (!_initialized || _driven || _animation == null) return;
+            if (_clipNames.Length != 1 || string.IsNullOrEmpty(_clipNames[0])) return;
+            AnimationState state = _animation[_clipNames[0]];
+            if (state == null || state.clip == null) return;
+            state.wrapMode = WrapMode.Loop;
+            state.speed = 1f;
+            _animation.wrapMode = WrapMode.Loop;
+            if (!_animation.isPlaying) _animation.Play(_clipNames[0]);
         }
 
         private int IndexOfClip(string clipName)

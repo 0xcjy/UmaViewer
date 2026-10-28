@@ -19,6 +19,7 @@ namespace Gallop.Live
             public int characterIndex;
             public Transform character;
             public FollowSpotLightController spotlight;
+            public Renderer[] shadowCasters;
             public FakeShadowController leftShadow;
             public FakeShadowController rightShadow;
         }
@@ -49,6 +50,9 @@ namespace Gallop.Live
                     Transform character = characterRoots[i];
                     if (character == null) continue;
                     var binding = new Binding { characterIndex = i, character = character };
+                    // Renderers del personaje: su sombra (shadow map) se enciende/apaga con las
+                    // ventanas BgColor1 en LightBlendMode.Multiply (ver AlterLateUpdate).
+                    binding.shadowCasters = character.GetComponentsInChildren<Renderer>(true);
                     _bindings.Add(binding);
                     GameObject spotlight = InstantiateResource(spotlightPathResolver?.Invoke(i),
                         DefaultSpotlightPath, stageRoot, prefabResolver, prefabs);
@@ -62,10 +66,13 @@ namespace Gallop.Live
                         }
                         else binding.spotlight.Bind(character, character);
                     }
-                    binding.leftShadow = CreateFootShadow(i, true, footResolver(i, true), character,
-                        shadowPathResolver?.Invoke(i), stageRoot, prefabResolver, prefabs);
-                    binding.rightShadow = CreateFootShadow(i, false, footResolver(i, false), character,
-                        shadowPathResolver?.Invoke(i), stageRoot, prefabResolver, prefabs);
+                    // Sombras de pie (FakeShadowController) desactivadas: en este visor no se usa la
+                    // sombra falsa del prefab (su malla es una cruz). La sombra del personaje la da
+                    // el shadow map real. Ver PENDIENTE_SOMBRA_PERSONAJE.md.
+                    // binding.leftShadow = CreateFootShadow(i, true, footResolver(i, true), character,
+                    //     shadowPathResolver?.Invoke(i), stageRoot, prefabResolver, prefabs);
+                    // binding.rightShadow = CreateFootShadow(i, false, footResolver(i, false), character,
+                    //     shadowPathResolver?.Invoke(i), stageRoot, prefabResolver, prefabs);
                 }
                 AlterLateUpdate();
             }
@@ -130,8 +137,11 @@ namespace Gallop.Live
             {
                 int mask = info.flags != 0 ? info.flags : (int)group;
                 bool selected = (mask & (1 << binding.characterIndex)) != 0;
-                if (selected && binding.spotlight != null)
-                    binding.spotlight.ApplyLight(info.color, info.colorPower, info.scale);
+                if (!selected || binding.spotlight == null) continue;
+                // The authored key selects which face of the spot is drawn: an additive pool or
+                // the multiply fake shadow. Native applies it every frame, independently of power.
+                binding.spotlight.SetBlendMode(info.LightBlendMode);
+                binding.spotlight.ApplyLight(info.color, info.colorPower, info.scale);
             }
         }
 
@@ -153,8 +163,23 @@ namespace Gallop.Live
                 Vector3 position = _groundPositionResolver(binding.characterIndex);
                 if (binding.spotlight != null) binding.spotlight.AlterLateUpdate(position);
                 if (binding.spotlight != null) binding.spotlight.SetCharacterVisible(active);
-                if (binding.leftShadow != null) binding.leftShadow.AlterLateUpdate(position);
-                if (binding.rightShadow != null) binding.rightShadow.AlterLateUpdate(position);
+                // La sombra del personaje (shadow map real) solo se dibuja en las ventanas
+                // BgColor1 con LightBlendMode.Multiply: es cuando el juego la muestra. Durante el
+                // fogonazo (los haces barren y el spot se apaga) la sombra desaparece.
+                UnityEngine.Rendering.ShadowCastingMode castMode =
+                    binding.spotlight != null && binding.spotlight.IsShadowMode
+                        ? UnityEngine.Rendering.ShadowCastingMode.On
+                        : UnityEngine.Rendering.ShadowCastingMode.Off;
+                Renderer[] casters = binding.shadowCasters;
+                if (casters != null)
+                {
+                    for (int c = 0; c < casters.Length; c++)
+                    {
+                        Renderer caster = casters[c];
+                        if (caster != null && caster.shadowCastingMode != castMode)
+                            caster.shadowCastingMode = castMode;
+                    }
+                }
             }
         }
 

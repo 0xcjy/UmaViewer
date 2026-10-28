@@ -11,6 +11,12 @@ namespace Gallop.Live
     // UpdateMaterial/UpdateAnimation/UpdateEnable (mirror-scan light, the authored `projecterList`
     // track). Each track group names one fixture (mslight000..003) which the controller prefab
     // exposes through its AssetHolder; the keys drive transform, material, colour and clip scrub.
+    //
+    // Native ProjectorController.Initialize stores the FNV hash of the fixture name and its update
+    // handler only reacts when the incoming group carries that same hash, so a track whose authored
+    // name matches no fixture is simply ignored. A few songs author such names (song 1091 uses
+    // `projector_01`/`projector_02`, which are planar-projector names, not mslight ones); that is a
+    // data condition, not an engine failure, so it is reported once as a warning instead of an error.
     public sealed class MirrorScanLightRuntime : IDisposable
     {
         public const string ControllerPath =
@@ -76,7 +82,12 @@ namespace Gallop.Live
                 GameObject fixtureAsset = holder.Get<GameObject>(group.name);
                 if (fixtureAsset == null)
                 {
-                    Debug.LogError("[MirrorScanLight] AssetHolder has no fixture for track '" + group.name + "'.");
+                    // Faithful to native: the handler for fixture `mslight00N` only runs for the group
+                    // whose authored name hashes to the same key, so a track pointing at some other
+                    // name (song 1091 authors `projector_01`/`projector_02`) has no target to drive.
+                    if (_missingGroups.Add(group.nameHash))
+                        Debug.LogWarning("[MirrorScanLight] Track '" + group.name +
+                            "' does not name an authored mslight fixture; its keys are ignored.");
                     continue;
                 }
                 // The AssetHolder points at prefab assets inside the bundle, not at scene objects:
@@ -109,7 +120,8 @@ namespace Gallop.Live
             if (!_byHash.TryGetValue(info.group.nameHash, out Binding binding))
             {
                 if (_missingGroups.Add(info.group.nameHash))
-                    Debug.LogError("[MirrorScanLight] Track '" + info.group.name + "' has no authored mslight fixture.");
+                    Debug.LogWarning("[MirrorScanLight] Track '" + info.group.name +
+                        "' has no matching mslight fixture; its keys are ignored.");
                 return;
             }
             if (info.current == null)

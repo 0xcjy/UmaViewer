@@ -105,29 +105,49 @@ public class LiveEntry
     }
 
     private Dictionary<int, string> _projectorTextureNames;
+    // Si la canción declara una sola textura de proyector, se usa para cualquier id.
+    private string _singleProjectorName;
 
     // `livesettings` row type 11 is the per-song projector texture table: texture id -> texture
     // asset name. A LightProjection key's TextureId is an id into this table, so the asset name
     // cannot be derived from the number (song 1001: id 1 -> tex_env_live_cmn_projector000;
     // song 1005: id 1/2/3 -> tex_env_live_cmn_projector004/001/002).
+    //
+    // Row layout: [index, 11, texture asset name, id, content type, ...]. Several songs leave the
+    // id column empty (1091, 1156, 1180, 1181). Those songs declare exactly ONE projector texture,
+    // so that row is the song's projector regardless of the key's TextureId: the table says what it
+    // projects, and the numeric fallback (tex_env_live_cmn_projector0NN) is only a file-name guess.
     public bool TryGetProjectorTextureName(int textureId, out string name)
     {
         if (_projectorTextureNames == null)
         {
             _projectorTextureNames = new Dictionary<int, string>();
+            string onlyName = null;
+            int rows = 0;
             if (LiveSettings != null)
             {
                 foreach (var row in LiveSettings)
                 {
-                    if (row == null || row.Length <= 3 || row[1].Trim() != "11") continue;
-                    int id;
-                    if (!int.TryParse(row[3].Trim(), System.Globalization.NumberStyles.Integer,
-                            System.Globalization.CultureInfo.InvariantCulture, out id)) continue;
-                    _projectorTextureNames[id] = row[2].Trim();
+                    if (row == null || row.Length <= 2 || row[1].Trim() != "11") continue;
+                    string textureName = row[2].Trim();
+                    if (string.IsNullOrEmpty(textureName)) continue;
+                    rows++;
+                    onlyName = textureName;
+                    int id = 0;
+                    bool explicitId = row.Length > 3 && int.TryParse(row[3].Trim(),
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out id);
+                    // An id written in the table always wins over an empty cell mapping to 0.
+                    if (!explicitId && _projectorTextureNames.ContainsKey(0)) continue;
+                    _projectorTextureNames[id] = textureName;
                 }
             }
+            _singleProjectorName = rows == 1 ? onlyName : null;
         }
-        return _projectorTextureNames.TryGetValue(textureId, out name);
+        if (_projectorTextureNames.TryGetValue(textureId, out name)) return true;
+        // A song with a single declared projector projects that texture for every key.
+        name = _singleProjectorName;
+        return !string.IsNullOrEmpty(name);
     }
 }
 

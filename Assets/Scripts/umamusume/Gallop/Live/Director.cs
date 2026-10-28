@@ -41,6 +41,9 @@ namespace Gallop.Live
         public const string Spotlight3dControllerPath = "3d/env/live/common/spotlight3d/pfb_env_live_cmn_spotlight3d_controller000";
         private Spotlight3dRuntime _spotlightRuntime;
         private MaterialPropertyBlock _characterLightingBlock;
+        private Light _liveDirectionalLight;
+        // Elevacion minima de la luz (caida vertical del vector director): 0.5 = ~30 grados.
+        private const float MinLightDrop = 0.5f;
         private Gallop.RenderPipeline.RecoveredLensFlareController _stageFlares;
         private LightProjectionRuntimeController _lightProjectionController;
         private MirrorScanLightRuntime _mirrorScanLightRuntime;
@@ -113,6 +116,117 @@ namespace Gallop.Live
         private Transform ResolveEffectStageObject(string name, int hash)
         {
             return _effectStageObjects.TryGetValue(hash, out var owner) ? owner : null;
+        }
+
+        private void EnableRealtimeShadows(List<Transform> characterRoots)
+        {
+            for (int i = 0; i < characterRoots.Count; i++)
+            {
+                Transform root = characterRoots[i];
+                if (root == null) continue;
+                foreach (Renderer target in root.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (target == null) continue;
+                    target.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                    target.receiveShadows = true;
+                }
+            }
+            if (_stageController != null)
+            {
+                foreach (Renderer target in _stageController.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (target == null) continue;
+                    target.receiveShadows = true;
+                }
+            }
+        }
+
+        // Los haces/luces de parpadeo del escenario no se registraban en su driver (solo los props),
+        // asi que sus pistas no movian nada y no habia barridos ni fogonazos. Aqui se registran con
+        // el nombre de la pista: objeto `light000_blinkbeamlight_x` -> pista
+        // `pfb_env_live<BackGroundId>_blinkbeamlight_x` (recortando sufijos hasta encontrar la pista,
+        // porque un haz puede estar partido en variantes _outside/_circle/_ground).
+        private void RegisterStageBlinkLights()
+        {
+            if (_stageController == null || _liveTimelineControl == null) return;
+            var driver = GetComponent<StageBlinkLightDriver>();
+            if (driver == null) driver = FindObjectOfType<StageBlinkLightDriver>();
+            if (driver == null) return;
+            var data = _liveTimelineControl.data;
+            if (data == null || data.worksheetList == null) return;
+
+            var tracks = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var sheet in data.worksheetList)
+            {
+                if (sheet == null || sheet.blinkLightList == null) continue;
+                foreach (var group in sheet.blinkLightList)
+                    if (group != null && !string.IsNullOrEmpty(group.name)) tracks.Add(group.name);
+            }
+            if (tracks.Count == 0) return;
+
+            string prefix = "pfb_env_live" + (live != null ? live.BackGroundId : string.Empty) + "_";
+            var registeredTracks = new HashSet<string>(StringComparer.Ordinal);
+            int registered = 0;
+
+            // 1) Objetos cuyo nombre ya es el de la pista (`pfb_env_live10135_blinkbeamlight_x(Clone)`):
+            //    son las raices que giran; sus hijos son las partes del haz.
+            foreach (Transform target in _stageController.GetComponentsInChildren<Transform>(true))
+            {
+                if (target == null) continue;
+                string name = StripCloneSuffix(target.name);
+                if (name == null || !tracks.Contains(name)) continue;
+                if (target.parent != null && tracks.Contains(StripCloneSuffix(target.parent.name))) continue;
+                driver.RegisterRootAs(target.gameObject, name, _stageFlares);
+                registeredTracks.Add(name);
+                registered++;
+            }
+
+            // 2) Objetos renombrados por el runtime (`light000_blinkbeamlight_x`): solo para pistas
+            //    que aun no tengan raiz registrada.
+            foreach (Transform target in _stageController.GetComponentsInChildren<Transform>(true))
+            {
+                if (target == null || target.childCount > 0) continue;
+                string name = StripCloneSuffix(target.name);
+                string rest = StripBlinkLightIndexPrefix(name);
+                if (rest == null) continue;
+                string candidate = prefix + rest;
+                string match = null;
+                while (true)
+                {
+                    if (tracks.Contains(candidate)) { match = candidate; break; }
+                    int cut = candidate.LastIndexOf('_');
+                    if (cut <= prefix.Length) break;
+                    candidate = candidate.Substring(0, cut);
+                }
+                if (match == null || registeredTracks.Contains(match)) continue;
+                driver.RegisterRootAs(target.gameObject, match, _stageFlares);
+                registeredTracks.Add(match);
+                registered++;
+            }
+
+            if (registered == 0)
+                Debug.LogWarning("[Director] No stage blink/beam light matched a timeline track (prefix '" + prefix + "').");
+        }
+
+        private static string StripCloneSuffix(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            const string clone = "(Clone)";
+            return name.EndsWith(clone, StringComparison.Ordinal)
+                ? name.Substring(0, name.Length - clone.Length)
+                : name;
+        }
+
+        // `light000_blinkbeamlight_x` -> `blinkbeamlight_x`
+        private static string StripBlinkLightIndexPrefix(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            int underscore = name.IndexOf('_');
+            if (underscore <= 0) return null;
+            if (!name.StartsWith("light", StringComparison.Ordinal)) return null;
+            for (int i = 5; i < underscore; i++)
+                if (!char.IsDigit(name[i])) return null;
+            return name.Substring(underscore + 1);
         }
 
         private void InitializeLiveEffects(int normalLayer, int excludedLayer, int transparentLayer)
@@ -472,6 +586,25 @@ namespace Gallop.Live
                         }
                     }
                 }
+                // La orientacion de la luz direccional (la que proyecta la SOMBRA real) la manda la
+                // pista GlobalLight. Sin esto la luz se queda con la rotacion del prefab (~70 grados,
+                // casi vertical) y la sombra sale diminuta. Se limita la elevacion: varias claves
+                // dejan la luz bajo el horizonte y con ella la sombra se estiraria hasta el infinito.
+                if (_liveDirectionalLight == null) _liveDirectionalLight = ResolveDirectionalLight();
+                if (_liveDirectionalLight != null && updateInfo.lightRotation != Quaternion.identity)
+                {
+                    Vector3 forward = updateInfo.lightRotation * Vector3.forward;
+                    Vector3 flat = new Vector3(forward.x, 0f, forward.z);
+                    if (flat.sqrMagnitude < 1e-4f)
+                        forward = new Vector3(0.35f, -0.6f, 0.35f);
+                    else if (-forward.y < MinLightDrop)
+                    {
+                        flat.Normalize();
+                        float horizontal = Mathf.Sqrt(Mathf.Max(0f, 1f - MinLightDrop * MinLightDrop));
+                        forward = flat * horizontal + Vector3.down * MinLightDrop;
+                    }
+                    _liveDirectionalLight.transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+                }
             };
 
             // (FacialToon) Aplica los parametros de sombreado facial del timeline al personaje
@@ -607,6 +740,11 @@ namespace Gallop.Live
                     return foot;
                 });
             _liveTimelineControl.OnUpdateBgColor1 += _footLightRuntime.ApplySpotlight;
+            // El juego da sombra real a los personajes (CharacterObject.IsCastShadow /
+            // enableRealtimeShadow, capa CharacterRealtimeShadow). Este proyecto los tenía con
+            // shadowCastingMode Off y el escenario sin receiveShadows: no había ninguna sombra.
+            EnableRealtimeShadows(footRoots);
+            RegisterStageBlinkLights();
             var flareSetting = _liveTimelineControl.data.lensFlareSetting;
             _stageFlares = new Gallop.RenderPipeline.RecoveredLensFlareController(
                 _stageController != null ? _stageController.transform : null,
@@ -855,6 +993,17 @@ namespace Gallop.Live
 
             var dirFromCamera = (cam.transform.forward + cam.transform.up * 0.35f).normalized;
             return -dirFromCamera;
+        }
+
+        // Luz direccional del escenario: la unica Light real del live y la que proyecta la sombra
+        // del personaje (shadow map). Su orientacion la manda la pista GlobalLight.
+        private Light ResolveDirectionalLight()
+        {
+            if (RenderSettings.sun != null) return RenderSettings.sun;
+            Light[] lights = FindObjectsOfType<Light>();
+            for (int i = 0; i < lights.Length; i++)
+                if (lights[i] != null && lights[i].type == LightType.Directional) return lights[i];
+            return null;
         }
 
         private void SetupCharacterLocator()

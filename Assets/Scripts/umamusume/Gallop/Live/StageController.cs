@@ -1143,16 +1143,43 @@ namespace Gallop.Live
 
         // Routes the `animationList` track (`OnUpdateAnimation`) to the stage's
         // AnimationObjectControllers, like the game's StageController.UpdateAnimationObjectOld.
+        // Cada clave solo debe aplicarse al objeto cuya pista nombra: sin este filtro la ultima
+        // pista de la lista se aplicaba a todos los objetos y dejaba a los haces con el playhead de
+        // otra pista (offset 0 / speed 0), o sea congelados.
         private void UpdateAnimation(ref AnimationUpdateInfo updateInfo)
         {
             EnsureAnimationObjects();
 
+            string trackName = updateInfo.data != null ? updateInfo.data.name : null;
             for (int i = 0; i < _animationObjects.Count; i++)
             {
                 var controller = _animationObjects[i];
-                if (controller != null)
-                    controller.UpdateStatus(ref updateInfo);
+                if (controller == null) continue;
+                if (!MatchesAnimationTrack(controller, trackName)) continue;
+                controller.UpdateStatus(ref updateInfo);
             }
+        }
+
+        // Nombre de la pista (`pfb_env_live10135_blinkbeamlight_x`) contra el nombre del objeto
+        // (`...x(Clone)`) o el renombrado por el runtime (`light000_blinkbeamlight_x`).
+        private static bool MatchesAnimationTrack(AnimationObjectController controller, string trackName)
+        {
+            if (controller == null || string.IsNullOrEmpty(trackName)) return false;
+            Transform target = controller.transform;
+            for (int depth = 0; depth < 3 && target != null; depth++, target = target.parent)
+            {
+                string name = target.name;
+                if (string.IsNullOrEmpty(name)) continue;
+                const string clone = "(Clone)";
+                if (name.EndsWith(clone, StringComparison.Ordinal))
+                    name = name.Substring(0, name.Length - clone.Length);
+                if (string.Equals(name, trackName, StringComparison.Ordinal)) return true;
+                int underscore = name.IndexOf('_');
+                if (underscore > 0 && name.StartsWith("light", StringComparison.Ordinal) &&
+                    trackName.EndsWith(name.Substring(underscore), StringComparison.Ordinal))
+                    return true;
+            }
+            return false;
         }
 
         // Collects the stage's animated objects once. Only the objects that carry the game's
