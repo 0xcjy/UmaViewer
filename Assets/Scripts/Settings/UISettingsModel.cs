@@ -18,11 +18,20 @@ public class UISettingsModel : MonoBehaviour
 
     public ScrollRect MaterialsList;
 
+    private void Awake()
+    {
+        // El toggle de la escena puede venir marcado: se fuerza el estado inicial apagado para que
+        // el ajuste guardado en la escena no deje el seguimiento de ojos encendido al arrancar.
+        EnableEyeTracking = false;
+    }
+
     private bool
         _isHeadFix,
         _isTPose,
         _dynamicBoneEnable = true,
-        _enableEyeTracking = true,
+        // El seguimiento de ojos arranca DESACTIVADO (los personajes del live no lo encienden por
+        // defecto; el ojo mirando a camara solo se usa cuando se pide explicitamente).
+        _enableEyeTracking = false,
         _enableFaceOverride = true;
 
     private float _outlineWidth;

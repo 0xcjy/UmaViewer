@@ -160,12 +160,29 @@ namespace Gallop
                         if (rootParentWorkArray == null)
                             return;
 
+                        Vector3 forward = _transform != null ? _transform.forward : Vector3.forward;
+
+                        // Colision de ENTORNO (pista CharaCollision del cutt): el plano lo define el
+                        // propio colisionador, que vive en el escenario y NO cuelga de un hueso. Hay
+                        // que usar su posicion, no la del hueso padre: el solver trabaja con el owner
+                        // a cero, asi que se resta `characterPosition` (la posicion del owner) para
+                        // pasarlo a ese espacio.
+                        // Medido en el live 1081: con la posicion del hueso padre el "suelo" (y=-0,11)
+                        // llegaba al nativo como y=1,32 y empujaba pelo, cola y falda hacia arriba.
+                        if (IsWorld)
+                        {
+                            Vector3 worldPosition = _transform != null ? _transform.position : Vector3.zero;
+
+                            nativeCollision.Distance = Vector3.Dot(worldPosition - characterPosition, forward);
+                            nativeCollision.Normal = forward;
+                            break;
+                        }
+
                         int parentWorkIndex = nativeCollision.ParentWorkIndex;
                         if ((uint)parentWorkIndex >= (uint)rootParentWorkArray.Length)
                             return;
 
                         Vector3 parentPos = rootParentWorkArray[parentWorkIndex].WorldPosition;
-                        Vector3 forward = _transform != null ? _transform.forward : Vector3.forward;
 
                         nativeCollision.Distance = Vector3.Dot(parentPos - characterPosition, forward);
                         nativeCollision.Normal = forward;
@@ -293,6 +310,21 @@ namespace Gallop
         {
             _defaultRadius = radius;
             _defaultOffset = offset;
+        }
+
+        public void SetDefaultRadius(float radius)
+        {
+            _defaultRadius = radius;
+        }
+
+        public void SetDefaultOffset(Vector3 offset)
+        {
+            _defaultOffset = offset;
+        }
+
+        public void SetDefaultOffset2(Vector3 offset2)
+        {
+            _defaultOffset2 = offset2;
         }
 
         public void ScaleParams(float legacyScale)

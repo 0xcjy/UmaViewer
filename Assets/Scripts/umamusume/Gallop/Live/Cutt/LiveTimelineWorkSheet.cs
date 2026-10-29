@@ -401,6 +401,8 @@ namespace Gallop.Live.Cutt
 
         [SerializeField] public List<LiveTimelineCharaMotSeqData> charaMotSeqList;
         [SerializeField] public List<LiveTimelineAnimationData> animationList = new List<LiveTimelineAnimationData>();
+        // Colisiones de entorno del cutt (suelo/atrezzo) que se aplican al pelo, la ropa y la cola.
+        [SerializeField] public List<LiveTimelineCharaCollisionData> CharaCollisionDataList;
 
         [SerializeField] public LiveTimelineKeyCameraSwitcherDataList cameraSwitcherKeys;
         [SerializeField] public LiveTimelineKeyLipSyncDataList ripSyncKeys;
@@ -471,6 +473,14 @@ namespace Gallop.Live.Cutt
         {
             InitializePropsGroups(propsList, control);
             InitializePropsGroups(propsAttachList, control);
+        }
+
+        /// <summary>
+        /// Prepara las keys de colisiones de entorno (deriva la rotacion de los angulos de Euler).
+        /// </summary>
+        public void InitializeCharaCollision(LiveTimelineControl control)
+        {
+            InitializePropsGroups(CharaCollisionDataList, control);
         }
 
         private static void InitializePropsGroups<T>(IList<T> groups, LiveTimelineControl control)

@@ -556,6 +556,7 @@ namespace Gallop.Live.Cutt
                 if (sheet == null) continue;
                 sheet.InitializeLightProjection(this);
                 sheet.InitializeProjector(this);
+                sheet.InitializeCharaCollision(this);
             }
         }
 
@@ -734,6 +735,8 @@ namespace Gallop.Live.Cutt
             OnUpdateFluctuation?.Invoke(LiveFluctuationTimeline.Evaluate(
                 camSheet != null ? camSheet.FluctuationKeys : null, _currentFrame, _playMode));
             AlterUpdate_GlobalFogControl(camSheet, _currentFrame);
+            // Colisiones de entorno del cutt: se colocan antes de que CySpring simule el frame.
+            AlterUpdate_CharaCollision(camSheet, _currentFrame);
 
             // [REPORT §10.4-C5] 原生 AlterLateUpdate(RVA 0x1ac9460) 只调用 AlterUpdate_BgColor1 一次；
             // 此处原本连续调用两次（旧标 432-433），handler 均为覆盖式材质写
@@ -809,6 +812,274 @@ namespace Gallop.Live.Cutt
             {
                 motion.AlterUpdate(liveTime, data.worksheetList[0].timescaleKeys);
             }
+        }
+
+        // --------------------------------------------------------------------------------------
+        // Colisiones de entorno (pista CharaCollision / "EnvCollision" del cutt).
+        // El timeline coloca colisores en la escena (suelo, atrezzo...) y se los reparte a cada
+        // personaje por partes: cuerpo siempre, cabeza y cola segun la key.
+        // --------------------------------------------------------------------------------------
+
+        private const int CharaCollisionModelMax = 20; // Place01..Place20
+
+        private bool _charaCollisionInitialized;
+        private CharaCollisionTimelineData[] _charaCollisionTimelineDataArray;
+        private CharaCollisionModelData[] _charaCollisionModelDataArray;
+
+        /// <summary>
+        /// Colisor de entorno instanciado por el timeline: un GameObject bajo el Director con un
+        /// CySpringCollisionComponent que se recoloca y redimensiona en cada key.
+        /// </summary>
+        private class CharaCollisionTimelineData
+        {
+            public GameObject CollisionObject;
+            public Transform Transform;
+            public CySpringCollisionComponent CollisionComponent;
+            public int CurrentKeyFrame;
+            public bool IsEnable;
+            public bool IsApplyHead;
+            public bool IsApplyTail;
+            public LiveCharaPositionFlag CharacterFlag;
+
+            public CharaCollisionTimelineData(int timelineIndex)
+            {
+                CollisionObject = new GameObject("EnvCollision" + timelineIndex);
+                Transform = CollisionObject.transform;
+
+                if (Director.instance != null)
+                    Transform.SetParent(Director.instance.transform, false);
+
+                CollisionComponent = CollisionObject.AddComponent<CySpringCollisionComponent>();
+                CollisionComponent.Initialize(null);
+                // Los colisores del timeline estan fijados al mundo, no cuelgan de un hueso.
+                CollisionComponent.RuntimeData.IsWorld = true;
+
+                CurrentKeyFrame = -1;
+            }
+
+            public void Destroy()
+            {
+                if (CollisionObject != null)
+                    UnityEngine.Object.Destroy(CollisionObject);
+
+                CollisionObject = null;
+                Transform = null;
+                CollisionComponent = null;
+            }
+        }
+
+        /// <summary>
+        /// Colisores de entorno que recibe un personaje, repartidos por partes.
+        /// </summary>
+        private class CharaCollisionModelData
+        {
+            private const int CollisionCapacity = 4;
+
+            public readonly List<CySpringCollisionComponent> BodyCollisionList = new List<CySpringCollisionComponent>(CollisionCapacity);
+            public readonly List<CySpringCollisionComponent> HeadCollisionList = new List<CySpringCollisionComponent>(CollisionCapacity);
+            public readonly List<CySpringCollisionComponent> TailCollisionList = new List<CySpringCollisionComponent>(CollisionCapacity);
+        }
+
+        private void InitializeCharaCollision(int count)
+        {
+            if (_charaCollisionInitialized)
+                return;
+
+            _charaCollisionTimelineDataArray = new CharaCollisionTimelineData[count];
+            for (int i = 0; i < count; i++)
+                _charaCollisionTimelineDataArray[i] = new CharaCollisionTimelineData(i);
+
+            _charaCollisionModelDataArray = new CharaCollisionModelData[CharaCollisionModelMax];
+            for (int i = 0; i < _charaCollisionModelDataArray.Length; i++)
+                _charaCollisionModelDataArray[i] = new CharaCollisionModelData();
+
+            _charaCollisionInitialized = true;
+        }
+
+        public void AlterUpdate_CharaCollision(LiveTimelineWorkSheet sheet, float currentFrame)
+        {
+            if (sheet == null || sheet.CharaCollisionDataList == null)
+                return;
+
+            int count = sheet.CharaCollisionDataList.Count;
+
+            if (!_charaCollisionInitialized)
+            {
+                if (count < 1)
+                    return;
+
+                InitializeCharaCollision(count);
+            }
+            else if (count < 1)
+            {
+                return;
+            }
+
+            bool modelChanged = false;
+
+            for (int i = 0; i < count && i < _charaCollisionTimelineDataArray.Length; i++)
+            {
+                var timelineData = _charaCollisionTimelineDataArray[i];
+                var group = sheet.CharaCollisionDataList[i];
+                var keys = group != null ? group.GetKeyList() : null;
+                if (timelineData == null || keys == null || keys.Count <= 0)
+                    continue;
+
+                FindTimelineKey(out var currentKeyRaw, out var nextKeyRaw, keys, currentFrame);
+
+                var currentKey = currentKeyRaw as LiveTimelineKeyCharaCollisionData;
+                if (currentKey == null)
+                    continue;
+
+                var nextKey = nextKeyRaw as LiveTimelineKeyCharaCollisionData;
+                var component = timelineData.CollisionComponent;
+                if (component == null || !component.IsInitializeRuntimeData)
+                    continue;
+
+                timelineData.IsEnable = currentKey.IsEnable;
+                component.CollisionType = currentKey.CollisionType;
+                component.IsInner = currentKey.IsInner;
+                timelineData.IsApplyHead = currentKey.IsApplyHead;
+                timelineData.IsApplyTail = currentKey.IsApplyTail;
+                timelineData.CharacterFlag = currentKey.CharacterFlag;
+
+                Vector3 position;
+                Vector3 offset;
+                Vector3 offset2;
+                float radius;
+                Quaternion rotation;
+
+                if (nextKey == null || !nextKey.IsInterpolateKey())
+                {
+                    position = currentKey.Position;
+                    offset = currentKey.Offset;
+                    offset2 = currentKey.Offset2;
+                    radius = currentKey.Radius;
+                    rotation = currentKey.Rotation;
+                }
+                else
+                {
+                    float t = CalculateInterpolationValue(currentKey, nextKey, currentFrame);
+                    position = Vector3.LerpUnclamped(currentKey.Position, nextKey.Position, t);
+                    offset = Vector3.LerpUnclamped(currentKey.Offset, nextKey.Offset, t);
+                    offset2 = Vector3.LerpUnclamped(currentKey.Offset2, nextKey.Offset2, t);
+                    radius = Mathf.LerpUnclamped(currentKey.Radius, nextKey.Radius, t);
+                    rotation = Quaternion.Lerp(currentKey.Rotation, nextKey.Rotation, t);
+                }
+
+                // Un plano marcado como "hacia arriba" se gira para que su forward mire al eje Y.
+                if (currentKey.IsEnabledPlaneUp && currentKey.CollisionType == CySpringCollisionData.CollisionType.Plane)
+                    rotation = LiveTimelineKeyCharaCollisionData.PLANE_UP_ROTATION * rotation;
+
+                timelineData.Transform.localPosition = position + offset;
+                timelineData.Transform.localRotation = rotation;
+
+                component.Radius = radius;
+                component.Offset = Vector3.zero;
+                component.Offset2 = Vector3.Scale(offset2 - offset, timelineData.Transform.lossyScale);
+
+                if (timelineData.CurrentKeyFrame != currentKey.frame)
+                {
+                    modelChanged = true;
+                    timelineData.CurrentKeyFrame = currentKey.frame;
+                }
+            }
+
+            if (!modelChanged)
+                return;
+
+            UpdateCharaCollisionModelData();
+            UpdateCharaCollisionModel();
+        }
+
+        /// <summary>
+        /// Reparte los colisores activos a cada personaje segun su mascara de posicion.
+        /// </summary>
+        private void UpdateCharaCollisionModelData()
+        {
+            if (_charaCollisionModelDataArray == null || _charaCollisionTimelineDataArray == null)
+                return;
+
+            for (int i = 0; i < _charaCollisionModelDataArray.Length; i++)
+            {
+                var modelData = _charaCollisionModelDataArray[i];
+                if (modelData == null)
+                    continue;
+
+                modelData.BodyCollisionList.Clear();
+                modelData.HeadCollisionList.Clear();
+                modelData.TailCollisionList.Clear();
+            }
+
+            for (int i = 0; i < _charaCollisionTimelineDataArray.Length; i++)
+            {
+                var timelineData = _charaCollisionTimelineDataArray[i];
+                if (timelineData == null || !timelineData.IsEnable || timelineData.CollisionComponent == null)
+                    continue;
+
+                int charaFlag = (int)timelineData.CharacterFlag;
+
+                for (int modelIndex = 0; modelIndex < _charaCollisionModelDataArray.Length; modelIndex++)
+                {
+                    if ((charaFlag & (1 << modelIndex)) == 0)
+                        continue;
+
+                    var modelData = _charaCollisionModelDataArray[modelIndex];
+                    if (modelData == null)
+                        continue;
+
+                    modelData.BodyCollisionList.Add(timelineData.CollisionComponent);
+
+                    if (timelineData.IsApplyHead)
+                        modelData.HeadCollisionList.Add(timelineData.CollisionComponent);
+
+                    if (timelineData.IsApplyTail)
+                        modelData.TailCollisionList.Add(timelineData.CollisionComponent);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Entrega a cada personaje los colisores de entorno de sus cadenas de cabeza, cuerpo y cola.
+        /// </summary>
+        private void UpdateCharaCollisionModel()
+        {
+            var director = Director.instance;
+            if (director == null || director.CharaContainerScript == null || _charaCollisionModelDataArray == null)
+                return;
+
+            // El indice del slot es el bit de LiveCharaPositionFlag (Place01 = bit 0). Los
+            // personajes NO cuelgan de los slots (charaObjs son solo los CharacterObjectN de
+            // posicion): la lista cargada es CharaContainerScript, que es la que usa el resto del
+            // live para indexar por posicion (facial, lipsync).
+            int count = Mathf.Min(director.CharaContainerScript.Count, _charaCollisionModelDataArray.Length);
+
+            for (int i = 0; i < count; i++)
+            {
+                var container = director.CharaContainerScript[i];
+                if (container == null)
+                    continue;
+
+                var modelData = _charaCollisionModelDataArray[i];
+                if (modelData == null)
+                    continue;
+
+                container.ApplyEnvCySpringCollisionToBody(ToEnvCollisionRuntimeDataArray(modelData.BodyCollisionList));
+                container.ApplyEnvCySpringCollisionToHead(ToEnvCollisionRuntimeDataArray(modelData.HeadCollisionList));
+                container.ApplyEnvCySpringCollisionToTail(ToEnvCollisionRuntimeDataArray(modelData.TailCollisionList));
+            }
+        }
+
+        private static CySpringCollisionRuntimeData[] ToEnvCollisionRuntimeDataArray(List<CySpringCollisionComponent> components)
+        {
+            if (components == null || components.Count == 0)
+                return Array.Empty<CySpringCollisionRuntimeData>();
+
+            var runtimeDataArray = new CySpringCollisionRuntimeData[components.Count];
+            for (int i = 0; i < components.Count; i++)
+                runtimeDataArray[i] = components[i] != null ? components[i].RuntimeData : null;
+
+            return runtimeDataArray;
         }
 
         public void AlterUpdate_FacialData(float liveTime)

@@ -609,11 +609,13 @@ namespace Gallop
             // Gallop.Math.IsFloatEqualLight(deltaTime, 0.0f)
             _isDeltaTimeZero = Gallop.Math.IsFloatEqualLight(deltaTime, 0.0f);
 
-            // 只有 flag == true 时才更新 Native Collision Env
-            if (isUpdateScale)
-            {
-                UpdateEnvNativeCollisions();
-            }
+            // Colisiones de entorno: el plano se coloca con `SkirtNormalPos`-style, restando la
+            // posicion del personaje, y esa posicion cambia en CADA step (andamiajes, plataformas,
+            // altura del slot). Refrescarlas solo al cambiar la escala dejaba el valor congelado
+            // del rebuild (con characterPosition = 0): en el live 1081 los personajes de la
+            // plataforma (owner a y=1,20) recibian su plano 1,2 m alto y se les levantaba falda y
+            // cola. Son 1-3 colisores por personaje: se refrescan siempre.
+            UpdateEnvNativeCollisions();
 
             NativeRootParentWork[] parentArray = _rootParentWork != null ? _rootParentWork.NativeParentWorkArray : null;
 
@@ -894,66 +896,6 @@ namespace Gallop
 
             for (int i = 0; i < _rootBoneArray.Length; i++)
                 _rootBoneArray[i]?.PostAllSpring();
-        }
-
-        // (DIAG) Comprueba la coherencia del "reposo" de cada cadena nativa.
-        // El motor (CySpring_SolveBone @180009760, verificado en el decompilado) hace:
-        //     qg  = ParentRotation * InitLocalRotation
-        //     Aim = qg * BoneAxis
-        //     FinalRotation = quatFromTo(Aim, dir) * qg     (dir = normalize(p - SelfPosition))
-        // Por construccion deberia cumplirse  Aim ~= normalize(hijo.pos - hueso.pos).
-        // Si NO se cumple, el solver arranca con la cadena TORCIDA (sidelocks inclinados) y
-        // ninguna colision lo arregla.
-        public void DiagLogRestCoherence(string tag)
-        {
-            if (_rootBoneArray == null)
-                return;
-
-            for (int i = 0; i < _rootBoneArray.Length; i++)
-            {
-                CySpringRootBone root = _rootBoneArray[i];
-                if (root == null)
-                    continue;
-
-                List<CySpringBoneBase> bones = new List<CySpringBoneBase>();
-                bones.Add(root);
-                if (root.ChildBoneList != null)
-                    bones.AddRange(root.ChildBoneList);
-
-                float worst = 0f;
-                string worstName = "-";
-                int limitCount = 0;
-                string limitSample = "-";
-                for (int b = 0; b + 1 < bones.Count; b++)
-                {
-                    CySpringBoneBase bone = bones[b];
-                    CySpringBoneBase child = bones[b + 1];
-                    if (bone == null || child == null || bone.GameObject == null || child.GameObject == null)
-                        continue;
-
-                    NativeClothWorking nwB = bone.NativeState;
-                    if (nwB.IsLimit != 0)
-                    {
-                        limitCount++;
-                        if (limitSample == "-")
-                            limitSample = bone.BoneName + " min=" + nwB.LimitRotationMin.ToString("0.#") +
-                                          " max=" + nwB.LimitRotationMax.ToString("0.#");
-                    }
-
-                    Vector3 d = child.GameObject.transform.position - bone.GameObject.transform.position;
-                    if (d.sqrMagnitude < 1e-10f)
-                        continue;
-
-                    Quaternion qg = nwB.ParentRotation * nwB.InitLocalRotation;
-                    float err = Vector3.Angle(qg * nwB.BoneAxis, d.normalized);
-                    if (err > worst)
-                    {
-                        worst = err;
-                        worstName = bone.BoneName;
-                    }
-                }
-
-            }
         }
 
         public void ResetNativeCloth()

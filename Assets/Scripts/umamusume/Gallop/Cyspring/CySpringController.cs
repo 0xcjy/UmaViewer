@@ -918,7 +918,11 @@ namespace Gallop
                     continue;
 
                 float partSpringRate = GetSpringRate((Parts)i);
-                bool hasWind = _hasWindArray[i];
+                // El viento del visor sale SOLO de los parametros del asset (no se aplica la pista
+                // charaWind del live), asi que sopla constante. Con direccion local (= delante del
+                // personaje) empuja la falda/pelo hacia el centro del escenario. Interruptor para
+                // aislar su efecto.
+                bool hasWind = EnableWind && _hasWindArray[i];
                 float windRate = GetWindPowerRate((Parts)i);
 
                 if (hasWind) // 官方这里先不要加 || _isEnableDummyWind
@@ -1179,10 +1183,19 @@ namespace Gallop
             }
         }
 
-        private float GetTargetCySpringFPS()
-        {
-            return 60.0f;
-        }
+        /// <summary>
+        /// Frecuencia a la que el juego alimenta el solver (no la del render). `NativeClothUpdate`
+        /// esta calibrado para pasos fijos de 30 Hz (o 60 Hz con `_targetCySpringFpsMode == 1`) y
+        /// `timescale` normalizado a 1. Llamarlo cada frame a 120 fps lo acelera x2 y el pelo se
+        /// siente "ligero" y se mueve de mas.
+        /// </summary>
+        public float TargetCySpringFPS => _targetCySpringFpsMode == 1 ? 60.0f : 30.0f;
+
+        /// <summary>
+        /// Permite desactivar el viento del solver (para aislar su efecto). El visor no aplica la
+        /// pista `charaWind` del live, asi que el viento del asset sopla constante.
+        /// </summary>
+        public bool EnableWind = true;
 
         public void SetSuppression(bool enable, float length)
         {
@@ -1468,10 +1481,29 @@ namespace Gallop
         private void ApplyEnvCollision(Parts parts, CySpringCollisionRuntimeData[] envColArray)
         {
             int index = (int)parts;
+
+            // La variante de CABEZA guarda el array en el controller (el juego lo escribe antes
+            // de validar el resorte); es el que usa SetEnableEnvCollision.
+            if (parts == Parts.Head)
+                _envColArray = envColArray;
+
             if (!IsValidPart(index))
                 return;
 
-            _springArray[index]?.ApplyEnvCollision(envColArray);
+            CySpring spring = _springArray[index];
+            if (spring == null)
+                return;
+
+            spring.ApplyEnvCollision(envColArray);
+
+            // Official ApplyEnvCySpringCollisonTo{Head,Body,Tail}:
+            //   CySpring.ApplyEnvCollision(spring, array);
+            //   CySpringController.SetupSpringParentWork(this);
+            // ApplyEnvCollision reconstruye el array NATIVO de colisiones, y al hacerlo deja
+            // ParentWorkIndex = 0 en TODAS ellas. Sin volver a recolectar los ParentWork, las
+            // esferas se resuelven contra el padre equivocado: el pelo recibe empujes que no
+            // existen (se mueve en angulos imposibles) y deja de chocar con cabeza y hombros.
+            SetupSpringParentWork();
         }
 
         public void SetEnableEnvCollision(bool enable)

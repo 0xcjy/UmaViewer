@@ -1,4 +1,4 @@
-using Gallop;
+﻿using Gallop;
 using Gallop.Live.Cutt;
 using RootMotion;
 using RootMotion.Dynamics;
@@ -62,7 +62,7 @@ public class UmaContainerCharacter : UmaContainer
     public GameObject TearPrefab_1;
     public List<TearController> TearControllers = new List<TearController>();
 
-    // Valor de stencil que aísla los "decals" de cara (cejas, lagrimas, rubor y efectos de
+    // Valor de stencil que aÃ­sla los "decals" de cara (cejas, lagrimas, rubor y efectos de
     // ojos) de un personaje del resto. Tiene que ser UNICO por instancia: esos pases no se
     // descartan por profundidad, solo por un test de stencil "igual", asi que dos personajes
     // con el mismo valor se pintan los decals unos encima de otros (p.ej. las cejas de los
@@ -117,11 +117,11 @@ public class UmaContainerCharacter : UmaContainer
     public DataRow MobHeadColor;
     public TextureList MobHeadTextures = new TextureList();
 
-    [Header("ModelController FaceLight鼻部阴影")]
+    [Header("ModelController FaceLighté¼»éƒ¨é˜´å½±")]
     public Transform HeadToonBaseTransform;
     public Renderer FaceRenderer;
-    // 这两个先保留你测试时效果好的值。
-    // 后面如果继续逆 asset holder，再换成官方 asset 里的值。
+    // è¿™ä¸¤ä¸ªå…ˆä¿ç•™ä½ æµ‹è¯•æ—¶æ•ˆæžœå¥½çš„å€¼ã€‚
+    // åŽé¢å¦‚æžœç»§ç»­é€† asset holderï¼Œå†æ¢æˆå®˜æ–¹ asset é‡Œçš„å€¼ã€‚
     public float FaceCenterUpOffset = 0.03f;
     public float FaceCenterForwardOffset = 0.03f;
     public bool FlipFaceForward = false;
@@ -251,298 +251,19 @@ public class UmaContainerCharacter : UmaContainer
 
     // (DATAMINE) El motor CySpring es un solver Verlet que se alimenta UNA vez por frame: el
     // "ancla" (SelfPosition) se recoge al principio del frame y su desplazamiento respecto al
-    // frame anterior es la energía de la cadena. Por eso NO se sub-divide el frame en pasos
+    // frame anterior es la energÃ­a de la cadena. Por eso NO se sub-divide el frame en pasos
     // fijos: ver AlterLateUpdateRuntime.
     [Header("CySpring (datamine)")]
     [Tooltip("Warm-up (s) al cargar: asienta la cadena antes de mostrarla (oficial: DEFAULT_WARMUPTIME). 0 = off.")]
     public float CySpringWarmUpTime = 1.0f;
-    [Tooltip("Enrutar el contenedor de CABEZA (pelo/orejas) al camino NATIVO CySpring (DLL) en vez de DynamicBone.\n" +
-             "OFF (por defecto): pelo/orejas y cola van por DynamicBone; la ropa (body+bust) por el puente nativo.")]
-    public bool CySpringHairViaNative = false;
-    [Tooltip("(DIAG) Loguea en consola la coherencia del reposo de las cadenas del pelo:\n" +
-             "Aim = (ParentRotation*InitLocalRotation)*BoneAxis  vs  direccion real hueso->hijo.\n" +
-             "Si el error es grande, el solver arranca con la cadena torcida.")]
-    public bool CySpringDiagnoseHair = true;
-    [Tooltip("(INTENTO 10) Desactivar IsLimit en los resortes del PELO antes del bind.\n" +
-             "Medido: Sp_He_Hair2_L/R_00 (los sidelocks) tienen IsLimit=1 con y en [-50,+10]; el motor\n" +
-             "recorta la rotacion relativa a esos limites y los deja clavados/torcidos.")]
-    public bool CySpringDisableHairLimits = false;
-    private int _diagFrameCounter;
-    private int _diagLogsDone;
-    // Colisores GENERADOS del pelo: prefijo de los nombres reservados + estado del ultimo ajuste,
-    // para poder recolocar/redimensionar las esferas EN CALIENTE desde el Inspector.
-    private const string CySpringHairArmCollisionPrefix = "Col_HairArm_";
-    private const string DynamicBoneArmColliderPrefix = "Col_HairArmDb_";
-    private const string DynamicBoneChestColliderPrefix = "Col_HairChestDb_";
-    private readonly List<string> _generatedHairCollisionNames = new List<string>();
-    // Esferas hombro->codo del camino DynamicBone y cadenas de pelo a las que van enganchadas.
-    // Se refrescan cada frame porque la inicialización del pelo puede reconstruir las partículas
-    // (SetupParticles las borra) después de haberlas enganchado.
-    private readonly List<DynamicBoneCollider> _dynamicBoneArmColliders = new List<DynamicBoneCollider>();
-    private readonly List<DynamicBone> _dynamicBoneHairChains = new List<DynamicBone>();
-    private System.Collections.Generic.List<CySpringCollisionRuntimeData> _hairRuntimeCollisions;
-    private float _lastArmRadius = -1.0f;
-    private int _lastArmCount = -1;
-    private float _lastArmOverlap = -1.0f;
-    private float _lastArmStartOffset = -1.0f;
-    // Extremos del tramo hombro->codo EN EL ESPACIO LOCAL del hueso del brazo, capturados una sola
-    // vez (pose de carga) para que el reparto no dependa de la pose del momento.
-    private Vector3[] _armSegmentLocalStart;
-    private Vector3[] _armSegmentLocalEnd;
-    private float[] _armSegmentLength;
-    [Header("CySpring - colisores del PELO (esferas generadas hombro -> codo)")]
-    [Tooltip("Genera las esferas del tramo HOMBRO->CODO de cada brazo y las asigna al pelo\n" +
-             "(delantero Y trasero). Sustituye el mecanismo anterior (lista blanca + una unica escala\n" +
-             "para todos los colisores del juego), que aplicaba el mismo radio a geometrias distintas.")]
-    public bool CySpringArmColliderEnabled = true;
-    [Header("DynamicBone - colisores generados: GIZMOS (solo editor)")]
-    [Tooltip("Dibuja en la SCENE VIEW las esferas generadas (brazo y pecho). Encendido por defecto;\n" +
-             "apagarlo deja el viewer limpio. No afecta a la fisica.")]
-    public bool DynamicBoneColliderGizmos = true;
-
-    [Tooltip("Radio de cada esfera, en metros. Aproximadamente el grosor del brazo.\n" +
-             "Referencia: el colisor de brazo del propio juego (Col_Arm_L_Hair) usa 0.04.\n" +
-             "El radio se multiplica por la escala del traje, como el resto de colisores.")]
-    public float CySpringArmColliderRadius = 0.035f;
-    [Tooltip("Esferas por brazo. 0 = AUTOMATICO (las justas para cubrir el tramo sin dejar huecos).\n" +
-             "POR ENCIMA DEL RESERVADO no surte efecto sin recargar la escena.")]
-    public int CySpringArmColliderCount = 0;
-    [Tooltip("Solape entre esferas contiguas: 1 = se tocan justo, 0.85 = se solapan un 15%.")]
-    public float CySpringArmColliderOverlap = 0.85f;
-    [Tooltip("Metros desde el hombro donde EMPIEZA la primera esfera (0 = en el hombro).\n" +
-             "SUBIRLO si la esfera del hombro se 'traga' el pelo: el motor empuja la punta a la\n" +
-             "superficie de la esfera y luego la reproyecta al largo del hueso, asi que una esfera que\n" +
-             "cubre el hueso entero lo deja ATRAPADO dentro (se ve el brazo atravesando el pelo).")]
-    public float CySpringArmColliderStartOffset = 0.0f;
-    [Tooltip("Esferas RESERVADAS por brazo (subir la cantidad EN CALIENTE sin recargar). Limite duro\n" +
-             "del motor: cada hueso admite 16 indices de colision, y las cadenas centrales (pelo\n" +
-             "trasero) usan los dos brazos, asi que 2x reservado debe quedar en 16 o menos.")]
-    public int CySpringArmColliderReserve = 8;
-    [Tooltip("Nombre base del hueso del brazo al que se anclan las esferas: <base>_<lado> (p. ej. Arm_L).")]
-    public string CySpringArmColliderAnchorBone = "Arm";
-    [Tooltip("Hueso donde EMPIEZA el tramo: <base>_<lado> (el hombro = origen del brazo).")]
-    public string CySpringArmColliderStartBone = "Arm";
-    [Tooltip("Hueso donde ACABA el tramo: <base>_<lado> (el codo).")]
-    public string CySpringArmColliderEndBone = "Elbow";
-    [Tooltip("Sufijos de lado. El nombre del hueso es <base>_<sufijo>.")]
-    public string[] CySpringArmColliderSides = new string[] { "L", "R" };
-    [Tooltip("(TEMP) Dibuja en la SCENE VIEW los colisores generados y el radio propio de cada hueso\n" +
-             "de pelo. Solo editor. Encendido por defecto; apagarlo deja el viewer limpio.")]
-    public bool CySpringHairColliderGizmos = true;
-
-    /// <summary>
-    /// Si se DIBUJAN las esferas de colision (cualquiera de los dos interruptores vale). No tiene
-    /// nada que ver con que la fisica las use: los colisores se crean y se enganchan siempre.
-    /// </summary>
-    private bool ColliderGizmosVisible => CySpringHairColliderGizmos || DynamicBoneColliderGizmos;
-
-    [Header("DynamicBone - colisores del PELO (esferas hombro -> codo)")]
-    [Tooltip("Genera la MISMA rejilla de esferas hombro->codo que el camino nativo y la engancha a\n" +
-             "TODAS las cadenas de pelo que simula DynamicBone. Radio, cantidad (0 = automática),\n" +
-             "solape y arranque salen de 'CySpring - colisores del PELO', así que los dos caminos\n" +
-             "dan la misma geometría. El asset del juego solo trae una esfera pequeña en el codo\n" +
-             "(radio x0.3), por eso el mechón atravesaba el brazo. No afecta al camino nativo.")]
-    public bool DynamicBoneArmColliderEnabled = true;
-
-    [Header("DynamicBone - esferas del PECHO (bloque central)")]
-    [Tooltip("Añade filas horizontales de esferas delante del pecho para que el pelo no se hunda en\n" +
-             "la ropa. La primera fila va en la línea de la clavícula y las demás caen hacia abajo,\n" +
-             "centradas en el cuerpo.")]
-    public bool DynamicBoneChestColliderEnabled = true;
-    [Tooltip("Radio (m) de las esferas del pecho. Va aparte del radio de los brazos a propósito.")]
-    public float DynamicBoneChestColliderRadius = 0.03f;
-    [Tooltip("Número de filas, de arriba hacia abajo. 3 = clavícula + dos debajo.")]
-    public int DynamicBoneChestColliderRows = 3;
-    [Tooltip("Esferas por fila. 0 = AUTOMÁTICO: las que quepan en el ancho, una pegada a la siguiente.")]
-    public int DynamicBoneChestColliderCount = 0;
-    [Tooltip("Solape entre esferas contiguas: 1 = la siguiente empieza justo donde acaba la anterior.")]
-    public float DynamicBoneChestColliderOverlap = 1f;
-    [Tooltip("Separación (m) entre filas, hacia abajo.")]
-    public float DynamicBoneChestColliderSpacing = 0.05f;
-    [Tooltip("Sube (m) TODAS las filas del pecho respecto a la línea de la clavícula (positivo = hacia\n" +
-             "arriba). Sirve para que la barrera quede a la altura real del pecho en vez de en la clavícula.")]
-    public float DynamicBoneChestColliderLiftY = 0.015f;
-    [Tooltip("ANCHO (m) de la fila, de un lado al otro del pecho. Se multiplica por el BodyScale.")]
-    public float DynamicBoneChestColliderWidth = 0.24f;
-    [Tooltip("Opcional: si tiene DOS huesos válidos, el ancho se mide entre ellos en vez de usar\n" +
-             "'Width' (p. ej. Arm_L/Arm_R = ancho de hombros).")]
-    public string[] DynamicBoneChestColliderSpanBones = new string[0];
-    [Tooltip("Filas EXTRA de profundidad a cada lado (una adelante y otra atrás). 1 = una fila por\n" +
-             "lado (perfil de 3); 2 = dos filas por lado.")]
-    public int DynamicBoneChestColliderSideRows = 1;
-    [Tooltip("Distancia (m) de cada fila lateral respecto a la fila frontal, en profundidad.")]
-    public float DynamicBoneChestColliderSideOffset = 0.05f;
-    [Tooltip("Nivel a partir del cual se añaden las filas laterales (0 = la de la clavícula).\n" +
-             "1 = solo los dos niveles de abajo, como en el dibujo.")]
-    public int DynamicBoneChestColliderSideFromRow = 1;
-    [Tooltip("Radio (m) de las esferas de la ESPALDA (las azules). Van aparte y más pequeñas que las\n" +
-             "del pecho a propósito: sobresalen menos del cuerpo, así que el pelo no se abomba hacia atrás.")]
-    public float DynamicBoneChestColliderBackRadius = 0.015f;
-    [Tooltip("Filas de la ESPALDA. Al ser la mitad de gruesas que las del busto hacen falta el doble de\n" +
-             "filas (4) para cubrir la misma altura.")]
-    public int DynamicBoneChestColliderBackRows = 4;
-
-    [Header("DynamicBone - RADIO PROPIO DEL PELO (las esferas blancas)")]
-    [Tooltip("Fija el radio propio de los huesos de pelo (el '_collisionRadius' del asset, que es lo que\n" +
-             "el solver suma al radio del colisor). Solo afecta a las cadenas cuyo hueso RAÍZ empieza por\n" +
-             "el filtro. El valor es el del componente a escala ×1: DynamicBone lo multiplica por la escala\n" +
-             "del traje (con 0.989, 0.0275 se dibuja como 0.0272). Lista vacía = no tocar.")]
-    public HairRadiusRule[] DynamicBoneHairRadiusOverrides = new HairRadiusRule[]
-    {
-        new HairRadiusRule { BoneFilter = "Sp_He_Hair4", Radius = 0.0275f },
-        new HairRadiusRule { BoneFilter = "Sp_He_Hair5", Radius = 0.0275f },
-    };
-
-    [System.Serializable]
-    public class HairRadiusRule
-    {
-        [Tooltip("Prefijo del nombre del hueso RAÍZ de la cadena (p. ej. 'Sp_He_Hair4').")]
-        public string BoneFilter = "Sp_He_Hair4";
-        [Tooltip("Radio para todos los huesos de esa cadena, a escala ×1 (se multiplica por la escala del traje).")]
-        public float Radius = 0.0275f;
-    }
-
-    [Header("CySpring - colisores del CUERPO (clavicula y espalda)")]
-    [Tooltip("Genera las esferas del CUERPO para que el pelo no entre en el (ni en la ropa pegada):\n" +
-             "una COLUMNA por la espalda (del hueso de arriba al de abajo) y una FILA en la clavicula\n" +
-             "(de hombro a hombro). Son las que empujan al pelo por el interior del torso.")]
-    public bool CySpringBodyColliderEnabled = true;
-    [Tooltip("Radio (m) de las esferas del cuerpo. SUBIRLO hasta que el pelo quede por FUERA de la ropa\n" +
-             "(la ropa no empuja al pelo, asi que el colisor debe llegar a su superficie).")]
-    public float CySpringBodyColliderRadius = 0.06f;
-    [Tooltip("COLUMNA: esferas de la espalda. 0 = automatico (segun el largo y el radio).")]
-    public int CySpringBodyColliderColumnCount = 0;
-    [Tooltip("COLUMNA: solape entre esferas contiguas.")]
-    public float CySpringBodyColliderColumnOverlap = 0.85f;
-    [Tooltip("COLUMNA: hueso de ARRIBA (se sube por los padres hasta el de abajo).")]
-    public string CySpringBodyColliderTopBone = "Chest";
-    [Tooltip("COLUMNA: hueso de ABAJO (la cadera).")]
-    public string CySpringBodyColliderBottomBone = "Hip";
-    [Tooltip("FILA de la clavicula: esferas entre los dos huesos de abajo (0 = sin fila).")]
-    public int CySpringBodyColliderRowCount = 4;
-    [Tooltip("FILA: huesos entre los que se reparte. Con Shoulder_L/R queda en la clavicula; con\n" +
-             "Arm_L/Arm_R cubre toda la anchura de los hombros.")]
-    public string[] CySpringBodyColliderRowBones = new string[] { "Shoulder_L", "Shoulder_R" };
-
-    private readonly List<string> _generatedBodyCollisionNames = new List<string>();    private readonly List<string> _generatedBodyColumnNames = new List<string>();
-    private readonly List<string> _generatedBodyRowNames = new List<string>();
-    private float _lastBodyColliderRadius = -1.0f;
-    private const string CySpringHairBodyPrefix = "Col_HairBody_";
-    private const string CySpringHairRowPrefix = "Col_HairRow_";
-
-    [Header("CySpring - GROSOR del pelo (radio PROPIO de cada hueso, las esferas CIAN)")]
-    [Tooltip("Ajusta el radio propio de los huesos de pelo para que represente el GROSOR REAL del\n" +
-             "mechon. El motor separa por R = radio_colisor + radio_hueso, asi que el radio que trae el\n" +
-             "asset (0.03-0.045) deja que la MALLA del pelo (mucho mas ancha) entre en el brazo aunque\n" +
-             "las esferas se solapen. Se aplica EN CALIENTE y se ve en los gizmos cian.")]
-    public bool CySpringHairBoneRadiusEnabled = true;
-    [Tooltip("Radio (m) en la RAIZ de cada cadena de pelo (nacimiento del mechon).\n" +
-             "OJO: no lo subas mucho. El motor empuja la punta a la superficie de la esfera y luego la\n" +
-             "reproyecta al largo del hueso, asi que si R = radio_esfera + radio_hueso supera\n" +
-             "| |S-hueso - centro_esfera| - largo_hueso |, el hueso se queda ATRAPADO dentro de la esfera\n" +
-             "(se ve el brazo atravesando el pelo). Medido: con 0.03-0.04 la cadena se libra.")]
-    public float CySpringHairBoneRadiusBase = 0.05f;
-    [Tooltip("Radio (m) en la PUNTA de cada cadena de pelo (el mechon se afila).")]
-    public float CySpringHairBoneRadiusTip = 0.03f;
-
-    /// <summary>
-    /// Grosor (radio propio) DISTINTO para una cadena concreta. La primera entrada cuya `BoneFilter`
-    /// este contenida en el hueso RAIZ de la cadena manda; si ninguna coincide se usan los valores
-    /// generales (`CySpringHairBoneRadiusBase` / `...Tip`).
-    /// </summary>
-    [System.Serializable]
-    public class CySpringHairRadiusOverride
-    {
-        [Tooltip("Texto que debe CONTENER el hueso raiz de la cadena (p. ej. 'Sp_He_Hair2').")]
-        public string BoneFilter = "Sp_He_Hair2";
-        public bool Enabled = true;
-        [Tooltip("Radio (m) en la RAIZ del mechon.")]
-        public float RadiusBase = 0.0375f;
-        [Tooltip("Radio (m) en la PUNTA del mechon.")]
-        public float RadiusTip = 0.0225f;
-    }
-
-    [Tooltip("Grosor por cadena. Sirve para que las coletas DELANTERAS (Sp_He_Hair2) tengan un radio\n" +
-             "propio distinto del pelo de atras: la primera entrada que coincida con el hueso raiz manda.")]
-    public List<CySpringHairRadiusOverride> CySpringHairBoneRadiusOverrides = new List<CySpringHairRadiusOverride>
-    {
-        new CySpringHairRadiusOverride()
-    };
-
-    [Header("CySpring - ESCAPE: correccion propia DESPUES del solver nativo")]
-    [Tooltip("El solver nativo empuja la PUNTA del hueso a la superficie de la esfera y DESPUES la\n" +
-             "reproyecta al largo del hueso; si la esfera cubre tambien el lado opuesto, la punta vuelve\n" +
-             "a caer dentro y la cadena queda ATRAPADA (se ve el brazo atravesando el pelo, y AGRANDAR la\n" +
-             "esfera lo empeora). Esta pasada, ya terminada la simulacion, gira el hueso lo MINIMO\n" +
-             "necesario para que su punta salga (ley del coseno); si no hay salida posible la deja en la\n" +
-             "direccion de maximo alejamiento y lo cuenta en consola.")]
-    public bool CySpringHairEscapeFix = true;
-    [Tooltip("(DIAG) Loguea cada 60 frames cuantos huesos ha rescatado el escape y el giro maximo.")]
-    public bool CySpringHairEscapeDiagnose = true;
-
-    private int _escapeCorrections;
-    private int _escapeImpossible;
-    private float _escapeMaxAngle;
-    private int _escapeFrameCounter;
-
-    [Header("CySpring - SONDAS LATERALES del mechon (ancho, no profundidad)")]
-    [Tooltip("El motor solo tiene UNA esfera isotropa por hueso (centrada en la punta), asi que su\n" +
-             "'ancho' y su 'profundidad' son el mismo radio: engordarlo empuja el mechon en TODAS las\n" +
-             "direcciones (hacia arriba incluido) en vez de apartar solo el lado que toca. Con esto la\n" +
-             "pasada de escape prueba ademas puntos LATERALES virtuales del hueso (sin crear huesos reales\n" +
-             "ni tocar el rig ni la malla) y gira el hueso lo minimo para que salga el lado que toca.")]
-    public bool CySpringHairProbeEnabled = true;
-    [Tooltip("Puntos laterales por hueso (ademas de la punta). 2 = uno a cada lado.")]
-    public int CySpringHairProbeCount = 2;
-    [Tooltip("(Camino NATIVO) Distancia (m) de cada sonda al eje del hueso. En el camino DynamicBone la\n" +
-             "posicion es TANGENTE automatica: radio del hueso + radio de la sonda.\n" +
-             "Distancia (m) de cada sonda al eje del hueso: el ANCHO que quieres cubrir.")]
-    public float CySpringHairProbeOffset = 0.04f;
-    [Tooltip("(Camino DynamicBone) Separacion EXTRA (m) de las sondas sobre la posicion tangente\n" +
-             "(radio_hueso + radio_sonda). 0 = las tres esferas se tocan, como en el esquema.")]
-    public float CySpringHairProbeGap = 0.0f;
-    [Tooltip("Cuantos huesos CON Malla desde la punta llevan sondas. 1 (por defecto) = solo el nivel mas\n" +
-             "profundo de la jerarquia; 2 añadiria tambien el tramo anterior.")]
-    public int CySpringHairProbeLevelsFromTip = 1;
-    [Tooltip("Radio efectivo de las sondas LATERALES, como fraccion del radio propio del hueso (1 = igual).\n" +
-             "Son puntos de test independientes del hueso, asi que pueden ser mas finos que el: con 0,50 el\n" +
-             "centro mantiene el grosor del pelo y los laterales son la mitad de gruesos.")]
-    public float CySpringHairProbeRadiusScale = 0.5f;
-    [Tooltip("Solo las cadenas cuyo hueso raiz CONTENGA alguno de estos textos. Por defecto los tres\n" +
-             "mechones de prueba: Hair4_R, Hair4_L y Hair4_C (el central del trasero).")]
-    public string[] CySpringHairProbeBoneFilters = new string[]
-    {
-        "Sp_He_Hair4_R",
-        "Sp_He_Hair4_L",
-        "Sp_He_Hair4_C"
-    };
-    [Tooltip("Distancia (m) a lo largo del mechon DESDE la referencia de abajo: NEGATIVO la sube hacia el\n" +
-             "hueso, POSITIVO la baja mas alla de la punta. Con 0 queda en la referencia.")]
-    public float CySpringHairProbeAlongOffset = 0.0f;
-    [Tooltip("Referencia de la fila de sondas:\n" +
-             "  ENCENDIDO (por defecto) = extremo visible de la MALLA (lo mas abajo del mechon).\n" +
-             "  APAGADO = posicion del nivel mas profundo de la JERARQUIA (el hueso).")]
-    public bool CySpringHairProbeAtMeshEnd = true;
-    [Tooltip("Mide el EJE DE ANCHO de la malla (autovector principal de los vertices que domina cada\n" +
-             "hueso, en el plano perpendicular al mechon). Recomendado: el ancho real no es una suposicion.")]
-    public bool CySpringHairProbeAxisFromMesh = true;
-    [Tooltip("Eje de ancho MANUAL (local al hueso) si no se mide de la malla. (1,0,0) = X local.")]
-    public Vector3 CySpringHairProbeAxisOverride = new Vector3(1.0f, 0.0f, 0.0f);
-
-    // Eje de ANCHO medido por hueso (local), y cache de posiciones de sonda para los gizmos.
-    private readonly Dictionary<Transform, Vector3> _probeAxisLocal = new Dictionary<Transform, Vector3>();
-    private readonly HashSet<Transform> _measuredProbeBones = new HashSet<Transform>();
-    // Medicion de MALLA por hueso: cuantos vertices domina (0 = hueso "fantasma": girarlo no mueve
-    // nada visible) y hasta donde llega su malla a lo largo del mechon (Z local).
-    private readonly Dictionary<Transform, int> _probeMeshVertCount = new Dictionary<Transform, int>();
-    private readonly Dictionary<Transform, float> _probeMeshZMax = new Dictionary<Transform, float>();
-    private CySpringHairProbeVisualizer _probeVisualizer;
-    private int _probeMeasureAttempts;
-    private readonly List<Vector3> _probeWorldCache = new List<Vector3>();
-    private readonly List<float> _probeRadiusCache = new List<float>();
-    // GameObjects vacios (uno por sonda) para poder verlas/seleccionarlas en la jerarquia.
-    private readonly Dictionary<Transform, Dictionary<int, Transform>> _probeObjects =
-        new Dictionary<Transform, Dictionary<int, Transform>>();
+    [Tooltip("Re-liga la fisica UNA vez cuando el live ya ha posado al personaje. OJO: medido - captura la pose de reposo en un frame cualquiera de la cancion, asi que la cola acaba apuntando hacia arriba. Desactivado por defecto.")]
+    public bool CySpringRebindOnAnimatedPose = false;
+    [Tooltip("Viento del solver CySpring (parametros del asset). El visor no aplica la pista charaWind del live, asi que sopla constante; desactivado por defecto hasta implementar esa pista.")]
+    public bool CySpringEnableWind = false;
+    [Tooltip("Solver propio de falda (SkirtController + NativeSkirtUpdate: planos de rodilla/tobillo). Necesario: sin el, la falda se mete en las piernas.")]
+    public bool CySpringEnableSkirtSolver = true;
+    [Tooltip("Dibuja en la SCENE VIEW los colisores del asset (solo editor). No afecta a la fisica.")]
+    public bool ColliderGizmosVisible = true;
 
     private BipedIK IK;
     private List<Transform> _humanoidBones;
@@ -552,6 +273,19 @@ public class UmaContainerCharacter : UmaContainer
     // CySpringDataContainer is only data; CySpringController owns simulation.
     private CySpringController _cySpringController;
     private bool _cySpringLoaded;
+    // Ancla del solver (ver BindCySpringOwnerAnchor) y su resolucion diferida.
+    private bool _cySpringAnchorResolved;
+    private Transform _cySpringHip;
+    private bool _cySpringPoseRebound;
+    // LoadPhysics se llamo antes de que el modelo estuviera montado (sin nodo "Position").
+    private bool _cySpringBindPending;
+    // SkirtParamDataAsset pendiente de crear (el modelo no estaba montado al cargar la falda).
+    private SkirtParamDataAsset _pendingSkirtParam;
+    // Acumulador del paso fijo del solver (30/60 Hz), no el del render.
+    private float _cySpringStepAccumulator;
+    // Estabilidad del modelo antes de ligar (ver IsModelReadyForCySpringBind).
+    private int _bindReadyFrames;
+    private int _bindLastContainerCount = -1;
     private SkirtController _skirtController;
     private CySpringOwner _cySpringOwner;
     private List<UmaDatabaseEntry> LoadedAssets = new List<UmaDatabaseEntry>();
@@ -619,7 +353,7 @@ public class UmaContainerCharacter : UmaContainer
         UpBodyPosition = UpBodyBone.transform.localPosition;
         UpBodyRotation = UpBodyBone.transform.localRotation;
 
-        // 此时已完成模型合并和身高缩放，且预览动画尚未加载，适合作为稳定的导出参考姿势。
+        // æ­¤æ—¶å·²å®Œæˆæ¨¡åž‹åˆå¹¶å’Œèº«é«˜ç¼©æ”¾ï¼Œä¸”é¢„è§ˆåŠ¨ç”»å°šæœªåŠ è½½ï¼Œé€‚åˆä½œä¸ºç¨³å®šçš„å¯¼å‡ºå‚è€ƒå§¿åŠ¿ã€‚
         CaptureInitialBodyPose();
 
         //Models must be merged before handling extra morphs
@@ -899,6 +633,18 @@ public class UmaContainerCharacter : UmaContainer
             return;
         }
 
+        // El modelo se monta por partes y puede NO estar completo aqui (medido: el nodo "Position"
+        // todavia no existe cuando el builder llama a LoadPhysics). Si se liga ahora, la pose de
+        // reposo del spring se captura a medias: los huesos del pelo quedan a 1,2 m de la cabeza
+        // en el "rest" y el solver los arrastra ahi toda la sesion (pelo/coletas flotando).
+        // En los personajes que se cargan a mitad de la cancion (streaming) el modelo sigue
+        // montandose varios frames despues, asi que se exige que este completo Y estable.
+        if (!IsModelReadyForCySpringBind())
+        {
+            _cySpringBindPending = true;
+            return;
+        }
+
         cySpringDataContainers = new List<CySpringDataContainer>(
             PhysicsContainer.GetComponentsInChildren<CySpringDataContainer>(true)
         );
@@ -909,99 +655,12 @@ public class UmaContainerCharacter : UmaContainer
             return;
         }
 
-        // Física de ropa/pelo: DOS vías, una por tipo de prenda.
-        //
-        // - DynamicBone: pelo, orejas y cola. Funciona SIN CySpringPlugin.dll y es el
-        //   comportamiento de cabello/cola que se quiere conservar.
-        // - Puente nativo CySpringController + CySpringPlugin.dll: body (falda/ropa) y bust
-        //   (ropa interior). Es lo que arregló la ropa al añadir la DLL.
-        //
-        // Se reparten por tipo para que no se peleen por los mismos huesos: DynamicBone se
-        // queda con head (pelo/orejas) y tail (cola); el puente nativo con body y bust.
-        //
-        // OJO con el bust: en el flujo oficial el contenedor de bust NO se carga solo, entra
-        // como asset SECUNDARIO de la secuencia de HEAD (main=head, add=bust). Por eso, si el
-        // pelo se lleva a DynamicBone y head deja de entrar al nativo, CySpringController
-        // carga el bust como principal para que la ropa interior no se quede sin física
-        // (ver LoadHeadCollisionParamSequence / LoadHeadSpringParamSequence).
-        var dbBones = new Dictionary<string, Transform>();
-        foreach (var bone in GetComponentsInChildren<Transform>())
-        {
-            if (bone == null || string.IsNullOrEmpty(bone.name)) continue;
-            if (!dbBones.ContainsKey(bone.name))
-                dbBones.Add(bone.name, bone);
-        }
-
-        var dbColliders = new Dictionary<string, Transform>();
-
-        // Contenedores que va a simular el puente nativo (ropa), y que por tanto NO deben
-        // recibir DynamicBone.
-        var nativeContainers = new List<CySpringDataContainer>();
-
-        // (DATAMINE) El juego lleva por CySpring el pelo y la tela; aquí el "native kind" decide
-        // que contenedores simula el puente nativo y por tanto NO reciben DynamicBone.
-        // kind: 0 = head(pelo) · 1 = body(ropa) · 2 = bust · 3 = tail.
-        System.Func<int, bool> isNativeKind = (k) => k == 1 || k == 2 || (CySpringHairViaNative && k == 0);
-
-        for (int i = 0; i < cySpringDataContainers.Count; i++)
-        {
-            CySpringDataContainer container = cySpringDataContainers[i];
-            if (container == null) continue;
-
-            int kind = GuessCySpringContainerKind(container);
-
-            // Los contenedores de ropa (y, opcionalmente, el pelo) los lleva el puente nativo
-            // (que ya tiene su propia colisión), así que no reciben DynamicBone.
-            if (isNativeKind(kind))
-                nativeContainers.Add(container);
-
-            // (P1, COLISIÓN) Los colisores se crean de TODOS los contenedores, no solo de
-            // los que simula DynamicBone. Motivo MEDIDO: los dos colisores que la cola
-            // necesita (Col_B_Hip_Tail y Col_B_Chest_Tail) están definidos en el
-            // contenedor de la ROPA (pfb_bdy0002_00_cloth00) y el contenedor de la cola
-            // tiene collisionParam VACÍO (n=0). Antes los contenedores de ropa hacían
-            // `continue` y nunca llegaban a InitiallizeCollider, así que esos dos
-            // colisores no se creaban y la cola se atravesaba el cuerpo y la ropa:
-            // medido 0 colisores en las 5 partículas de la cola. El pelo sí los tenía
-            // (3 por partícula) porque su contenedor sí pasaba por aquí.
-            foreach (var kv in container.InitiallizeCollider(dbBones))
-            {
-                if (!dbColliders.ContainsKey(kv.Key)) dbColliders.Add(kv.Key, kv.Value);
-            }
-        }
-
-        for (int i = 0; i < cySpringDataContainers.Count; i++)
-        {
-            CySpringDataContainer container = cySpringDataContainers[i];
-            if (container == null) continue;
-
-            int kind = GuessCySpringContainerKind(container);
-            if (isNativeKind(kind)) continue;
-
-            container.InitializePhysics(dbBones, dbColliders);
-        }
-
-        // (PELO) Radio propio de las esferas blancas del pelo: se fija DESPUES de InitializePhysics,
-        // que es quien copia el '_collisionRadius' del asset a cada hueso.
-        ApplyDynamicBoneHairRadiusOverrides(cySpringDataContainers);
-
-        // (SONDAS LATERALES) COMENTADO junto con el resto de las sondas (coste en el live).
-        // _probeMeasureAttempts = 0;
-        // MeasureDynamicBoneProbeAxes(cySpringDataContainers);
-
-        // (DynamicBone) El pelo que simula DynamicBone solo recibía los colisores del asset, y para
-        // el brazo es una esfera pequeña en el codo: el tramo hombro->codo no empujaba el mechón.
-        // Se monta el "tubo" del brazo aquí, después de crear las cadenas, para poder engancharlo
-        // a todas sus partículas.
-        BuildDynamicBoneArmColliders(cySpringDataContainers, dbBones);
-
-        _cySpringLoaded = cySpringDataContainers.Count > 0;
-
-        // Puente nativo SOLO para la ropa. Si no hay contenedores de ropa, no se monta (el
-        // pelo ya está cubierto por DynamicBone y no necesita la DLL).
-        if (nativeContainers.Count == 0)
-            return;
-
+        // Fisica (ropa, pelo y cola): UNA sola via, el puente nativo
+        // CySpringController + CySpringPlugin.dll, que es el mismo solver que usa el juego.
+        // Cada cadena se simula con los datos del asset (springParam / collisionParam) tal cual:
+        // no hay DynamicBone ni colisores o radios generados por el visor. El reparto de
+        // colisiones entre prendas lo hace el propio controller (Body y Tail comparten lista:
+        // CreateGetBodyRuntimeDataList / CreateGetTailRuntimeDataList).
         Dictionary<string, Transform> transformCacheDic =
             BuildCySpringTransformCache(transform, out HashSet<string> duplicateBoneNames);
 
@@ -1027,69 +686,13 @@ public class UmaContainerCharacter : UmaContainer
             hip = transform;
         }
 
-        // (P1) Solo la ROPA entra al puente nativo: el pelo y la cola ya los simula DynamicBone
-        // y meterlos aquí también los deformaba.
-        var slots = SplitCySpringContainers(nativeContainers);
+        var slots = SplitCySpringContainers(cySpringDataContainers);
 
-        // La falda declara su volumen de sector de cadera (Col_B_Hip_MSkirt_*) SOLO en el hueso
-        // raiz de cada cadena; los huesos hijos, que son los que estan a la altura del gluteo,
-        // nombran unicamente las capsulas del muslo. Sin el volumen de cadera en los hijos la
-        // tela se puede plegar hacia dentro y el cuerpo asoma por detrás. Se unen los nombres
-        // de la raiz a los hijos para que toda la cadena colisione igual.
+        // (PENDIENTE) La falda declara su volumen de sector de cadera (Col_B_Hip_MSkirt_*) SOLO
+        // en el hueso raiz de cada cadena; los hijos solo nombran las capsulas del muslo, asi que
+        // sin el volumen de cadera la tela puede plegarse hacia dentro. Heredar los nombres de la
+        // raiz en los hijos es lo unico que queda del camino antiguo.
         PropagateClothCollisionNames(slots.body);
-
-
-        // (SOLO PELO NATIVO) Todo el andamiaje de colisores y límites del pelo pertenece al
-        // camino nativo (CySpringPlugin.dll). Con el pelo en DynamicBone (CySpringHairViaNative
-        // off, por defecto) no se ejecuta nada de esto: el pelo lo resuelve DynamicBone.
-        if (CySpringHairViaNative)
-        {
-            // =================================================================================
-            // COLISORES DEL PELO (camino nuevo). Como funciona el motor (datamine 04 §1.1): una
-            // cadena de pelo solo sufre el empuje de los colisores que SU lista de nombres declara,
-            // y el choque efectivo es R = colider.Radius + hueso.CollisionRadius. Los colisores que
-            // trae el juego (Col_Arm_L_Hair / Col_Elbow_* / Col_Wrist_*) estaban pensados para OTRA
-            // geometria y se escalaban TODOS con un unico factor, que aplica el mismo radio a
-            // geometrias distintas.
-            //
-            // Aqui se generan esferas propias: pegadas unas a otras a lo largo del tramo
-            // hombro->codo, de radio ~grosor del brazo, de modo que el pelo se desliza sobre un
-            // "tubo" y no recibe golpes sueltos. Se reemplaza la lista de TODO el pelo (raiz e
-            // hijos, que declaran listas propias) por las esferas generadas.
-            //
-            // (PASO 1) crear las esferas en el contenedor del pelo.
-            // (PASO 2) asignarlas a todas las cadenas de pelo (delantero Y trasero).
-            // La colocacion (posicion y radio reales) se hace DESPUES del bind, en
-            // ApplyArmColliderLayout(): el motor solo lee los colisores del array nativo.
-            // =================================================================================
-            BuildArmColliderGrid(slots.head, transformCacheDic);
-            BindGeneratedCollidersToHair(slots.head);
-
-            // (INTENTO 10, EN CODIGO) Desactivar IsLimit SOLO en los resortes del PELO, antes del bind.
-            // Medido (consola [DiagPelo]): los sidelocks Sp_He_Hair2_L/R_00 tienen IsLimit=1 con
-            // min=(150,50,180) max=(90,10,180); el motor recorta la rotacion relativa al reposo a
-            // x[-150,+90] y[-50,+10] z[-180,+180] y recomienda TargetPosition desde ahi, dejando la
-            // coleta clavada/torcida. El resto del pelo y las orejas ya van con IsLimit=0.
-            if (CySpringDisableHairLimits && slots.head != null && slots.head.springParam != null)
-            {
-                for (int i = 0; i < slots.head.springParam.Count; i++)
-                {
-                    Gallop.CySpringParamDataElement sp = slots.head.springParam[i];
-                    if (sp == null) continue;
-
-                    sp._isLimit = false;
-
-                    if (sp._childElements != null)
-                    {
-                        for (int k = 0; k < sp._childElements.Count; k++)
-                        {
-                            if (sp._childElements[k] != null)
-                                sp._childElements[k]._isLimit = false;
-                        }
-                    }
-                }
-            }
-        }
 
         _cySpringOwner = new UmaViewerCySpringOwner(this);
         _cySpringController = CySpringController.AddController(gameObject, hip, _cySpringOwner);
@@ -1100,6 +703,9 @@ public class UmaContainerCharacter : UmaContainer
             _cySpringLoaded = false;
             return;
         }
+
+        BindCySpringOwnerAnchor(_cySpringController, hip);
+        _cySpringController.EnableWind = CySpringEnableWind;
 
         _cySpringController.LoadFromDataContainers(
             transformCacheDic,
@@ -1118,37 +724,9 @@ public class UmaContainerCharacter : UmaContainer
         _cySpringController.Reset();
         _cySpringLoaded = true;
 
-        // (INTENTO 9 / DIAG) Coherencia del "reposo" de las cadenas del pelo. El motor
-        // (CySpring_SolveBone @180009760) calcula Aim = (ParentRotation*InitLocalRotation)*BoneAxis
-        // y FinalRotation = quatFromTo(Aim, dir)*qg. Debe cumplirse
-        // Aim ~= normalize(hijo.pos - hueso.pos); si no, el solver arranca con la cadena torcida.
-        if (CySpringDiagnoseHair && CySpringHairViaNative)
-        {
-            CySpring headSpring = _cySpringController.GetSpringArray(0);
-            if (headSpring != null)
-                headSpring.DiagLogRestCoherence("DIAG");
-        }
-
-        if (CySpringHairViaNative)
-        {
-            // (PASO 3) Capturar el RUNTIME de colisiones del pelo (nuestras esferas existen ya tras
-            // el bind) y COLOCARLAS. Se hace ANTES del warm-up: el warm-up ya simula, y con las
-            // esferas sin colocar (apiladas en el origen del hueso) el pelo arrancaria deformado. A
-            // partir de aqui ApplyArmColliderLayout() reacciona EN CALIENTE a los cambios del Inspector.
-            _hairRuntimeCollisions = _cySpringController.GetCollisionRuntimeList(0);
-            _lastArmRadius = -1.0f;
-            _lastArmCount = -1;
-            _lastArmOverlap = -1.0f;
-            AttachHairColliderGizmos();
-            ApplyArmColliderLayout(true);
-            ApplyHairBoneRadiusLayout(true);
-            MeasureProbeAxes();
-            UpdateHairBoneVisualizers();
-        }
-
-        // (DATAMINE/P1) Warm-up oficial: el juego asienta la cadena antes de mostrarla
+        // Warm-up oficial: el juego asienta la cadena antes de mostrarla
         // (CharaPropController.ReserveWarmingUpCySpring + TryUpdateWarmUp). Sin esto la pose
-        // simulada arranca "clavada" en la de carga.
+        // simulada arranca clavada en la de carga.
         if (CySpringWarmUpTime > 0.0f)
         {
             _cySpringController.ReserveWarmingUpCySpring(CySpringWarmUpTime);
@@ -1204,1984 +782,60 @@ public class UmaContainerCharacter : UmaContainer
         return null;
     }
 
+    /// <summary>
+    /// Indica si el live ya ha posado al personaje (la animacion ya se ha aplicado al menos una
+    /// vez). Fuera de un live no se re-liga: el visor de personaje ya esta en su pose.
+    /// </summary>
+    private bool IsAnimatedPoseReadyForCySpring()
+    {
+        Gallop.Live.Director director = Gallop.Live.Director.instance;
+
+        if (director == null || !director._isLiveSetup)
+            return false;
+
+        return director._liveCurrentTime > 0.2f;
+    }
+
+    /// <summary>
+    /// Ancla del motor CySpring. El live coloca al personaje moviendo el nodo "Position" del rig,
+    /// no el contenedor; y el solver trabaja con el owner en el ORIGEN (UpdatePrevousPosture pone
+    /// a cero su posicion y EndSimulation la restaura). Si el owner es el contenedor, el rig queda
+    /// a metros del origen (medido: ~2,9 m) y el motor resuelve posiciones de colision y fuerzas
+    /// de desplazamiento en un espacio desplazado: el pelo atraviesa el cuerpo y "se sube" al
+    /// andar. Con el rig root como owner, el espacio del solver coincide con el del personaje.
+    /// </summary>
+    private void BindCySpringOwnerAnchor(CySpringController controller, Transform hip)
+    {
+        if (controller == null)
+            return;
+
+        _cySpringHip = hip;
+
+        Transform rigRoot = transform.Find("Position");
+
+        if (rigRoot == null)
+            rigRoot = hip != null ? hip : transform;
+
+        controller.SetOwner(rigRoot.gameObject, hip, _cySpringOwner);
+
+        // El plano de falda se coloca con `SkirtRootPos - RootPos` y se compara contra posiciones de
+        // hueso que estan en el espacio de este mismo owner (que en el step vale 0). Si RootPos se
+        // lee del contenedor, el plano queda desplazado por la posicion del personaje (medido en el
+        // live: hasta 8,5 m de empuje en un panel). Tiene que ser el ancla del motor.
+        if (_skirtController != null)
+            _skirtController.SetRootAnchor(rigRoot);
+    }
+
     private void LinkSkirtControllerToCySpring()
     {
+        if (!CySpringEnableSkirtSolver)
+            return;
         if (_cySpringController == null || _skirtController == null)
             return;
 
     _cySpringController.CreateLinkSkirtController(_skirtController);
     }
 
-    // (PASO 4) GROSOR DEL PELO: reparte un gradiente de radio PROPIO por cada cadena de pelo
-    // (nacimiento -> punta), en las esferas CIAN del gizmo.
-    //
-    // Por que: el motor separa por `R = colisor.Radius + hueso.CollisionRadius` y coloca el HUESO (la
-    // linea central del mechon) a esa distancia. El radio que trae el asset para el pelo es de
-    // 0.025-0.045, pero la MALLA del mechon es MUCHO mas ancha: medido en vivo, los vertices que
-    // domina cada hueso llegan a 0.09-0.19 m del eje del hueso (media 0.06-0.13). Con esa diferencia
-    // el pelo se ve atravesar el brazo aunque la esfera rosa y la cian se solapen: la colision esta
-    // funcionando, pero el volumen que representa el pelo es mucho menor que el que se ve.
-    //
-    // El motor LEE `CollisionRadius` en cada frame (`CySpring_ResolveBoneCollisions`, offset 0xCC),
-    // asi que esto se puede ajustar EN CALIENTE sin rehacer el bind ni el array de colisiones.
-    private void ApplyHairBoneRadiusLayout(bool force)
-    {
-        if (_cySpringController == null || !CySpringHairBoneRadiusEnabled)
-            return;
-
-        CySpring headSpring = _cySpringController.GetSpringArray(0);
-        CySpringRootBone[] roots = headSpring != null ? headSpring.RootBoneArray : null;
-        if (roots == null)
-            return;
-
-        for (int i = 0; i < roots.Length; i++)
-        {
-            CySpringRootBone r = roots[i];
-            if (r == null || string.IsNullOrEmpty(r.BoneName))
-                continue;
-
-            if (r.BoneName.IndexOf("Hair", StringComparison.Ordinal) < 0)
-                continue;   // las orejas y demas no se tocan
-
-            // Grosor: el general, o el de ESTA cadena si hay un override que coincida.
-            float baseRadius = CySpringHairBoneRadiusBase;
-            float tipRadius = CySpringHairBoneRadiusTip;
-
-            CySpringHairRadiusOverride radiusOverride = FindHairRadiusOverride(r.BoneName);
-            if (radiusOverride != null)
-            {
-                baseRadius = radiusOverride.RadiusBase;
-                tipRadius = radiusOverride.RadiusTip;
-            }
-
-            List<CySpringBoneBase> bl = new List<CySpringBoneBase>();
-            bl.Add(r);
-            if (r.ChildBoneList != null) bl.AddRange(r.ChildBoneList);
-
-            for (int b = 0; b < bl.Count; b++)
-            {
-                CySpringBoneBase bone = bl[b];
-                if (bone == null)
-                    continue;
-
-                float t = bl.Count <= 1 ? 0.0f : (float)b / (bl.Count - 1);
-                bone.CollisionRadius = Mathf.Lerp(baseRadius, tipRadius, t);
-            }
-        }
-
-        // (FIX) Los gizmos cian leen el radio nativo: hay que refrescarlos al cambiar el valor, o el
-        // ajuste surte efecto en el motor pero no se ve en la Scene view.
-        UpdateHairBoneVisualizers();
-    }
-
-    // Primer override de grosor que coincide con el hueso RAIZ de la cadena (o null).
-    private CySpringHairRadiusOverride FindHairRadiusOverride(string boneName)
-    {
-        if (CySpringHairBoneRadiusOverrides == null || string.IsNullOrEmpty(boneName))
-            return null;
-
-        for (int i = 0; i < CySpringHairBoneRadiusOverrides.Count; i++)
-        {
-            CySpringHairRadiusOverride candidate = CySpringHairBoneRadiusOverrides[i];
-            if (candidate == null || !candidate.Enabled || string.IsNullOrEmpty(candidate.BoneFilter))
-                continue;
-
-            if (boneName.IndexOf(candidate.BoneFilter, StringComparison.Ordinal) >= 0)
-                return candidate;
-        }
-
-        return null;
-    }
-
-    // ---- SONDAS LATERALES DEL MECHON --------------------------------------------------------
-    //
-    // El motor solo tiene UNA esfera isotropa por hueso (R = colisor + radio del hueso, centrada en la
-    // punta), asi que su "ancho" y su "profundidad" son el mismo radio: engordarlo empuja el mechon en
-    // TODAS las direcciones (hacia arriba incluido) en lugar de apartar solo el lado que toca.
-    //
-    // Solucion: probar puntos LATERALES VIRTUALES del hueso. No son huesos nuevos (no hace falta
-    // tocar el rig ni repesar la malla) sino puntos rigidos al hueso: si uno cae dentro de un colisor
-    // se gira el hueso lo minimo para sacarlo, y asi el mechon se aparta POR EL LADO QUE TOCA.
-    //
-    // El "ancho" se mide de la propia malla: por cada hueso se toman los vertices que domina (via
-    // bindposes, independiente de la pose), se proyectan al plano perpendicular al mechon y se saca el
-    // autovector principal de la covarianza 2x2. Ese es el eje del ancho real del mechon.
-
-    private bool PassesProbeFilter(string boneName)
-    {
-        if (CySpringHairProbeBoneFilters == null || CySpringHairProbeBoneFilters.Length == 0)
-            return true;
-
-        if (boneName == null)
-            return false;
-
-        for (int i = 0; i < CySpringHairProbeBoneFilters.Length; i++)
-        {
-            string filter = CySpringHairProbeBoneFilters[i];
-            if (string.IsNullOrEmpty(filter))
-                continue;
-
-            if (boneName.IndexOf(filter, StringComparison.Ordinal) >= 0)
-                return true;
-        }
-
-        return false;
-    }
-
-    private void MeasureProbeAxes()
-    {
-        _probeAxisLocal.Clear();
-        _probeMeshVertCount.Clear();
-        _probeMeshZMax.Clear();
-
-        if (!CySpringHairProbeAxisFromMesh || _cySpringController == null)
-            return;
-
-        CySpring headSpring = _cySpringController.GetSpringArray(0);
-        CySpringRootBone[] roots = headSpring != null ? headSpring.RootBoneArray : null;
-        if (roots == null)
-            return;
-
-        List<Transform> candidates = new List<Transform>();
-        for (int i = 0; i < roots.Length; i++)
-        {
-            CySpringRootBone r = roots[i];
-            if (r == null || string.IsNullOrEmpty(r.BoneName)) continue;
-            if (!PassesProbeFilter(r.BoneName)) continue;
-
-            if (r.Transform != null) candidates.Add(r.Transform);
-
-            if (r.ChildBoneList != null)
-            {
-                for (int k = 0; k < r.ChildBoneList.Count; k++)
-                {
-                    CySpringBoneBase cb = r.ChildBoneList[k];
-                    if (cb != null && cb.Transform != null) candidates.Add(cb.Transform);
-                }
-            }
-        }
-
-        if (candidates.Count == 0)
-            return;
-
-        SkinnedMeshRenderer[] renderers = GetComponentsInChildren<SkinnedMeshRenderer>(true);
-        if (renderers == null || renderers.Length == 0)
-            return;
-
-        for (int ci = 0; ci < candidates.Count; ci++)
-            MeasureBoneWidth(candidates[ci], renderers);
-    }
-
-    // =========================================================================================
-    // (SONDAS LATERALES) Medicion de UN hueso, compartida por los dos caminos (nativo y DynamicBone):
-    //  - cuantos vertices domina la malla -> los huesos "fantasma" (0) no mueven nada visible y no
-    //    deben llevar sondas;
-    //  - el eje de ANCHO de la malla en local del hueso (autovector principal de la covarianza 2x2 de
-    //    los vertices en el plano perpendicular al mechon), que es por donde se ponen las sondas.
-    // =========================================================================================
-    private void MeasureBoneWidth(Transform bt, SkinnedMeshRenderer[] renderers)
-    {
-        if (bt == null || renderers == null)
-            return;
-
-        // Direccion del mechon en ese hueso: hacia su hijo; si es la punta, desde su padre.
-        // (Se ignoran los GameObjects de sonda, que son hijos nuestros.)
-        Vector3 dirW = Vector3.zero;
-        for (int k = 0; k < bt.childCount; k++)
-        {
-            Transform ch = bt.GetChild(k);
-            if (ch == null || ch.name.StartsWith("Sonda_", StringComparison.Ordinal))
-                continue;
-
-            dirW = ch.position - bt.position;
-            break;
-        }
-
-        if (dirW.sqrMagnitude < 1e-10f && bt.parent != null)
-            dirW = bt.position - bt.parent.position;
-
-        if (dirW.sqrMagnitude < 1e-10f)
-            return;
-
-        Vector3 dirL = bt.InverseTransformDirection(dirW.normalized);
-
-        // Base perpendicular al mechon (en local).
-        Vector3 u = Vector3.Cross(dirL, Vector3.up);
-        if (u.sqrMagnitude < 1e-6f) u = Vector3.Cross(dirL, Vector3.right);
-        if (u.sqrMagnitude < 1e-6f) return;
-        u.Normalize();
-        Vector3 w = Vector3.Cross(dirL, u).normalized;
-
-        float sx = 0f, sy = 0f, sxx = 0f, syy = 0f, sxy = 0f;
-        float zMax = 0f;
-        int n = 0;
-
-        for (int si = 0; si < renderers.Length; si++)
-        {
-            SkinnedMeshRenderer smr = renderers[si];
-            if (smr == null) continue;
-
-            Mesh mesh = smr.sharedMesh;
-            if (mesh == null) continue;
-
-            Transform[] bones = smr.bones;
-            Matrix4x4[] bind = mesh.bindposes;
-            if (bones == null || bind == null || bones.Length != bind.Length) continue;
-
-            int bi = -1;
-            for (int k = 0; k < bones.Length; k++)
-            {
-                if (bones[k] == bt) { bi = k; break; }
-            }
-            if (bi < 0) continue;
-
-            Vector3[] verts = mesh.vertices;
-            BoneWeight[] bw = mesh.boneWeights;
-            if (bw == null || bw.Length != verts.Length) continue;
-
-            for (int v = 0; v < verts.Length; v++)
-            {
-                BoneWeight weight = bw[v];
-                bool dom0 = weight.weight0 >= weight.weight1;
-                if (dom0 && (int)weight.boneIndex0 != bi) continue;
-                if (!dom0 && (int)weight.boneIndex1 != bi) continue;
-
-                Vector3 p = bind[bi].MultiplyPoint3x4(verts[v]);
-                float px = Vector3.Dot(p, u);
-                float py = Vector3.Dot(p, w);
-                sx += px; sy += py; sxx += px * px; syy += py * py; sxy += px * py;
-
-                // Hasta donde llega la malla a lo largo del mechon (eje local del hueso).
-                float pz = Vector3.Dot(p, dirL);
-                if (pz > zMax) zMax = pz;
-
-                n++;
-            }
-        }
-
-        // Se guardan SIEMPRE (aunque haya pocos vertices): el recuento decide si el hueso tiene
-        // peso de malla (los "fantasma" no mueven nada y no deben llevar sondas).
-        _probeMeshVertCount[bt] = n;
-        _probeMeshZMax[bt] = zMax;
-
-        if (n < 6)
-            return;
-
-        float mx = sx / n, my = sy / n;
-        float cxx = sxx / n - mx * mx;
-        float cyy = syy / n - my * my;
-        float cxy = sxy / n - mx * my;
-
-        // Autovector principal de la covarianza 2x2 = direccion en la que el mechon es mas ancho.
-        float theta = 0.5f * Mathf.Atan2(2.0f * cxy, cxx - cyy);
-        Vector3 axisLocal = (u * Mathf.Cos(theta) + w * Mathf.Sin(theta));
-        if (axisLocal.sqrMagnitude < 1e-8f)
-            return;
-
-        _probeAxisLocal[bt] = axisLocal.normalized;
-    }
-
-    private Vector3 GetProbeAxisLocal(CySpringBoneBase bone)
-    {
-        if (bone != null && bone.Transform != null && CySpringHairProbeAxisFromMesh)
-        {
-            Vector3 axis;
-            if (_probeAxisLocal.TryGetValue(bone.Transform, out axis) && axis.sqrMagnitude > 1e-8f)
-                return axis.normalized;
-        }
-
-        Vector3 fallback = CySpringHairProbeAxisOverride;
-        if (fallback.sqrMagnitude < 1e-8f)
-            fallback = Vector3.right;
-
-        return fallback.normalized;
-    }
-
-    // Punta del hueso: la posicion de su HIJO si lo tiene; si es el ULTIMO de la cadena, la punta
-    // virtual que usa el propio motor (SelfPosition + rotacion * BoneAxis * InitBoneDistance): el C#
-    // copia al ultimo hueso el eje y el largo del padre (ver CySpringBonebase:326), asi que el motor
-    // SI le testea colisiones a la punta del ultimo hueso.
-    // Hueso con peso de malla: girarlo mueve el mechon. Los "fantasma" (0 vertices) no.
-    private bool IsProbeWeighted(CySpringBoneBase bone)
-    {
-        if (bone == null || bone.Transform == null)
-            return true;
-
-        int n;
-        if (!_probeMeshVertCount.TryGetValue(bone.Transform, out n))
-            return true;   // sin medicion: no se descarta nada
-
-        return n > 0;
-    }
-
-    // Cuantos huesos CON PESO quedan por debajo de `index` (0 = el ultimo VISIBLE del mechon). Los
-    // "fantasma" no cuentan, porque no mueven malla.
-    private int WeightedLevelsFromTip(List<CySpringBoneBase> chain, int index)
-    {
-        int levels = 0;
-        bool measured = _probeMeshVertCount.Count > 0;
-
-        for (int i = chain.Count - 1; i > index; i--)
-        {
-            CySpringBoneBase b = chain[i];
-            if (b == null || b.Transform == null) continue;
-            if (measured && !IsProbeWeighted(b)) continue;
-            levels++;
-        }
-
-        return levels;
-    }
-
-    // "Punta" para la pasada de escape y las sondas:
-    //  - si el hijo tiene malla, la posicion del hijo (la particula que testea el motor);
-    //  - si no (ultimo hueso VISIBLE), hasta donde llega la MALLA de este hueso a lo largo del mechon,
-    //    que es el extremo visible.
-    // La punta virtual del motor NO sirve para esto: el ultimo hueso es un "fantasma" sin peso y su
-    // largo heredado apunta al vacio (medido: 11 cm por debajo de la malla).
-    private Vector3 GetBoneTipWorld(CySpringBoneBase bone, CySpringBoneBase child)
-    {
-        Vector3 tip;
-
-        if (child != null && child.Transform != null)
-        {
-            // Articulacion: la punta es la posicion del hijo (aunque el hijo sea "fantasma": el motor
-            // tambien le testea esa punta al hueso padre).
-            tip = child.Transform.position;
-        }
-        else
-        {
-            // Nivel MAS PROFUNDO de la jerarquia: por defecto, en el propio hueso; opcionalmente, en el
-            // extremo visible de su malla (que suele quedar algunos cm mas abajo).
-            tip = CySpringHairProbeAtMeshEnd ? GetBoneMeshTipWorld(bone) : bone.Transform.position;
-        }
-
-        // Desplazamiento opcional a lo largo del mechon (0 = en esa referencia).
-        if (bone != null && bone.Transform != null && !Mathf.Approximately(CySpringHairProbeAlongOffset, 0.0f))
-        {
-            NativeClothWorking native = bone.NativeState;
-            Vector3 strand = native.BoneAxis;
-            if (strand.sqrMagnitude < 1e-8f)
-                strand = Vector3.forward;
-
-            tip += bone.Transform.TransformDirection(strand.normalized) * CySpringHairProbeAlongOffset;
-        }
-
-        return tip;
-    }
-
-    // Extremo VISIBLE de la malla de este hueso (Z local maximo medido), o la punta virtual del motor
-    // si no hay medicion. El ultimo hueso del mechon suele ser "fantasma" (0 vertices) y su largo
-    // heredado apunta al vacio (medido: 11 cm por debajo de la malla).
-    private Vector3 GetBoneMeshTipWorld(CySpringBoneBase bone)
-    {
-        if (bone == null || bone.Transform == null)
-            return Vector3.zero;
-
-        float zMax;
-        if (_probeMeshZMax.TryGetValue(bone.Transform, out zMax) && zMax > 0.001f)
-        {
-            NativeClothWorking nativeAxis = bone.NativeState;
-            Vector3 axis = nativeAxis.BoneAxis;
-            if (axis.sqrMagnitude < 1e-8f)
-                axis = Vector3.forward;
-
-            return bone.Transform.TransformPoint(axis.normalized * zMax);
-        }
-
-        NativeClothWorking native = bone.NativeState;
-        Vector3 fallbackAxis = native.BoneAxis;
-        if (fallbackAxis.sqrMagnitude < 1e-8f)
-            fallbackAxis = Vector3.forward;
-
-        return bone.Transform.position + (bone.Transform.rotation * fallbackAxis) * native.InitBoneDistance;
-    }
-
-    // Radio y signo de la sonda `index` (0-based): 0 = +Offset, 1 = -Offset, 2 = +2*Offset...
-    private static void ProbeRingSign(int index, out int ring, out float sign)
-    {
-        ring = (index / 2) + 1;
-        sign = (index % 2 == 0) ? 1.0f : -1.0f;
-    }
-
-    // Posicion en mundo de la sonda lateral `index` (0-based): parte de la PUNTA del hueso y se
-    // separa a un lado y a otro a lo largo del eje de ANCHO (que sale de la malla).
-    private Vector3 GetProbeWorld(CySpringBoneBase bone, Vector3 tipWorld, int index)
-    {
-        int ring;
-        float sign;
-        ProbeRingSign(index, out ring, out sign);
-
-        Vector3 axisWorld = GetProbeAxisWorld(bone);
-
-        return tipWorld + axisWorld * (ring * CySpringHairProbeOffset * sign);
-    }
-
-    private Vector3 GetProbeAxisWorld(CySpringBoneBase bone)
-    {
-        Vector3 axisLocal = GetProbeAxisLocal(bone);
-        return bone.Transform.TransformDirection(axisLocal).normalized;
-    }
-
-    // Gira el hueso lo MINIMO para que el punto P (rigido al hueso) salga de la esfera (C, radius).
-    // Misma ley del coseno que la punta, pero con la distancia de la sonda al origen del hueso en vez
-    // del largo del hueso:  cos(theta) = (dP^2 + a^2 - R^2) / (2*dP*a)
-    private bool EscapeProbe(CySpringBoneBase bone, Vector3 P, Vector3 C, float radius)
-    {
-        if (bone == null || bone.Transform == null)
-            return false;
-
-        if (Vector3.Distance(P, C) >= radius)
-            return false;   // fuera: nada que corregir
-
-        Vector3 S = bone.Transform.position;
-        float dP = Vector3.Distance(S, P);
-        float a = Vector3.Distance(S, C);
-
-        if (dP <= 1e-5f || a <= 1e-5f)
-            return false;
-
-        float cosTarget = (dP * dP + a * a - radius * radius) / (2.0f * dP * a);
-        bool impossible = cosTarget < -1.0f;    // R > dP + a: ninguna direccion alcanza
-
-        Vector3 v = (P - S) / dP;
-        Vector3 w = (C - S) / a;
-
-        float alpha = Mathf.Acos(Mathf.Clamp(Vector3.Dot(v, w), -1.0f, 1.0f));
-        float thetaTarget = impossible ? Mathf.PI : Mathf.Acos(Mathf.Clamp(cosTarget, -1.0f, 1.0f));
-        float delta = thetaTarget - alpha;
-
-        if (delta <= 0.0f)
-        {
-            // Geometria degenerada (p. ej. el centro de la esfera pegado al origen): maximo alejamiento.
-            thetaTarget = Mathf.PI;
-            delta = thetaTarget - alpha;
-            if (delta <= 0.0f) return false;
-            impossible = true;
-        }
-
-        if (impossible)
-            _escapeImpossible++;
-
-        // Eje perpendicular a v y w: girar v en POSITIVO alrededor de (v x w) lo acerca a w, asi que
-        // para ALEJARLO se gira en negativo.
-        Vector3 axis = Vector3.Cross(v, w);
-        if (axis.sqrMagnitude < 1e-8f)
-        {
-            axis = Vector3.Cross(v, Vector3.up);
-            if (axis.sqrMagnitude < 1e-8f) axis = Vector3.Cross(v, Vector3.right);
-            if (axis.sqrMagnitude < 1e-8f) return false;
-        }
-
-        axis.Normalize();
-
-        bone.Transform.rotation = Quaternion.AngleAxis(-delta * Mathf.Rad2Deg, axis) * bone.Transform.rotation;
-
-        _escapeCorrections++;
-        if (delta > _escapeMaxAngle)
-            _escapeMaxAngle = delta;
-
-        return true;
-    }
-
-    // (TEMP) Rellena el gizmo de las sondas (punta + laterales) con la pose actual.
-    private void RefreshProbeVisualizer()
-    {
-        if (!CySpringHairColliderGizmos || _cySpringController == null)
-            return;
-
-        if (_probeVisualizer == null)
-        {
-            _probeVisualizer = gameObject.GetComponent<CySpringHairProbeVisualizer>();
-            if (_probeVisualizer == null)
-                _probeVisualizer = gameObject.AddComponent<CySpringHairProbeVisualizer>();
-        }
-
-        _probeWorldCache.Clear();
-        _probeRadiusCache.Clear();
-
-        CySpring headSpring = _cySpringController.GetSpringArray(0);
-        CySpringRootBone[] roots = headSpring != null ? headSpring.RootBoneArray : null;
-
-        if (roots != null)
-        {
-            int levels = Mathf.Max(1, CySpringHairProbeLevelsFromTip);
-            int sides = Mathf.Max(0, CySpringHairProbeCount);
-
-            for (int i = 0; i < roots.Length; i++)
-            {
-                CySpringRootBone r = roots[i];
-                if (r == null || string.IsNullOrEmpty(r.BoneName)) continue;
-                if (!PassesProbeFilter(r.BoneName)) continue;
-
-                List<CySpringBoneBase> chain = new List<CySpringBoneBase>();
-                chain.Add(r);
-                if (r.ChildBoneList != null) chain.AddRange(r.ChildBoneList);
-
-                // TODOS los huesos, INCLUIDO EL ULTIMO: el motor tambien le testea la punta (virtual).
-                for (int b = 0; b < chain.Count; b++)
-                {
-                    CySpringBoneBase bone = chain[b];
-                    CySpringBoneBase child = (b + 1 < chain.Count) ? chain[b + 1] : null;
-                    if (bone == null || bone.Transform == null)
-                        continue;
-
-                    // Los huesos SIN peso de malla (fantasma) no llevan sondas: girarlos no mueve nada y
-                    // su "punta" cae fuera de la malla (la del motor hereda el largo del padre).
-                    bool phantom = _probeMeshVertCount.Count > 0 && !IsProbeWeighted(bone);
-
-                    if (phantom || !CySpringHairProbeEnabled || WeightedLevelsFromTip(chain, b) >= levels)
-                    {
-                        SetProbeObjectsActive(bone, 0);
-                        continue;
-                    }
-
-                    Vector3 tipWorld = GetBoneTipWorld(bone, child);
-
-                    // 0 = punta (referencia), luego las laterales.
-                    _probeWorldCache.Add(tipWorld);
-                    _probeRadiusCache.Add(bone.NativeState.CollisionRadius);
-
-                    for (int p = 0; p < sides; p++)
-                    {
-                        Vector3 probeWorld = GetProbeWorld(bone, tipWorld, p);
-
-                        _probeWorldCache.Add(probeWorld);
-                        _probeRadiusCache.Add(bone.NativeState.CollisionRadius * Mathf.Clamp(CySpringHairProbeRadiusScale, 0.05f, 2.0f));
-
-                        SyncProbeObject(bone, p, bone.Transform.InverseTransformPoint(probeWorld));
-                    }
-
-                    SetProbeObjectsActive(bone, sides);
-                }
-            }
-        }
-
-        _probeVisualizer.Positions = _probeWorldCache.ToArray();
-        _probeVisualizer.Radii = _probeRadiusCache.ToArray();
-    }
-
-    // (TEMP) Crea (una vez) y recoloca los GameObjects de las sondas: son vacios, solo marcan la
-    // posicion para poder VERLAS Y SELECCIONARLAS en la jerarquia (el dibujo lo hace el gizmo de arriba).
-    private void SyncProbeObject(CySpringBoneBase bone, int probeIndex, Vector3 localPosition)
-    {
-        Dictionary<int, Transform> perBone;
-        if (!_probeObjects.TryGetValue(bone.Transform, out perBone))
-        {
-            perBone = new Dictionary<int, Transform>();
-            _probeObjects.Add(bone.Transform, perBone);
-        }
-
-        Transform t;
-        if (!perBone.TryGetValue(probeIndex, out t) || t == null)
-        {
-            GameObject go = new GameObject($"Sonda_{bone.BoneName}_{probeIndex + 1}");
-            go.transform.SetParent(bone.Transform, false);
-            t = go.transform;
-            perBone[probeIndex] = t;
-        }
-
-        t.localPosition = localPosition;
-    }
-
-    private void SetProbeObjectsActive(CySpringBoneBase bone, int count)
-    {
-        Dictionary<int, Transform> perBone;
-        if (bone == null || bone.Transform == null || !_probeObjects.TryGetValue(bone.Transform, out perBone))
-            return;
-
-        for (int i = 0; i < 8; i++)
-        {
-            Transform t;
-            if (!perBone.TryGetValue(i, out t) || t == null)
-                continue;
-
-            bool want = i < count;
-            if (t.gameObject.activeSelf != want)
-                t.gameObject.SetActive(want);
-        }
-    }
-
-    // =========================================================================================
-    // ESCAPE: correccion propia DESPUES del solver nativo (el DLL no se puede tocar en estatico).
-    //
-    // El motor hace, por hueso:  p = centro + normalize(p - centro) * R
-    //                    y luego  p = SelfPosition + normalize(p - SelfPosition) * InitBoneDistance
-    // Esa segunda linea (reproyeccion al largo del hueso) es la que sella la trampa: si la esfera
-    // cubre tambien el "lado opuesto" del hueso (R > | |S-C| - L |) la punta vuelve a caer DENTRO y
-    // la cadena no puede salir. Aumentar el radio agranda R => lo empeora.
-    //
-    // Aqui se cumple exactamente la regla pedida: "si me tocas te empujo, y SI ESTAS DENTRO te saco".
-    // Se recorre la cadena de raiz a punta (para que el giro arrastre a los hijos, igual que el
-    // solver) y se calcula el giro MINIMO que lleva la punta justo a la superficie, con la ley del
-    // coseno:
-    //     cos(theta) = (L^2 + a^2 - R^2) / (2*L*a)      L = largo del hueso, a = |S - C|
-    // Si no existe solucion (R > a + L) no hay direccion que salga: se toma la de maximo alejamiento
-    // y se cuenta, porque eso significa "esta esfera es demasiado grande para este hueso".
-    // =========================================================================================
-    private void ApplyHairEscapeFix()
-    {
-        if (!CySpringHairEscapeFix || _cySpringController == null || _hairRuntimeCollisions == null)
-            return;
-
-        CySpring headSpring = _cySpringController.GetSpringArray(0);
-        CySpringRootBone[] roots = headSpring != null ? headSpring.RootBoneArray : null;
-        if (roots == null)
-            return;
-
-        for (int i = 0; i < roots.Length; i++)
-        {
-            CySpringRootBone r = roots[i];
-            if (r == null || string.IsNullOrEmpty(r.BoneName))
-                continue;
-
-            if (r.BoneName.IndexOf("Hair", StringComparison.Ordinal) < 0)
-                continue;   // solo el pelo
-
-            List<CySpringBoneBase> chain = new List<CySpringBoneBase>();
-            chain.Add(r);
-            if (r.ChildBoneList != null) chain.AddRange(r.ChildBoneList);
-
-            // TODOS los huesos, INCLUIDO EL ULTIMO: el motor tambien le testea la punta (le copia el eje
-            // y el largo del padre), y esa punta es justo el extremo del mechon.
-            for (int b = 0; b < chain.Count; b++)
-            {
-                CySpringBoneBase bone = chain[b];
-                CySpringBoneBase child = (b + 1 < chain.Count) ? chain[b + 1] : null;
-
-                if (bone == null || bone.Transform == null)
-                    continue;
-
-                if (bone.CollisionIndexList == null)
-                    continue;
-
-                // Un hueso sin peso de malla no mueve nada visible: girarlo no sirve de nada.
-                if (_probeMeshVertCount.Count > 0 && !IsProbeWeighted(bone))
-                    continue;
-
-                int fromTip = WeightedLevelsFromTip(chain, b);
-                int probeLevels = Mathf.Max(1, CySpringHairProbeLevelsFromTip);
-                bool probesAllowed = CySpringHairProbeEnabled && PassesProbeFilter(r.BoneName);
-
-                for (int c = 0; c < bone.CollisionIndexList.Count; c++)
-                {
-                    int index = bone.CollisionIndexList[c];
-                    if (index < 0 || index >= _hairRuntimeCollisions.Count)
-                        continue;
-
-                    CySpringCollisionRuntimeData col = _hairRuntimeCollisions[index];
-                    if (col == null || col.TargetTransform == null)
-                        continue;
-
-                    // v1: esferas (que son las que generamos). Capsula/plano quedan para despues.
-                    if (col.CollisionType != CySpringCollisionData.CollisionType.Sphere)
-                        continue;
-
-                    float radius = col.Radius + bone.NativeState.CollisionRadius;
-                    if (radius <= 0.00001f)
-                        continue;
-
-                    Vector3 C = col.TargetTransform.position;
-
-                    // Sondas del hueso: la punta (0) y, si estan activas y es un nivel con sondas, las
-                    // laterales. La posicion se recalcula en cada vuelta porque una correccion previa
-                    // gira el hueso y con el toda la cadena.
-                    int probes = 1;
-                    if (probesAllowed && fromTip < probeLevels)
-                        probes += Mathf.Max(0, CySpringHairProbeCount);
-
-                    for (int p = 0; p < probes; p++)
-                    {
-                        Vector3 tipWorld = GetBoneTipWorld(bone, child);
-
-                        Vector3 probeWorld = p == 0
-                            ? tipWorld
-                            : GetProbeWorld(bone, tipWorld, p - 1);
-
-                        // La punta usa el radio del hueso (es la particula del motor); las laterales son
-                        // puntos de test propios y pueden ser mas finos (CySpringHairProbeRadiusScale).
-                        float probeRadius = p == 0
-                            ? radius
-                            : col.Radius + bone.NativeState.CollisionRadius * Mathf.Clamp(CySpringHairProbeRadiusScale, 0.05f, 2.0f);
-
-                        EscapeProbe(bone, probeWorld, C, probeRadius);
-                    }
-                }
-            }
-        }
-
-        // (TEMP) Gizmos de las sondas con la pose ya corregida.
-        RefreshProbeVisualizer();
-    }
-
-    // (TEMP/GIZMOS) Dibuja el radio PROPIO de cada hueso de tela: el motor SUMA ese radio al del
-    // colisor (datamine 04 §1.1: R = colider.Radius + hueso.CollisionRadius), asi que sin verlo
-    // parece que el pelo esta "lejos" de las esferas cuando en realidad ya las esta rozando.
-    private void UpdateHairBoneVisualizers()
-    {
-        if (_cySpringController == null)
-            return;
-
-        CySpring headSpring = _cySpringController.GetSpringArray(0);
-        CySpringRootBone[] roots = headSpring != null ? headSpring.RootBoneArray : null;
-        if (roots == null)
-            return;
-
-        for (int i = 0; i < roots.Length; i++)
-        {
-            CySpringRootBone r = roots[i];
-            if (r == null) continue;
-
-            List<CySpringBoneBase> bl = new List<CySpringBoneBase>();
-            bl.Add(r);
-            if (r.ChildBoneList != null) bl.AddRange(r.ChildBoneList);
-
-            for (int b = 0; b < bl.Count; b++)
-            {
-                CySpringBoneBase bone = bl[b];
-                if (bone == null || bone.GameObject == null) continue;
-
-                CySpringColliderVisualizer vis = bone.GameObject.GetComponent<CySpringColliderVisualizer>();
-                if (vis == null)
-                    vis = bone.GameObject.AddComponent<CySpringColliderVisualizer>();
-
-                vis.IsBone = true;
-                vis.IsCapsule = false;
-                // El gizmo LEE el radio del hueso en cada dibujado: asi el tamano que se ve es siempre
-                // el que el motor usa, tambien al ajustar el grosor EN CALIENTE desde el Inspector.
-                vis.BoneSource = bone;
-                vis.Radius = bone.NativeState.CollisionRadius;
-                vis.Color = new Color(0.0f, 0.8f, 1.0f, 1.0f);   // cian = radio propio del hueso
-            }
-        }
-    }
-
-    // =========================================================================================
-    // (PASO 1) ESFERAS DEL TRAMO HOMBRO -> CODO
-    //
-    // Se reservan `CySpringArmColliderReserve` esferas por brazo para poder SUBIR la cantidad en
-    // caliente: las que sobran se apagan con el tipo None (el motor escribe IsEnable=0 y las salta),
-    // asi que cambiar el numero no exige recargar la escena. Limite duro del motor: 16 indices de
-    // colision por hueso (CIndex0..CIndex15 en NativeClothWorking).
-    // =========================================================================================
-    private void BuildArmColliderGrid(CySpringDataContainer head, Dictionary<string, Transform> bones)
-    {
-        _generatedHairCollisionNames.Clear();
-
-        if (head == null || head.collisionParam == null || bones == null)
-            return;
-
-        if (!CySpringArmColliderEnabled)
-        {
-            return;
-        }
-
-        if (CySpringArmColliderSides == null || CySpringArmColliderSides.Length == 0)
-            return;
-
-        int reserve = Mathf.Clamp(CySpringArmColliderReserve, 1, 16);
-
-        if (reserve * CySpringArmColliderSides.Length > 16)
-        {
-            Debug.LogWarning(
-                $"[PeloCol] reservado={reserve} por brazo x {CySpringArmColliderSides.Length} brazos = " +
-                $"{reserve * CySpringArmColliderSides.Length} indices, pero el motor solo admite 16 por hueso " +
-                "(las cadenas centrales del pelo usan los dos brazos). Baja 'Cy Spring Arm Collider Reserve'.");
-        }
-
-        for (int s = 0; s < CySpringArmColliderSides.Length; s++)
-        {
-            string side = CySpringArmColliderSides[s];
-            if (string.IsNullOrEmpty(side))
-                continue;
-
-            string anchorName = CySpringArmColliderAnchorBone + "_" + side;
-
-            if (!bones.TryGetValue(anchorName, out Transform anchor) || anchor == null)
-            {
-                Debug.LogWarning($"[PeloCol] no encuentro el hueso '{anchorName}': ese brazo se queda sin esferas.");
-                continue;
-            }
-
-            for (int i = 0; i < reserve; i++)
-            {
-                string colName = $"{CySpringHairArmCollisionPrefix}{side}_{i:00}";
-
-                bool exists = false;
-                for (int k = 0; k < head.collisionParam.Count; k++)
-                {
-                    CySpringCollisionData c = head.collisionParam[k];
-                    if (c != null && c.CollisionName == colName)
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
-
-                if (!exists)
-                {
-                    // Radio provisional: Create() DESCARTA los colisores de radio 0, y el radio real lo
-                    // fija ApplyArmColliderLayout() (que corre antes del warm-up, no en el bind).
-                    head.collisionParam.Add(new CySpringCollisionData(
-                        CySpringCollisionData.CollisionType.Sphere,
-                        false,
-                        colName,
-                        anchorName,
-                        false,
-                        Vector3.zero,
-                        Vector3.zero,
-                        Mathf.Max(0.001f, CySpringArmColliderRadius),
-                        0.0f,
-                        Vector3.zero));
-                }
-
-                _generatedHairCollisionNames.Add(colName);
-            }
-        }
-    }
-
-    // =========================================================================================
-    // (PASO 2) ASIGNACION AL PELO
-    //
-    // El motor empuja un hueso de tela SOLO con los colisores que su PROPIA lista de nombres
-    // declara, y los hijos declaran listas propias (medido: la raiz 5, los hijos 4/3/3). Por eso se
-    // reescribe la lista de la raiz Y la de cada hijo, en TODA la cadena del pelo (delantero y
-    // trasero). Si el hueso declara lado, solo se le dan las esferas de su brazo; las cadenas
-    // centrales (pelo trasero) reciben las de los dos, que es lo que pide el objetivo.
-    // =========================================================================================
-    private void BindGeneratedCollidersToHair(CySpringDataContainer head)
-    {
-        if (head == null || head.springParam == null)
-            return;
-
-        int chains = 0;
-        int childBones = 0;
-
-        for (int i = 0; i < head.springParam.Count; i++)
-        {
-            Gallop.CySpringParamDataElement sp = head.springParam[i];
-            if (sp == null || string.IsNullOrEmpty(sp._boneName))
-                continue;
-
-            if (sp._boneName.IndexOf("Hair", StringComparison.Ordinal) < 0)
-                continue;   // orejas y demas no se tocan
-
-            chains++;
-            sp._collisionNameList = new List<string>(GeneratedColliderNamesForBone(sp._boneName));
-
-            if (sp._childElements == null)
-                continue;
-
-            for (int k = 0; k < sp._childElements.Count; k++)
-            {
-                Gallop.CySpringParamDataChildElement ch = sp._childElements[k];
-                if (ch == null)
-                    continue;
-
-                string childBone = string.IsNullOrEmpty(ch._boneName) ? sp._boneName : ch._boneName;
-                ch._collisionNameList = new List<string>(GeneratedColliderNamesForBone(childBone));
-
-                if (ch._collisionNameList.Count > 16)
-                {
-                    Debug.LogWarning(
-                        $"[PeloCol] {childBone} referencia {ch._collisionNameList.Count} colisores; " +
-                        "el motor solo admite 16 por hueso.");
-                }
-
-                childBones++;
-            }
-        }
-
-    }
-
-    // =========================================================================================
-    // (DYNAMICBONE) ESFERAS DEL BRAZO PARA EL PELO
-    //
-    // El pelo que simula DynamicBone solo recibía los colisores que declara el asset del juego, y
-    // para el brazo es una esfera pequeña en el codo (radio x0.3): el tramo hombro->codo no empuja
-    // nada y el mechón lo atraviesa. Aquí se genera la MISMA rejilla de esferas que usa el camino
-    // nativo (radio, cantidad automática, solape y desplazamiento de arranque salen de los campos
-    // "CySpring - colisores del PELO"), repartida hombro->codo, y se engancha a TODAS las
-    // partículas de las cadenas de pelo (la raíz incluida; el solver de DynamicBone empieza en la
-    // partícula 1, así que la raíz no colisiona pero tampoco estorba).
-    // =========================================================================================
-    private void BuildDynamicBoneArmColliders(
-        List<CySpringDataContainer> containers,
-        Dictionary<string, Transform> bones)
-    {
-        if (containers == null || bones == null)
-            return;
-
-        if (CySpringArmColliderSides == null || CySpringArmColliderSides.Length == 0)
-            return;
-
-        // Restos de una carga anterior (recarga de traje): se borran antes de decidir nada, para
-        // que apagar el interruptor también deje el brazo limpio.
-        RemoveDynamicBoneArmColliders();
-        _dynamicBoneArmColliders.Clear();
-        _dynamicBoneHairChains.Clear();
-
-        if (!DynamicBoneArmColliderEnabled)
-            return;
-
-        var hairChains = new List<DynamicBone>();
-        for (int i = 0; i < containers.Count; i++)
-        {
-            CySpringDataContainer container = containers[i];
-            if (container == null || container.DynamicBones == null)
-                continue;
-
-            if (GuessCySpringContainerKind(container) != 0)
-                continue;   // 0 = head (pelo/orejas); la cola no llega a los brazos
-
-            for (int b = 0; b < container.DynamicBones.Count; b++)
-            {
-                DynamicBone chain = container.DynamicBones[b];
-                if (chain != null)
-                    hairChains.Add(chain);
-            }
-        }
-
-        // Sin cadenas de DynamicBone (p. ej. con el pelo en el camino nativo) no hay a quién
-        // engancharlas: ese camino ya monta sus propias esferas.
-        if (hairChains.Count == 0)
-            return;
-
-        _dynamicBoneHairChains.AddRange(hairChains);
-
-        float radius = Mathf.Max(0.001f, CySpringArmColliderRadius);
-        float overlap = Mathf.Clamp(CySpringArmColliderOverlap, 0.1f, 1.0f);
-        int arms = 0;
-
-        for (int s = 0; s < CySpringArmColliderSides.Length; s++)
-        {
-            string side = CySpringArmColliderSides[s];
-            if (string.IsNullOrEmpty(side))
-                continue;
-
-            string startName = CySpringArmColliderStartBone + "_" + side;
-            string endName = CySpringArmColliderEndBone + "_" + side;
-
-            if (!bones.TryGetValue(startName, out Transform start) || start == null ||
-                !bones.TryGetValue(endName, out Transform end) || end == null)
-            {
-                Debug.LogWarning($"[PeloCol] DynamicBone: falta '{startName}' o '{endName}'.");
-                continue;
-            }
-
-            Vector3 startWorld = start.position;
-            Vector3 endWorld = end.position;
-            float length = Vector3.Distance(startWorld, endWorld);
-
-            if (length <= 0.0001f)
-                continue;
-
-            // Mismo reparto que ApplyArmColliderLayout: desde el arranque (inset) hasta el codo.
-            float inset = Mathf.Clamp01(CySpringArmColliderStartOffset / length);
-            float coveredLength = length * (1f - inset);
-            int perSide = Mathf.Clamp(
-                CountArmCollidersFor(CySpringArmColliderCount, coveredLength, radius, overlap), 1, 16);
-
-            for (int i = 0; i < perSide; i++)
-            {
-                float frac = perSide <= 1 ? 0.5f : (float)i / (perSide - 1);
-                float t = Mathf.Lerp(inset, 1f, frac);
-                Vector3 world = Vector3.Lerp(startWorld, endWorld, t);
-
-                // Prefijo propio: el camino nativo usa "Col_HairArm_<lado>_<i>" como NOMBRE DE
-                // COLISIÓN del asset, y los dos caminos no deben compartir nombres.
-                string colliderName = DynamicBoneArmColliderPrefix + side + "_" + i.ToString("00");
-                CreateGeneratedSphere(colliderName, start, world, radius, hairChains,
-                    new Color(1f, 0.55f, 0.1f, 1f));   // naranja = brazo
-                arms++;
-            }
-        }
-
-        int chest = DynamicBoneChestColliderEnabled ? BuildDynamicBoneChestColliders(bones, hairChains) : 0;
-
-        CySpringColliderVisualizer.CollidersEnabled = ColliderGizmosVisible;
-
-        if (arms > 0 || chest > 0)
-        {
-            Debug.Log($"[PeloCol] DynamicBone: {arms} esfera(s) hombro->codo + {chest} del pecho " +
-                      $"enganchadas a {hairChains.Count} cadenas de pelo (radio {radius:0.###} m).");
-        }
-    }
-
-    // =========================================================================================
-    // (PELO) RADIO PROPIO DE LAS CADENAS DE DynamicBone
-    //
-    // El radio de cada hueso de pelo no lo pone el campo 'Radius' del componente: lo copia
-    // InitializePhysics desde el '_collisionRadius' del asset (raiz x0.9, hijos x1.0), y cambia por
-    // hueso. Aqui se puede fijar un valor COMUN a toda una cadena (por prefijo del hueso raiz), tal
-    // cual (escala x1): DynamicBone lo multiplica por la escala del objeto, como siempre.
-    // =========================================================================================
-    private void ApplyDynamicBoneHairRadiusOverrides(List<CySpringDataContainer> containers)
-    {
-        if (DynamicBoneHairRadiusOverrides == null || DynamicBoneHairRadiusOverrides.Length == 0 ||
-            containers == null)
-            return;
-
-        for (int i = 0; i < containers.Count; i++)
-        {
-            CySpringDataContainer container = containers[i];
-            if (container == null || container.DynamicBones == null)
-                continue;
-
-            if (GuessCySpringContainerKind(container) != 0)
-                continue;   // 0 = head (pelo/orejas)
-
-            for (int b = 0; b < container.DynamicBones.Count; b++)
-            {
-                DynamicBone chain = container.DynamicBones[b];
-                if (chain == null || chain.m_Root == null)
-                    continue;
-
-                string rootName = chain.m_Root.name;
-
-                for (int r = 0; r < DynamicBoneHairRadiusOverrides.Length; r++)
-                {
-                    HairRadiusRule rule = DynamicBoneHairRadiusOverrides[r];
-                    if (rule == null || string.IsNullOrEmpty(rule.BoneFilter) || rule.Radius <= 0.0f)
-                        continue;
-
-                    if (!rootName.StartsWith(rule.BoneFilter, StringComparison.Ordinal))
-                        continue;
-
-                    // Se fija tambien el campo del componente para que el Inspector muestre el valor
-                    // real (si no, sigue con el del asset y confunde con lo que se ve en Scene).
-                    chain.m_Radius = rule.Radius;
-
-                    for (int p = 0; p < chain.Particles.Count; p++)
-                    {
-                        if (chain.Particles[p] != null)
-                            chain.Particles[p].m_Radius = rule.Radius;
-                    }
-
-                    break;
-                }
-            }
-        }
-    }
-
-    // =========================================================================================
-    // (SONDAS LATERALES, camino DynamicBone) Misma medicion de malla que el camino nativo, pero para
-    // las cadenas que simula DynamicBone: cuantos vertices domina cada hueso (los "fantasma" no mueven
-    // nada visible y no deben llevar sondas) y el eje de ANCHO de la malla en local del hueso.
-    // =========================================================================================
-    private void MeasureDynamicBoneProbeAxes(List<CySpringDataContainer> containers)
-    {
-        _probeAxisLocal.Clear();
-        _probeMeshVertCount.Clear();
-        _probeMeshZMax.Clear();
-
-        if (!CySpringHairProbeEnabled || !CySpringHairProbeAxisFromMesh || containers == null)
-            return;
-
-        SkinnedMeshRenderer[] renderers = GetComponentsInChildren<SkinnedMeshRenderer>(true);
-        if (renderers == null || renderers.Length == 0)
-            return;
-
-        for (int i = 0; i < containers.Count; i++)
-        {
-            CySpringDataContainer container = containers[i];
-            if (container == null || container.DynamicBones == null)
-                continue;
-
-            if (GuessCySpringContainerKind(container) != 0)
-                continue;   // 0 = head (pelo/orejas)
-
-            for (int b = 0; b < container.DynamicBones.Count; b++)
-            {
-                DynamicBone chain = container.DynamicBones[b];
-                if (chain == null || chain.m_Root == null)
-                    continue;
-
-                if (!PassesProbeFilter(chain.m_Root.name))
-                    continue;
-
-                for (int p = 0; p < chain.Particles.Count; p++)
-                {
-                    DynamicBone.Particle particle = chain.Particles[p];
-                    if (particle == null || particle.m_Transform == null)
-                        continue;
-
-                    MeasureBoneWidth(particle.m_Transform, renderers);
-                }
-            }
-        }
-    }
-
-    // =========================================================================================
-    // (SONDAS LATERALES, camino DynamicBone) Marca que particulas llevan sondas: las ultimas
-    // `CySpringHairProbeLevelsFromTip` de cada cadena filtrada (Hair4_R/L/C por defecto), o sea el
-    // NIVEL MAS PROFUNDO de la jerarquia (Sp_He_Hair4_*_03).
-    //
-    // Se reaplica cada frame: cualquier SetupParticles (p. ej. tocar un campo del componente en el
-    // Inspector durante el Play -> OnValidate) reconstruye la lista y se lleva las marcas.
-    // =========================================================================================
-    private void ApplyDynamicBoneLateralProbes()
-    {
-        RefreshDynamicBoneHairChains();
-
-        // La medicion de malla se hace al cargar, pero puede caer antes de que los SkinnedMeshRenderer
-        // tengan los huesos enlazados; si salio vacia se reintenta unas cuantas veces (no cada frame
-        // para siempre: recorrer todas las mallas no es gratis).
-        if (_probeMeshVertCount.Count == 0 && CySpringHairProbeAxisFromMesh && _probeMeasureAttempts < 90)
-        {
-            _probeMeasureAttempts++;
-            MeasureDynamicBoneProbeAxes(cySpringDataContainers);
-        }
-        else if (_probeMeshVertCount.Count > 0)
-        {
-            _probeMeasureAttempts = 0;
-        }
-
-        int levels = Mathf.Max(0, CySpringHairProbeLevelsFromTip);
-        bool enabled = CySpringHairProbeEnabled && CySpringHairProbeCount > 0 && levels > 0;
-
-        for (int i = 0; i < _dynamicBoneHairChains.Count; i++)
-        {
-            DynamicBone chain = _dynamicBoneHairChains[i];
-            if (chain == null || chain.Particles == null)
-                continue;
-
-            chain.m_LateralProbeCount = CySpringHairProbeCount;
-            chain.m_LateralProbeOffset = CySpringHairProbeGap;
-            chain.m_LateralProbeRadiusScale = CySpringHairProbeRadiusScale;
-
-            bool wanted = enabled && chain.m_Root != null && PassesProbeFilter(chain.m_Root.name);
-            int assigned = 0;
-
-            for (int p = chain.Particles.Count - 1; p >= 1; p--)
-            {
-                DynamicBone.Particle particle = chain.Particles[p];
-                if (particle == null)
-                    continue;
-
-                bool probe = wanted && assigned < levels;
-                if (probe)
-                    assigned++;
-
-                particle.m_LateralProbe = probe;
-
-                // A la MISMA altura del hueso: el desplazamiento es solo lateral (ver ResolveLateralProbes).
-                particle.m_LateralProbeAlong = 0.0f;
-
-                if (probe)
-                    particle.m_LateralProbeAxisLocal = GetDynamicBoneProbeAxisLocal(particle.m_Transform);
-            }
-        }
-    }
-
-    // Eje de ANCHO local del hueso: el medido de la malla; si el hueso no tiene medicion propia (el
-    // ultimo nivel suele no tener vertices), se HEREDA del ancestro mas cercano que si la tenga (el
-    // ancho del mechon es el mismo). Si no hay nada medido, cualquier perpendicular al mechon.
-    private Vector3 GetDynamicBoneProbeAxisLocal(Transform bone)
-    {
-        if (bone == null)
-            return Vector3.right;
-
-        Transform t = bone;
-        while (t != null)
-        {
-            Vector3 cached;
-            if (_probeAxisLocal.TryGetValue(t, out cached) && cached.sqrMagnitude > 1e-8f)
-            {
-                if (t == bone)
-                    return cached.normalized;
-
-                Vector3 world = t.TransformDirection(cached);
-                Vector3 local = bone.InverseTransformDirection(world);
-                if (local.sqrMagnitude > 1e-8f)
-                    return local.normalized;
-
-                break;
-            }
-
-            t = t.parent;
-        }
-
-        Vector3 dirW = Vector3.zero;
-        if (bone.childCount > 0)
-            dirW = bone.GetChild(0).position - bone.position;
-        if (dirW.sqrMagnitude < 1e-10f && bone.parent != null)
-            dirW = bone.position - bone.parent.position;
-        if (dirW.sqrMagnitude < 1e-10f)
-            return Vector3.right;
-
-        Vector3 dirL = bone.InverseTransformDirection(dirW.normalized);
-        Vector3 u = Vector3.Cross(dirL, Vector3.up);
-        if (u.sqrMagnitude < 1e-6f) u = Vector3.Cross(dirL, Vector3.right);
-        if (u.sqrMagnitude < 1e-6f) return Vector3.right;
-
-        return u.normalized;
-    }
-
-    // (TEMP) Gizmos de las sondas laterales del camino DynamicBone: magenta, con una linea del centro
-    // (la punta del hueso) a cada lateral. Reutiliza el visualizador del camino nativo.
-    private void RefreshDynamicBoneProbeVisualizer()
-    {
-        if (!ColliderGizmosVisible)
-        {
-            if (_probeVisualizer != null && _probeVisualizer.Positions != null && _probeVisualizer.Positions.Length > 0)
-            {
-                _probeVisualizer.Positions = new Vector3[0];
-                _probeVisualizer.Radii = new float[0];
-            }
-            return;
-        }
-
-        _probeWorldCache.Clear();
-        _probeRadiusCache.Clear();
-
-        for (int i = 0; i < _dynamicBoneHairChains.Count; i++)
-        {
-            DynamicBone chain = _dynamicBoneHairChains[i];
-            if (chain == null) continue;
-
-            float scale = Mathf.Max(0.01f, Mathf.Abs(chain.transform.lossyScale.x));
-
-            for (int p = 1; p < chain.Particles.Count; p++)
-            {
-                DynamicBone.Particle particle = chain.Particles[p];
-                if (particle == null || !particle.m_LateralProbe || particle.m_Transform == null)
-                    continue;
-
-                Vector3 axisWorld = particle.m_Transform.TransformDirection(particle.m_LateralProbeAxisLocal);
-                if (axisWorld.sqrMagnitude < 1e-8f) continue;
-                axisWorld.Normalize();
-
-                Vector3 boneDir = axisWorld;
-                Vector3 d = particle.m_Position - chain.Particles[particle.m_ParentIndex].m_Position;
-                if (d.sqrMagnitude > 1e-10f) boneDir = d.normalized;
-
-                Vector3 center = particle.m_Position + boneDir * (particle.m_LateralProbeAlong * scale);
-
-                // Mismas cuentas que ResolveLateralProbes: tangentes al hueso (radio_hueso + radio_sonda).
-                float boneRadius = particle.m_Radius * scale;
-                float probeRadius = boneRadius *
-                                    Mathf.Clamp(chain.m_LateralProbeRadiusScale, 0.05f, 2.0f);
-                float offset = boneRadius + probeRadius + chain.m_LateralProbeOffset * scale;
-
-                // Trio centro + 2 laterales (el visualizador dibuja las lineas de 3 en 3).
-                _probeWorldCache.Add(center);
-                _probeRadiusCache.Add(probeRadius);
-                _probeWorldCache.Add(center + axisWorld * offset);
-                _probeRadiusCache.Add(probeRadius);
-                _probeWorldCache.Add(center - axisWorld * offset);
-                _probeRadiusCache.Add(probeRadius);
-            }
-        }
-
-        if (_probeWorldCache.Count == 0)
-        {
-            if (_probeVisualizer != null && _probeVisualizer.Positions != null && _probeVisualizer.Positions.Length > 0)
-            {
-                _probeVisualizer.Positions = new Vector3[0];
-                _probeVisualizer.Radii = new float[0];
-            }
-            return;
-        }
-
-        if (_probeVisualizer == null)
-        {
-            _probeVisualizer = gameObject.GetComponent<CySpringHairProbeVisualizer>();
-            if (_probeVisualizer == null)
-                _probeVisualizer = gameObject.AddComponent<CySpringHairProbeVisualizer>();
-        }
-
-        _probeVisualizer.Positions = _probeWorldCache.ToArray();
-        _probeVisualizer.Radii = _probeRadiusCache.ToArray();
-        _probeVisualizer.Color = new Color(1.0f, 0.25f, 0.95f, 1.0f);
-    }
-
-    // =========================================================================================
-    // (DYNAMICBONE) FILAS DEL PECHO
-    //
-    // Filas horizontales delante del pecho para que el mechón no se hunda en la ropa cuando el
-    // pelo cae por delante. La primera fila va en la línea de la clavícula y las demás caen hacia
-    // abajo. Las esferas van UNA PEGADA A LA SIGUIENTE (paso = 2 x radio) y el ancho es fijo
-    // ('Width', en metros, escalado por BodyScale); si 'SpanBones' tiene dos huesos válidos, el
-    // ancho se mide entre ellos. Se anclan al hueso del pecho: no siguen a los brazos.
-    // =========================================================================================
-    private int BuildDynamicBoneChestColliders(
-        Dictionary<string, Transform> bones,
-        List<DynamicBone> hairChains)
-    {
-        float radius = Mathf.Max(0.001f, DynamicBoneChestColliderRadius);
-        float overlap = Mathf.Clamp(DynamicBoneChestColliderOverlap, 0.1f, 1f);
-
-        // Ancla: hueso del pecho (o la columna, si no hay). Así la barrera se queda en el cuerpo.
-        Transform anchor = null;
-        string[] anchorCandidates = new string[] { CySpringBodyColliderTopBone, "Chest", "Spine" };
-        for (int i = 0; i < anchorCandidates.Length && anchor == null; i++)
-        {
-            if (!string.IsNullOrEmpty(anchorCandidates[i]) &&
-                bones.TryGetValue(anchorCandidates[i], out Transform candidate))
-                anchor = candidate;
-        }
-
-        Transform spanA = null;
-        Transform spanB = null;
-        if (DynamicBoneChestColliderSpanBones != null && DynamicBoneChestColliderSpanBones.Length >= 2)
-        {
-            bones.TryGetValue(DynamicBoneChestColliderSpanBones[0], out spanA);
-            bones.TryGetValue(DynamicBoneChestColliderSpanBones[1], out spanB);
-        }
-
-        // Altura de referencia: el punto medio de los huesos del ancho, si los hay; si no, la línea
-        // de la clavícula (Shoulder_L/R); si tampoco, el propio ancla.
-        float clavicleY;
-        if (spanA != null && spanB != null)
-            clavicleY = (spanA.position.y + spanB.position.y) * 0.5f;
-        else if (bones.TryGetValue("Shoulder_L", out Transform shoulderL) &&
-                 bones.TryGetValue("Shoulder_R", out Transform shoulderR) &&
-                 shoulderL != null && shoulderR != null)
-            clavicleY = (shoulderL.position.y + shoulderR.position.y) * 0.5f;
-        else if (anchor != null)
-            clavicleY = anchor.position.y;
-        else
-            return 0;
-
-        if (anchor == null)
-            anchor = spanA != null ? spanA : transform;
-
-        float width;
-        Vector3 right;
-
-        if (spanA != null && spanB != null)
-        {
-            // Ancho = separación entre los dos huesos, proyectada al plano horizontal para que la
-            // fila quede recta aunque la pose esté torcida.
-            Vector3 span = spanB.position - spanA.position;
-            span.y = 0f;
-            width = span.magnitude;
-            right = width > 0.0001f ? span / width : anchor.right;
-        }
-        else
-        {
-            width = Mathf.Max(0.0001f, DynamicBoneChestColliderWidth) * Mathf.Max(0.0001f, BodyScale);
-            // Derecha del cuerpo: el eje X del ancla, aplanado al horizontal.
-            Vector3 flatRight = anchor.right;
-            flatRight.y = 0f;
-            right = flatRight.sqrMagnitude > 0.0001f ? flatRight.normalized : Vector3.right;
-        }
-
-        int rows = Mathf.Clamp(DynamicBoneChestColliderRows, 1, 8);
-        float spacing = Mathf.Max(0f, DynamicBoneChestColliderSpacing);
-
-        int perRow = Mathf.Clamp(
-            CountArmCollidersFor(DynamicBoneChestColliderCount, width, radius, overlap), 1, 16);
-
-        // Profundidad: filas EXTRA a cada lado (busto y espalda) desde cierto nivel hacia abajo.
-        // Visto de perfil, cada nivel pasa de 1 a 1 + SideRows esferas.
-        int sideRows = Mathf.Clamp(DynamicBoneChestColliderSideRows, 0, 4);
-        int sideFromRow = Mathf.Max(0, DynamicBoneChestColliderSideFromRow);
-        float sideOffset = Mathf.Max(0f, DynamicBoneChestColliderSideOffset);
-
-        // FRENTE del cuerpo. El producto vectorial da la perpendicular en el plano horizontal, pero
-        // su SIGNO depende del eje derecho del rig, asi que se orienta con el forward del personaje:
-        // asi "frente" es siempre el busto y "detras" la espalda, sin depender del rig.
-        Vector3 frontDir = Vector3.Cross(Vector3.up, right);
-        if (frontDir.sqrMagnitude > 0.0001f)
-        {
-            frontDir.Normalize();
-            Vector3 rootFwd = transform.forward;
-            rootFwd.y = 0f;
-            if (rootFwd.sqrMagnitude > 0.0001f && Vector3.Dot(frontDir, rootFwd) < 0f)
-                frontDir = -frontDir;
-        }
-        else
-        {
-            frontDir = Vector3.forward;
-        }
-
-        int created = 0;
-
-        for (int r = 0; r < rows; r++)
-        {
-            float rowY = clavicleY + DynamicBoneChestColliderLiftY - r * spacing;
-            bool withSides = sideRows > 0 && sideOffset > 0f && r >= sideFromRow;
-
-            for (int i = 0; i < perRow; i++)
-            {
-                float frac = perRow <= 1 ? 0.5f : (float)i / (perRow - 1);
-                float x = (frac - 0.5f) * width;
-
-                Vector3 world = anchor.position;
-                world.x += right.x * x;
-                world.z += right.z * x;
-                world.y = rowY;
-
-                string colliderName = DynamicBoneChestColliderPrefix + r.ToString("00") + "_" + i.ToString("00");
-                CreateGeneratedSphere(colliderName, anchor, world, radius, hairChains,
-                    new Color(0.35f, 0.90f, 0.35f, 1f));   // verde = fila del pecho
-                created++;
-
-                if (!withSides)
-                    continue;
-
-                // Busto: una esfera del mismo radio por capa de profundidad.
-                for (int k = 1; k <= sideRows; k++)
-                {
-                    CreateGeneratedSphere(
-                        colliderName + "_a" + k, anchor, world + frontDir * (k * sideOffset),
-                        radius, hairChains, new Color(0.25f, 0.80f, 0.95f, 1f));   // cian = busto
-                    created++;
-                }
-            }
-        }
-
-        // ESPALDA: pared propia con esferas MAS PEQUEÑAS y MAS FILAS. Antes cada nivel lateral ponia
-        // una esfera de `radius` (0.03) detras; con radio `BackRadius` (0.015) se necesitan el doble
-        // de filas para cubrir la MISMA altura, asi que la barrera no sobresale tanto del cuerpo.
-        if (sideRows > 0 && sideOffset > 0f && rows > 0)
-        {
-            float backRadius = Mathf.Max(0.001f, DynamicBoneChestColliderBackRadius);
-            int backRows = Mathf.Clamp(DynamicBoneChestColliderBackRows, 1, 8);
-
-            int firstSideRow = Mathf.Clamp(sideFromRow, 0, rows - 1);
-            float baseY = clavicleY + DynamicBoneChestColliderLiftY;
-            float topEdge = baseY - firstSideRow * spacing + radius;
-            float bottomEdge = baseY - (rows - 1) * spacing - radius;
-
-            float topCenter = topEdge - backRadius;
-            float bottomCenter = bottomEdge + backRadius;
-            float stepBack = backRows > 1 ? (topCenter - bottomCenter) / (backRows - 1) : 0f;
-
-            for (int k = 1; k <= sideRows; k++)
-            {
-                Vector3 depth = -frontDir * (k * sideOffset);
-
-                for (int br = 0; br < backRows; br++)
-                {
-                    float backY = topCenter - br * stepBack;
-
-                    for (int i = 0; i < perRow; i++)
-                    {
-                        float frac = perRow <= 1 ? 0.5f : (float)i / (perRow - 1);
-                        float x = (frac - 0.5f) * width;
-
-                        Vector3 world = anchor.position;
-                        world.x += right.x * x;
-                        world.z += right.z * x;
-                        world.y = backY;
-                        world += depth;
-
-                        string backName = DynamicBoneChestColliderPrefix + "bk" + k + "_" +
-                                          br.ToString("00") + "_" + i.ToString("00");
-                        CreateGeneratedSphere(backName, anchor, world, backRadius, hairChains,
-                            new Color(0.20f, 0.45f, 1.00f, 1f));   // azul = espalda
-                        created++;
-                    }
-                }
-            }
-        }
-
-        return created;
-    }
-
-    // Crea una esfera generada (objeto + DynamicBoneCollider) colgada de `anchor`, la engancha a
-    // todas las cadenas de pelo y la apunta para el re-enganche por frame.
-    private void CreateGeneratedSphere(
-        string colliderName,
-        Transform anchor,
-        Vector3 world,
-        float radius,
-        List<DynamicBone> hairChains,
-        Color gizmoColor)
-    {
-        var colliderObject = new GameObject(colliderName);
-        colliderObject.transform.SetParent(anchor, false);
-        colliderObject.transform.position = world;
-        colliderObject.transform.rotation = Quaternion.identity;
-
-        var collider = colliderObject.AddComponent<DynamicBoneCollider>();
-        collider.ColliderName = colliderName;
-        collider.m_Direction = DynamicBoneColliderBase.Direction.Z;
-        collider.m_Bound = DynamicBoneColliderBase.Bound.Outside;
-        collider.m_Center = Vector3.zero;
-        collider.m_Radius = radius;   // DynamicBone lo multiplica por la escala del traje
-        collider.m_Height = 0f;       // esfera, no cápsula
-        // El solver resuelve la colision ANTES de la restriccion de longitud y esa la deshace; las
-        // esferas generadas piden el segundo pase (ver DynamicBone.ResolveCollisionsAfterSolve).
-        collider.ResolveAfterSolve = true;
-        _dynamicBoneArmColliders.Add(collider);
-
-        // Gizmo SIEMPRE presente (es andamiaje de ajuste): quien decide si se dibuja es el flag
-        // estatico que fija AlterLateUpdatePostRuntime, asi el check del Inspector enciende y
-        // apaga las esferas al momento, tambien las que ya estaban creadas.
-        var visualizer = colliderObject.AddComponent<CySpringColliderVisualizer>();
-        visualizer.IsBone = false;
-        visualizer.BoneSource = null;
-        visualizer.DynamicBoneSource = collider;
-        visualizer.ColliderSource = null;
-        visualizer.IsCapsule = false;
-        visualizer.Radius = radius;
-        visualizer.Color = gizmoColor;
-
-        for (int c = 0; c < hairChains.Count; c++)
-        {
-            DynamicBone chain = hairChains[c];
-            for (int p = 0; p < chain.Particles.Count; p++)
-            {
-                DynamicBone.Particle particle = chain.Particles[p];
-                if (particle == null)
-                    continue;
-
-                if (particle.m_Colliders == null)
-                    particle.m_Colliders = new List<DynamicBoneColliderBase>();
-
-                if (!particle.m_Colliders.Contains(collider))
-                    particle.m_Colliders.Add(collider);
-            }
-        }
-    }
-
-    // Quita las esferas generadas de una carga anterior (recarga de traje).
-    private void RemoveDynamicBoneArmColliders()
-    {
-        var all = GetComponentsInChildren<Transform>(true);
-        for (int i = all.Length - 1; i >= 0; i--)
-        {
-            Transform candidate = all[i];
-            if (candidate == null || candidate == transform)
-                continue;
-
-            bool generated = candidate.name.StartsWith(DynamicBoneArmColliderPrefix, StringComparison.Ordinal) ||
-                             candidate.name.StartsWith(DynamicBoneChestColliderPrefix, StringComparison.Ordinal);
-            if (!generated)
-                continue;
-
-            if (Application.isPlaying)
-                Destroy(candidate.gameObject);
-            else
-                DestroyImmediate(candidate.gameObject);
-        }
-    }
-
-    // La inicialización del pelo puede reconstruir las partículas (SetupParticles las borra y las
-    // vuelve a crear) DESPUÉS de haberlas enganchado, y entonces las esferas se quedan sin efecto.
-    // Es barato: unas pocas decenas de esferas por cada partícula de pelo, y solo hace trabajo la
-    // primera vez que ve una partícula sin ellas.
-    private void EnsureDynamicBoneArmCollidersAttached()
-    {
-        if (_dynamicBoneArmColliders.Count == 0)
-            AdoptGeneratedColliders();
-
-        if (_dynamicBoneArmColliders.Count == 0)
-            return;
-
-        RefreshDynamicBoneHairChains();
-        if (_dynamicBoneHairChains.Count == 0)
-            return;
-
-        for (int c = 0; c < _dynamicBoneHairChains.Count; c++)
-        {
-            DynamicBone chain = _dynamicBoneHairChains[c];
-            if (chain == null)
-                continue;
-
-            // (RENDIMIENTO) Basta con mirar UNA particula: SetupParticles reconstruye la lista de
-            // TODAS a la vez, asi que o estan todas enganchadas o ninguna. Antes se hacia un
-            // List.Contains por particula y colisor (decenas de miles de comparaciones por frame).
-            int probeIndex = -1;
-            for (int p = 1; p < chain.Particles.Count; p++)
-            {
-                if (chain.Particles[p] != null)
-                {
-                    probeIndex = p;
-                    break;
-                }
-            }
-
-            if (probeIndex < 0)
-                continue;
-
-            DynamicBone.Particle first = chain.Particles[probeIndex];
-            if (first.m_Colliders != null && first.m_Colliders.Contains(_dynamicBoneArmColliders[0]))
-                continue;
-
-            for (int p = 0; p < chain.Particles.Count; p++)
-            {
-                DynamicBone.Particle particle = chain.Particles[p];
-                if (particle == null)
-                    continue;
-
-                if (particle.m_Colliders == null)
-                    particle.m_Colliders = new List<DynamicBoneColliderBase>();
-
-                for (int a = 0; a < _dynamicBoneArmColliders.Count; a++)
-                {
-                    DynamicBoneCollider armCollider = _dynamicBoneArmColliders[a];
-                    if (armCollider != null && !particle.m_Colliders.Contains(armCollider))
-                        particle.m_Colliders.Add(armCollider);
-                }
-            }
-        }
-    }
-
-    // El contenedor que va a simular el pelo puede NO ser el que creó las esferas (el cargador
-    // renueva el componente al cambiar de traje y las esferas se quedan colgadas de los huesos),
-    // así que si la lista está vacía se ADOPTAN las que ya existen en la jerarquía.
-    private void AdoptGeneratedColliders()
-    {
-        var all = GetComponentsInChildren<Transform>(true);
-        for (int i = 0; i < all.Length; i++)
-        {
-            Transform candidate = all[i];
-            if (candidate == null || candidate == transform)
-                continue;
-
-            bool generated = candidate.name.StartsWith(DynamicBoneArmColliderPrefix, StringComparison.Ordinal) ||
-                             candidate.name.StartsWith(DynamicBoneChestColliderPrefix, StringComparison.Ordinal);
-            if (!generated)
-                continue;
-
-            var collider = candidate.GetComponent<DynamicBoneCollider>();
-            if (collider != null && !_dynamicBoneArmColliders.Contains(collider))
-                _dynamicBoneArmColliders.Add(collider);
-        }
-    }
-
-    // La lista de cadenas se reconstruye si está vacía o si alguna desapareció (recarga de pelo).
-    private void RefreshDynamicBoneHairChains()
-    {
-        bool stale = _dynamicBoneHairChains.Count == 0;
-        if (!stale)
-        {
-            for (int i = 0; i < _dynamicBoneHairChains.Count; i++)
-            {
-                if (_dynamicBoneHairChains[i] == null)
-                {
-                    stale = true;
-                    break;
-                }
-            }
-        }
-
-        if (!stale)
-            return;
-
-        _dynamicBoneHairChains.Clear();
-
-        if (cySpringDataContainers != null)
-        {
-            for (int i = 0; i < cySpringDataContainers.Count; i++)
-            {
-                CySpringDataContainer container = cySpringDataContainers[i];
-                if (container == null || container.DynamicBones == null)
-                    continue;
-
-                if (GuessCySpringContainerKind(container) != 0)
-                    continue;
-
-                for (int b = 0; b < container.DynamicBones.Count; b++)
-                {
-                    DynamicBone chain = container.DynamicBones[b];
-                    if (chain != null)
-                        _dynamicBoneHairChains.Add(chain);
-                }
-            }
-        }
-
-        if (_dynamicBoneHairChains.Count > 0)
-            return;
-
-        // Plan B: los contenedores de ESTE componente no tienen las cadenas (el pelo lo montó otro
-        // contenedor). Se recogen de la jerarquía: pelo y orejas, nunca la cola.
-        var found = GetComponentsInChildren<DynamicBone>(true);
-        for (int i = 0; i < found.Length; i++)
-        {
-            DynamicBone chain = found[i];
-            if (chain == null || chain.m_Root == null)
-                continue;
-
-            string rootName = chain.m_Root.name;
-            if (rootName.IndexOf("Hair", StringComparison.Ordinal) < 0 &&
-                rootName.IndexOf("Ear", StringComparison.Ordinal) < 0)
-                continue;
-
-            _dynamicBoneHairChains.Add(chain);
-        }
-    }
-
-    // Nombres que le corresponden a una cadena: si el hueso declara lado (_L / _R) solo las esferas
-    // de SU brazo; si no declara lado (cadenas centrales) las de todos los brazos.
-    private List<string> GeneratedColliderNamesForBone(string boneName)
-    {
-        if (CySpringArmColliderSides == null || CySpringArmColliderSides.Length <= 1)
-            return _generatedHairCollisionNames;
-
-        for (int s = 0; s < CySpringArmColliderSides.Length; s++)
-        {
-            string side = CySpringArmColliderSides[s];
-            if (string.IsNullOrEmpty(side))
-                continue;
-
-            int at = boneName.IndexOf("_" + side, StringComparison.Ordinal);
-            if (at < 0)
-                continue;
-
-            // El sufijo de lado del rig es de un solo caracter: si detras sigue una letra, "_L" es
-            // parte de otra palabra y no un lado.
-            int after = at + 1 + side.Length;
-            if (after < boneName.Length && char.IsLetter(boneName[after]))
-                continue;
-
-            string prefix = CySpringHairArmCollisionPrefix + side + "_";
-            List<string> only = new List<string>();
-
-            for (int i = 0; i < _generatedHairCollisionNames.Count; i++)
-            {
-                if (_generatedHairCollisionNames[i].StartsWith(prefix, StringComparison.Ordinal))
-                    only.Add(_generatedHairCollisionNames[i]);
-            }
-
-            return only;
-        }
-
-        return _generatedHairCollisionNames;
-    }
-
-    // Captura (UNA vez) el tramo hombro->codo en el espacio LOCAL del hueso del brazo. Se hace una
-    // sola vez a proposito: si se recalculara con cada ajuste, las esferas quedarian a merced de la
-    // pose del instante (con el codo doblado, la recta hombro->codo es una CUERDA que sale del
-    // brazo). Ancladas al hueso, las esferas acompanan luego al brazo al moverse.
-    private void CaptureArmColliderSegments()
-    {
-        int n = CySpringArmColliderSides != null ? CySpringArmColliderSides.Length : 0;
-
-        _armSegmentLocalStart = new Vector3[n];
-        _armSegmentLocalEnd = new Vector3[n];
-        _armSegmentLength = new float[n];
-
-        for (int s = 0; s < n; s++)
-        {
-            string side = CySpringArmColliderSides[s];
-            if (string.IsNullOrEmpty(side))
-                continue;
-
-            Transform anchor = FindCySpringTransform(transform, CySpringArmColliderAnchorBone + "_" + side);
-            Transform start = FindCySpringTransform(transform, CySpringArmColliderStartBone + "_" + side);
-            Transform end = FindCySpringTransform(transform, CySpringArmColliderEndBone + "_" + side);
-
-            if (anchor == null || start == null || end == null)
-            {
-                Debug.LogWarning(
-                    $"[PeloCol] tramo '{side}' incompleto: anclaje={anchor != null} inicio={start != null} " +
-                    $"codo={end != null}.");
-                continue;
-            }
-
-            _armSegmentLocalStart[s] = anchor.InverseTransformPoint(start.position);
-            _armSegmentLocalEnd[s] = anchor.InverseTransformPoint(end.position);
-            _armSegmentLength[s] = Vector3.Distance(start.position, end.position);
-
-        }
-    }
-
-    // =========================================================================================
-    // (PASO 3) COLOCACION DE LAS ESFERAS (posicion + radio reales)
-    //
-    // Las esferas van ancladas al hueso del brazo, asi que basta con fijar su POSICION LOCAL: el
-    // motor la escala con la del padre y el solver la pasa a mundo con el ParentWork del hueso
-    // (Position = localPosition * parent.lossyScale, ver CySpringCollisionRuntimeData). Se puede
-    // llamar EN CALIENTE; al final reconstruye el array nativo.
-    // =========================================================================================
-    private void ApplyArmColliderLayout(bool force)
-    {
-        if (_hairRuntimeCollisions == null || _cySpringController == null)
-            return;
-
-        if (CySpringArmColliderSides == null || _generatedHairCollisionNames.Count == 0)
-            return;
-
-        if (_armSegmentLocalEnd == null || _armSegmentLocalEnd.Length != CySpringArmColliderSides.Length)
-            CaptureArmColliderSegments();
-
-        int requestedCount = CySpringArmColliderCount;
-        float radius = CySpringArmColliderRadius;
-        float overlap = CySpringArmColliderOverlap;
-
-        if (!force &&
-            Mathf.Approximately(radius, _lastArmRadius) &&
-            requestedCount == _lastArmCount &&
-            Mathf.Approximately(overlap, _lastArmOverlap) &&
-            Mathf.Approximately(CySpringArmColliderStartOffset, _lastArmStartOffset))
-            return;
-
-        _lastArmRadius = radius;
-        _lastArmCount = requestedCount;
-        _lastArmOverlap = overlap;
-        _lastArmStartOffset = CySpringArmColliderStartOffset;
-
-        float safeRadius = Mathf.Max(0.001f, radius);
-        bool changed = false;
-
-        for (int s = 0; s < CySpringArmColliderSides.Length; s++)
-        {
-            string side = CySpringArmColliderSides[s];
-            if (string.IsNullOrEmpty(side))
-                continue;
-
-            string prefix = CySpringHairArmCollisionPrefix + side + "_";
-
-            if (_armSegmentLocalEnd == null || s >= _armSegmentLocalEnd.Length)
-                continue;
-
-            float length = _armSegmentLength[s];
-
-            // Arranque opcional mas abajo del hombro: la esfera del hombro puede cubrir el hueso del
-            // pelo entero y entonces el motor lo deja ATRAPADO dentro (ver la regla de la trampa).
-            float inset = length > 0.0001f ? Mathf.Clamp01(CySpringArmColliderStartOffset / length) : 0.0f;
-            float coveredLength = length * (1.0f - inset);
-
-            // Limite del motor: 16 indices de colision por hueso (las cadenas centrales llevan los
-            // dos brazos, asi que se reserva la mitad para cada uno).
-            int perArmMax = Mathf.Clamp(16 / Mathf.Max(1, CySpringArmColliderSides.Length), 1, 16);
-            int perSide = Mathf.Clamp(CountArmCollidersFor(requestedCount, coveredLength, safeRadius, overlap), 1, perArmMax);
-
-            for (int i = 0; i < _hairRuntimeCollisions.Count; i++)
-            {
-                CySpringCollisionRuntimeData rd = _hairRuntimeCollisions[i];
-                if (rd == null || string.IsNullOrEmpty(rd.Name) || rd.TargetTransform == null)
-                    continue;
-
-                if (!rd.Name.StartsWith(prefix, StringComparison.Ordinal))
-                    continue;
-
-                int index;
-                if (!int.TryParse(rd.Name.Substring(prefix.Length), out index))
-                    continue;
-
-                if (index >= perSide)
-                {
-                    // Esfera de RESERVA sin usar: se apaga con el tipo None (el motor escribe
-                    // IsEnable=0 y la salta) y a radio 0 para que tampoco se dibuje el gizmo. Asi
-                    // subir la cantidad no exige recargar la escena.
-                    if (rd.CollisionType != CySpringCollisionData.CollisionType.None)
-                    {
-                        rd.CollisionType = CySpringCollisionData.CollisionType.None;
-                        changed = true;
-                    }
-
-                    if (!Mathf.Approximately(rd.Radius, 0.0f))
-                    {
-                        rd.Radius = 0.0f;
-                        changed = true;
-                    }
-                    continue;
-                }
-
-                // Reparto uniforme por el tramo (desde `inset` hasta el codo). Con una sola esfera, al medio.
-                float frac = perSide <= 1 ? 0.5f : (float)index / (perSide - 1);
-                float t = Mathf.Lerp(inset, 1.0f, frac);
-                Vector3 local = Vector3.Lerp(_armSegmentLocalStart[s], _armSegmentLocalEnd[s], t);
-
-                if ((rd.TargetTransform.localPosition - local).sqrMagnitude > 1e-10f)
-                {
-                    rd.TargetTransform.localPosition = local;
-                    changed = true;
-                }
-
-                rd.Offset = local;
-
-                if (!Mathf.Approximately(rd.Radius, safeRadius))
-                {
-                    rd.Radius = safeRadius;
-                    changed = true;
-                }
-
-                if (rd.CollisionType != CySpringCollisionData.CollisionType.Sphere)
-                {
-                    rd.CollisionType = CySpringCollisionData.CollisionType.Sphere;
-                    changed = true;
-                }
-
-                // Que un recálculo de escala del motor no devuelva la esfera al origen del hueso.
-                rd.SetDefaultParams(safeRadius, local);
-            }
-        }
-
-        if (changed)
-            _cySpringController.RefreshNativeCollisions();
-
-        UpdateHairColliderGizmos();
-    }
-
-    // Esferas que cubren un tramo sin dejar huecos: la separacion entre centros es
-    // 2*radio*solape, asi que hacen falta ceil(longitud/separacion) + 1.
-    private static int CountArmCollidersFor(int requested, float length, float radius, float overlap)
-    {
-        if (requested > 0)
-            return Mathf.Clamp(requested, 1, 16);
-
-        if (length <= 0.0001f)
-            return 1;
-
-        float step = 2.0f * Mathf.Max(0.001f, radius) * Mathf.Clamp(overlap, 0.1f, 1.0f);
-        return Mathf.Clamp(Mathf.CeilToInt(length / step) + 1, 1, 16);
-    }
-
-    // (TEMP) Gizmos SOLO de los colisores generados del pelo: azul = brazo izquierdo, rosa = derecho.
-    // Los que traia el asset (Col_Head_Hair_F_Block r=0.8, Col_Chest_Hair_B r=1.0...) NO se dibujan:
-    // el pelo ya no los usa y llenaban la escena de esferas gigantes.
-    private void AttachHairColliderGizmos()
-    {
-        if (_hairRuntimeCollisions == null)
-            return;
-
-        string leftPrefix = CySpringHairArmCollisionPrefix
-            + ((CySpringArmColliderSides != null && CySpringArmColliderSides.Length > 0) ? CySpringArmColliderSides[0] : "L")
-            + "_";
-
-        for (int i = 0; i < _hairRuntimeCollisions.Count; i++)
-        {
-            CySpringCollisionRuntimeData rd = _hairRuntimeCollisions[i];
-            if (rd == null || rd.TargetTransform == null || rd.Name == null)
-                continue;
-
-            if (!rd.Name.StartsWith(CySpringHairArmCollisionPrefix, StringComparison.Ordinal))
-                continue;
-
-            CySpringColliderVisualizer vis = rd.TargetTransform.GetComponent<CySpringColliderVisualizer>();
-            if (vis == null)
-                vis = rd.TargetTransform.gameObject.AddComponent<CySpringColliderVisualizer>();
-
-            vis.IsBone = false;
-            vis.BoneSource = null;
-            vis.ColliderSource = rd;
-            vis.IsCapsule = rd.CollisionType == CySpringCollisionData.CollisionType.Capsule;
-            vis.Offset2Local = rd.Offset2 - rd.Offset;
-            vis.Radius = rd.Radius;
-            vis.Color = rd.Name.StartsWith(leftPrefix, StringComparison.Ordinal)
-                ? new Color(0.25f, 0.60f, 1.00f, 1.0f)   // azul = brazo izquierdo
-                : new Color(1.00f, 0.35f, 0.60f, 1.0f);  // rosa = brazo derecho
-        }
-    }
-
-    // (TEMP) Mantiene los gizmos sincronizados con el radio REAL del motor y respeta el interruptor
-    // del Inspector (los flags estaticos los leen todos los gizmos del proyecto).
-    private void UpdateHairColliderGizmos()
-    {
-        CySpringColliderVisualizer.CollidersEnabled = ColliderGizmosVisible;
-        CySpringColliderVisualizer.BonesEnabled = CySpringHairColliderGizmos;
-
-        if (_hairRuntimeCollisions == null)
-            return;
-
-        for (int i = 0; i < _hairRuntimeCollisions.Count; i++)
-        {
-            CySpringCollisionRuntimeData rd = _hairRuntimeCollisions[i];
-            if (rd == null || rd.TargetTransform == null)
-                continue;
-
-            CySpringColliderVisualizer vis = rd.TargetTransform.GetComponent<CySpringColliderVisualizer>();
-            if (vis != null)
-                vis.Radius = rd.Radius;
-        }
-    }
 
     /// <summary>
     /// Une a cada hijo de una cadena de falda los nombres de colision que declara la raiz.
@@ -3234,24 +888,15 @@ public class UmaContainerCharacter : UmaContainer
     public void ReloadClothPhysics()
     {
         CySpringDataContainer[] containers = GetComponentsInChildren<CySpringDataContainer>(true);
-        var nativeContainers = new List<CySpringDataContainer>();
 
-        for (int i = 0; i < containers.Length; i++)
+        if (containers == null || containers.Length == 0)
         {
-            CySpringDataContainer container = containers[i];
-            if (container == null)
-                continue;
-
-            int kind = GuessCySpringContainerKind(container);
-            if (kind == 1 || kind == 2)
-                nativeContainers.Add(container);
-        }
-
-        if (nativeContainers.Count == 0)
-        {
-            Debug.LogWarning("[UmaContainerCharacter] ReloadClothPhysics: no hay contenedores nativos de ropa.");
+            Debug.LogWarning("[UmaContainerCharacter] ReloadClothPhysics: no hay contenedores CySpring.");
             return;
         }
+
+        // Igual que LoadPhysics: todas las cadenas van al puente nativo.
+        cySpringDataContainers = new List<CySpringDataContainer>(containers);
 
         Dictionary<string, Transform> cache = BuildCySpringTransformCache(transform, out HashSet<string> duplicates);
 
@@ -3263,7 +908,7 @@ public class UmaContainerCharacter : UmaContainer
         if (hip == null)
             hip = transform;
 
-        var slots = SplitCySpringContainers(nativeContainers);
+        var slots = SplitCySpringContainers(cySpringDataContainers);
 
         PropagateClothCollisionNames(slots.body);
 
@@ -3278,6 +923,9 @@ public class UmaContainerCharacter : UmaContainer
             Debug.LogError("[UmaContainerCharacter] ReloadClothPhysics: no se pudo crear el controller.");
             return;
         }
+
+        BindCySpringOwnerAnchor(_cySpringController, hip);
+        _cySpringController.EnableWind = CySpringEnableWind;
 
         _cySpringController.LoadFromDataContainers(
             cache, slots.head, slots.body, slots.bust, slots.tail, null, null, null,
@@ -3313,10 +961,33 @@ public class UmaContainerCharacter : UmaContainer
 
         _skirtController.CharaId = CharaEntry != null ? CharaEntry.Id : 0;
         _skirtController.ModelScale = BodyScale > 0f ? BodyScale : 1f;
+
+        // Igual que la fisica: si el modelo aun no esta montado (sin nodo "Position"), la falda
+        // capturaria su pose de reposo a medias y luego "flota" al moverse. Se pospone el Create
+        // hasta el ligado diferido (AlterLateUpdateRuntime).
+        if (transform.Find("Position") == null)
+        {
+            _pendingSkirtParam = skirtParam;
+            return;
+        }
+
         _skirtController.Create(skirtParam);
 
         if (_cySpringController != null)
             LinkSkirtControllerToCySpring();
+    }
+
+    /// <summary>
+    /// Crea el SkirtController que quedo pendiente porque el modelo no estaba montado.
+    /// </summary>
+    private void CreatePendingSkirtController()
+    {
+        if (_pendingSkirtParam == null || _skirtController == null)
+            return;
+
+        SkirtParamDataAsset skirtParam = _pendingSkirtParam;
+        _pendingSkirtParam = null;
+        _skirtController.Create(skirtParam);
     }
 
     private SkirtParamDataAsset LoadBestSkirtParamAsset(UmaDatabaseEntry bodyEntry)
@@ -3433,12 +1104,12 @@ public class UmaContainerCharacter : UmaContainer
             return null;
 
         //(P1) ANTES se intentaba bundle.LoadAsset<SkirtParamDataAsset>(nombreDelAsset) y, si
-        //fallaba, se cogía allAssets[0] a ciegas. La búsqueda por nombre NO puede funcionar:
+        //fallaba, se cogÃ­a allAssets[0] a ciegas. La bÃºsqueda por nombre NO puede funcionar:
         //el asset viene del juego con el GUID de script ORIGINAL, que no existe en este
-        //proyecto, así que Unity no puede asociarlo a nuestro tipo y avisa
-        //"No script asset for SkirtParamDataAsset". Además Cogear el primero a ciegas puede
-        //elegir un asset que no corresponde a este cuerpo, y de ahí el "poco peso".
-        //Ahora: se carga por TIPO y se puntúa el que más huesos de falda resuelva.
+        //proyecto, asÃ­ que Unity no puede asociarlo a nuestro tipo y avisa
+        //"No script asset for SkirtParamDataAsset". AdemÃ¡s Cogear el primero a ciegas puede
+        //elegir un asset que no corresponde a este cuerpo, y de ahÃ­ el "poco peso".
+        //Ahora: se carga por TIPO y se puntÃºa el que mÃ¡s huesos de falda resuelva.
         SkirtParamDataAsset[] allAssets = bundle.LoadAllAssets<SkirtParamDataAsset>();
 
         if (allAssets == null || allAssets.Length == 0)
@@ -3554,13 +1225,13 @@ public class UmaContainerCharacter : UmaContainer
     }
 
     /// <summary>
-    /// (FIX cabello) Decide a qué parte (head=0, body=1, bust=2, tail=3) pertenece un
+    /// (FIX cabello) Decide a quÃ© parte (head=0, body=1, bust=2, tail=3) pertenece un
     /// contenedor. La fuente PRIMARIA son los HUESOS de sus resortes (prefijos del juego:
-    /// `Sp_He_Hair`, `Sp_Hi_Tail`, `Sp_Ch_Bust`, `Sp_Hi_MSkirt`…). El nombre del
-    /// GameObject/prefab NO basta: el pelo vive en `pfb_chr…_cloth00`, cuyo path contiene
-    /// "cloth" y por eso la versión anterior lo casaba como "body" ANTES de mirar los
-    /// huesos → el pelo se descartaba como "Extra body ignored" y quedaba RÍGIDO. Ahora se
-    /// miran los huesos primero (autoritativos) y el path sólo sirve de apoyo si no hay
+    /// `Sp_He_Hair`, `Sp_Hi_Tail`, `Sp_Ch_Bust`, `Sp_Hi_MSkirt`â€¦). El nombre del
+    /// GameObject/prefab NO basta: el pelo vive en `pfb_chrâ€¦_cloth00`, cuyo path contiene
+    /// "cloth" y por eso la versiÃ³n anterior lo casaba como "body" ANTES de mirar los
+    /// huesos â†’ el pelo se descartaba como "Extra body ignored" y quedaba RÃGIDO. Ahora se
+    /// miran los huesos primero (autoritativos) y el path sÃ³lo sirve de apoyo si no hay
     /// huesos reconocibles.
     /// </summary>
     private int GuessCySpringContainerKind(CySpringDataContainer container)
@@ -3576,9 +1247,9 @@ public class UmaContainerCharacter : UmaContainer
                 //(Fase 0.5: fully-qualified. Hay DOS clases llamadas CySpringParamDataElement: la de
                 //namespace Gallop (Gallop\Cyspring\CySpringParamDataElement.cs) y la del namespace
                 //global (Gallop\StageScript\CySpring\CySpringParamDataElement.cs). Con 'using Gallop;'
-                //gana la del namespace global, y container.springParam es List<Gallop.CySpring…> →
-                //CS0029. container es CySpringDataContainer (Gallop), así que el tipo correcto es el
-                //de Gallop. Sin este cambio: error CS0029 en la línea 848.)
+                //gana la del namespace global, y container.springParam es List<Gallop.CySpringâ€¦> â†’
+                //CS0029. container es CySpringDataContainer (Gallop), asÃ­ que el tipo correcto es el
+                //de Gallop. Sin este cambio: error CS0029 en la lÃ­nea 848.)
                 Gallop.CySpringParamDataElement element = container.springParam[i];
 
                 if (element == null)
@@ -3594,11 +1265,11 @@ public class UmaContainerCharacter : UmaContainer
 
                 for (int j = 0; j < element._childElements.Count; j++)
                 {
-                    //(Fase 0.5: mismo choque que en la línea 848, una línea más abajo. Hay DOS
-                    //clases CySpringParamDataChildElement: Gallop\Cyspring\… (namespace Gallop) y
-                    //Gallop\StageScript\CySpring\… (namespace global). Con 'using Gallop;' gana la
-                    //global, y element._childElements es List<Gallop.…> → CS0029. Sin este cambio:
-                    //error CS0029 en la línea 869.)
+                    //(Fase 0.5: mismo choque que en la lÃ­nea 848, una lÃ­nea mÃ¡s abajo. Hay DOS
+                    //clases CySpringParamDataChildElement: Gallop\Cyspring\â€¦ (namespace Gallop) y
+                    //Gallop\StageScript\CySpring\â€¦ (namespace global). Con 'using Gallop;' gana la
+                    //global, y element._childElements es List<Gallop.â€¦> â†’ CS0029. Sin este cambio:
+                    //error CS0029 en la lÃ­nea 869.)
                     Gallop.CySpringParamDataChildElement child = element._childElements[j];
 
                     if (child == null)
@@ -3669,28 +1340,15 @@ public class UmaContainerCharacter : UmaContainer
         return path;
     }
 
+    // (NOMBRE LEGADO) Lo usan la UI (UISettingsModel) y el exportador, y la escena lo tiene
+    // enganchado por nombre en el Toggle de fisica. Ya no hay DynamicBone: conmuta todas las
+    // cadenas del puente nativo.
     public void SetDynamicBoneEnable(bool isOn)
     {
         if (IsMini)
             return;
 
         EnablePhysics = isOn;
-
-        // (P1 — port del camino ORIGINAL) El original conmuta la física ventana a ventana
-        // sobre el CySpringDataContainer, que a su vez activa los DynamicBone que creó.
-        // Antes este método solo llegaba al puente nativo (CySpringController), que ya no
-        // se usa para el pelo.
-        if (cySpringDataContainers != null)
-        {
-            foreach (CySpringDataContainer cySpring in cySpringDataContainers)
-            {
-                //(P1) EnablePhysics solo afecta a los DynamicBone que creó el camino original
-                //(pelo/orejas/cola). Los contenedores de ropa los lleva el puente nativo y se
-                //gobiernan con SetEnableAllCySpringBones, más abajo.
-                if (cySpring != null && cySpring.DynamicBones != null && cySpring.DynamicBones.Count > 0)
-                    cySpring.EnablePhysics(isOn);
-            }
-        }
 
         if (_cySpringController != null)
         {
@@ -3705,8 +1363,6 @@ public class UmaContainerCharacter : UmaContainer
     {
         if (!IsLive || IsMini || cySpringDataContainers == null) return;
 
-        // (P1 — port del camino ORIGINAL) En el live la física va con las DOS vías: los
-        // DynamicBone del pelo/orejas/cola y el puente nativo de la ropa.
         EnablePhysics = true;
         SetDynamicBoneEnable(true);
     }
@@ -3715,20 +1371,27 @@ public class UmaContainerCharacter : UmaContainer
         if (IsMini)
             return;
 
-        // (P1 — port del camino ORIGINAL) Reset sobre los DynamicBone de cada contenedor.
-        if (cySpringDataContainers != null)
-        {
-            foreach (CySpringDataContainer cySpring in cySpringDataContainers)
-            {
-                //(P1) ResetPhysics solo afecta a los DynamicBone (pelo/orejas/cola).
-                if (cySpring != null && cySpring.DynamicBones != null && cySpring.DynamicBones.Count > 0)
-                    cySpring.ResetPhysics();
-            }
-        }
-
-        //(P1) La ropa (puente nativo) también se reinicia.
         if (_cySpringController != null)
             _cySpringController.Reset();
+    }
+
+    /// <summary>
+    /// Colisiones de entorno del cutt: colisores fijados al mundo (suelo, atrezzo) que el timeline
+    /// entrega a cada cadena. Cabeza, cuerpo y cola se resuelven por separado, igual que en el juego.
+    /// </summary>
+    public void ApplyEnvCySpringCollisionToHead(CySpringCollisionRuntimeData[] envColArray)
+    {
+        _cySpringController?.ApplyEnvCySpringCollisionToHead(envColArray);
+    }
+
+    public void ApplyEnvCySpringCollisionToBody(CySpringCollisionRuntimeData[] envColArray)
+    {
+        _cySpringController?.ApplyEnvCySpringCollisionToBody(envColArray);
+    }
+
+    public void ApplyEnvCySpringCollisionToTail(CySpringCollisionRuntimeData[] envColArray)
+    {
+        _cySpringController?.ApplyEnvCySpringCollisionToTail(envColArray);
     }
 
     public void SetEyeTracking(bool isOn)
@@ -3755,19 +1418,84 @@ public class UmaContainerCharacter : UmaContainer
         InitFaceLightRuntime();
         UpdateFaceLightRuntime();
 
-        // 官方这里后面还会做：
+        // å®˜æ–¹è¿™é‡ŒåŽé¢è¿˜ä¼šåšï¼š
         // EyeHighlightController.DefaultEyeMaterial()
         // RendererHolder.SetShaderKeyword()
         // CharaPartsHolder.SetHairCutOff()
-        // 现在先不补，先修 FaceLight。
+        // çŽ°åœ¨å…ˆä¸è¡¥ï¼Œå…ˆä¿® FaceLightã€‚
+    }
+
+    /// <summary>
+    /// Comprueba que el modelo esta montado y estable para ligar la fisica: el nodo "Position"
+    /// existe y el numero de contenedores CySpring no cambia entre frames. Los personajes que se
+    /// cargan a mitad de live montan sus piezas varios frames despues; ligar antes deja la pose de
+    /// reposo a medias (medido: falda desviada 0,97 m respecto al cuerpo).
+    /// </summary>
+    private bool IsModelReadyForCySpringBind()
+    {
+        if (transform.Find("Position") == null)
+        {
+            _bindReadyFrames = 0;
+            _bindLastContainerCount = -1;
+            return false;
+        }
+
+        int containerCount = GetComponentsInChildren<CySpringDataContainer>(true).Length;
+
+        if (containerCount == 0 || containerCount != _bindLastContainerCount)
+        {
+            _bindLastContainerCount = containerCount;
+            _bindReadyFrames = 0;
+            return false;
+        }
+
+        _bindReadyFrames++;
+        return _bindReadyFrames >= 2;
     }
 
     private void AlterLateUpdateRuntime()
     {
+        // Ligado pendiente: el modelo no estaba montado cuando el builder llamo a LoadPhysics.
+        // Se liga en el primer frame en que ya existe el rig completo, que es cuando la pose de
+        // reposo del spring tiene sentido.
+        if (_cySpringBindPending)
+        {
+            if (!IsModelReadyForCySpringBind())
+                return;
+
+            _cySpringBindPending = false;
+            CreatePendingSkirtController();
+            LoadPhysics();
+            return;
+        }
+
+        // La pose de reposo del spring (InitLocalRotation / BoneAxis / FirstPosition /
+        // InitBoneDistance) se captura en LoadPhysics, cuando el personaje aun esta en la pose del
+        // prefab. En el live la primera pose animada llega despues, asi que el spring perseguiria
+        // para siempre una pose que no es la del personaje. Se vuelve a ligar UNA sola vez en cuanto
+        // el live ya ha posado al personaje (medido: con la pose del prefab el pelo queda flotando
+        // y atravesando brazos/hombros incluso con la fisica desactivada).
+        if (CySpringRebindOnAnimatedPose && !_cySpringPoseRebound && _cySpringLoaded &&
+            _cySpringController != null && IsAnimatedPoseReadyForCySpring())
+        {
+            _cySpringPoseRebound = true;
+            ReloadClothPhysics();
+        }
+
+        // El rig root ("Position") lo crea el cargador DESPUES de LoadPhysics, asi que el ancla se
+        // resuelve aqui la primera vez que ya existe. Hasta entonces el controller ancla en el Hip,
+        // que tambien es autoconsistente (se pone a cero el mismo transform del que se toma
+        // _previousPos), pero el rig root es el equivalente real del "character root" del juego.
+        if (!_cySpringAnchorResolved && _cySpringController != null && transform.Find("Position") != null)
+        {
+            _cySpringAnchorResolved = true;
+            BindCySpringOwnerAnchor(_cySpringController, _cySpringHip);
+        }
+
         // (DATAMINE) UN paso por frame con el dt del frame, igual que el juego
         // (CySpringUpdater.BeginSimulation -> CySpring.BeginSimulation(Time.deltaTime)).
         //
-        // Motivo MEDIDO: es un solver Verlet y su energía viene del desplazamiento del hueso
+        // Motivo MEDIDO: es un solver Verlet y su energÃ­a viene del desplazamiento del hueso
         // respecto al frame anterior (d = PrevTargetPosition - TargetPosition), pero el ANCLA
         // (SelfPosition) solo cambia UNA vez por frame (al recoger la pose animada en Begin).
         // Si se meten varios sub-pasos por frame, los sub-pasos extra resuelven con el ancla
@@ -3780,122 +1508,43 @@ public class UmaContainerCharacter : UmaContainer
                 dt = Time.unscaledDeltaTime;
             dt = Mathf.Clamp(dt, 0.0f, 0.25f);
 
-            _cySpringController.BeginSimulation(dt, false);
-            _cySpringController.EndSimulation();
+            // Cadencia del juego: el solver es un Verlet calibrado para pasos fijos
+            // (GetTargetCySpringFPS -> 30 / 60). Alimentarlo en CADA frame de render (120 fps en
+            // este proyecto) lo acelera x2 y el pelo/falda se sienten "ligeros" y se mueven de mas.
+            float targetFps = _cySpringController.TargetCySpringFPS;
+            float fixedStep = targetFps > 0.0f ? 1.0f / targetFps : 0.0f;
+
+            if (fixedStep <= 0.0f)
+            {
+                _cySpringController.BeginSimulation(dt, false);
+                _cySpringController.EndSimulation();
+                return;
+            }
+
+            _cySpringStepAccumulator += dt;
+
+            int steps = 0;
+            while (_cySpringStepAccumulator >= fixedStep && steps < 4)
+            {
+                _cySpringStepAccumulator -= fixedStep;
+                _cySpringController.BeginSimulation(fixedStep, false);
+                _cySpringController.EndSimulation();
+                steps++;
+            }
+
+            // Si el frame fue muy largo (carga, hitch) no acumulamos deuda infinita.
+            if (_cySpringStepAccumulator > fixedStep * 2.0f)
+                _cySpringStepAccumulator = fixedStep;
         }
     }
 
     private void AlterLateUpdatePostRuntime()
     {
-        // (TEMP) Interruptor de gizmos, cada frame y barato (dos flags estaticos): asi el check del
-        // Inspector enciende/apaga las esferas al momento, sin esperar a que cambie un valor.
-        // Las esferas del camino DynamicBone tienen su propio interruptor; los radios de hueso
-        // (cian) solo existen en el camino nativo.
+        // (TEMP) Interruptor de gizmos de colision, cada frame y barato (un flag estatico): asi
+        // el check del Inspector enciende/apaga las esferas al momento.
         CySpringColliderVisualizer.CollidersEnabled = ColliderGizmosVisible;
-        CySpringColliderVisualizer.BonesEnabled = CySpringHairColliderGizmos;
 
-        // (DynamicBone) Si el pelo reconstruyó sus partículas después de engancharlas, se vuelven a
-        // enganchar aquí. Sin esferas creadas (pelo nativo) esto sale en la primera línea.
-        EnsureDynamicBoneArmCollidersAttached();
-
-        // Radio propio del pelo: se reaplica cada frame porque cualquier SetupParticles (p. ej. tocar
-        // un campo del componente en el Inspector durante el Play → OnValidate) lo devuelve al
-        // 'm_Radius' generico o al del asset. Son unas pocas decenas de asignaciones.
-        ApplyDynamicBoneHairRadiusOverrides(cySpringDataContainers);
-
-        // (SONDAS LATERALES) COMENTADO: costaba demasiado en el live (FPS). El codigo y los metodos
-        // se quedan para poder reactivarlo.
-        // ApplyDynamicBoneLateralProbes();
-        // RefreshDynamicBoneProbeVisualizer();
-
-        // Ajuste EN CALIENTE de los colisores generados del pelo: si cambias radio, cantidad o solape
-        // en el Inspector durante el Play, se recolocan al instante (y se reconstruye el array nativo).
-        ApplyArmColliderLayout(false);
-        // Grosor del pelo (radios cian) tambien en caliente.
-        ApplyHairBoneRadiusLayout(false);
-
-        // ESCAPE: tras la simulacion, sacar del interior de las esferas los huesos atrapados (el
-        // motor no puede: reproyecta la punta al largo del hueso y la vuelve a meter).
-        ApplyHairEscapeFix();
-
-        if (CySpringHairEscapeDiagnose)
-        {
-            _escapeFrameCounter++;
-            if (_escapeFrameCounter % 60 == 0)
-            {
-                if (_escapeCorrections > 0 || _escapeImpossible > 0)
-                {
-                    Debug.Log(
-                        $"[PeloEscape] huesos rescatados={_escapeCorrections} " +
-                        $"(sin salida posible={_escapeImpossible}) giro_max={_escapeMaxAngle * Mathf.Rad2Deg:F1}deg");
-                }
-                _escapeCorrections = 0;
-                _escapeImpossible = 0;
-                _escapeMaxAngle = 0.0f;
-            }
-        }
-        // (INTENTO 10 / DIAG) ¿La fisica MUEVE el pelo o lo deja clavado en su reposo?
-        // Logea (5 veces, cada 60 frames) el desvio maximo entre la rotacion escrita y el reposo
-        // qg = ParentRotation*InitLocalRotation. Si el desvio es ~0, la fisica no aporta nada y la
-        // pose visible ES el reposo del modelo.
-        if (CySpringDiagnoseHair && CySpringHairViaNative && _cySpringController != null)
-        {
-            _diagFrameCounter++;
-            if (_diagFrameCounter % 60 == 0 && _diagLogsDone < 5)
-            {
-                _diagLogsDone++;
-                CySpring head = _cySpringController.GetSpringArray(0);
-                CySpringRootBone[] roots = head != null ? head.RootBoneArray : null;
-                if (roots != null)
-                {
-                    for (int i = 0; i < roots.Length; i++)
-                    {
-                        CySpringRootBone r = roots[i];
-                        if (r == null) continue;
-
-                        var bl = new List<CySpringBoneBase>();
-                        bl.Add(r);
-                        if (r.ChildBoneList != null) bl.AddRange(r.ChildBoneList);
-
-                        float worst = 0f;
-                        float worstLink = 0f;
-                        string worstLinkName = "-";
-                        for (int b = 0; b < bl.Count; b++)
-                        {
-                            CySpringBoneBase bo = bl[b];
-                            if (bo == null || bo.GameObject == null) continue;
-                            NativeClothWorking nw = bo.NativeState;
-                            Quaternion rest = nw.ParentRotation * nw.InitLocalRotation;
-                            float dev = Quaternion.Angle(rest, bo.GameObject.transform.rotation);
-                            if (dev > worst) worst = dev;
-
-                            // Invariante del motor: el ancla de un hueso de la cadena es la punta del
-                            // padre -> SelfPosition(hijo) debe coincidir con TargetPosition(padre).
-                            if (b > 0)
-                            {
-                                CySpringBoneBase prev = bl[b - 1];
-                                if (prev != null)
-                                {
-                                    float link = Vector3.Distance(nw.SelfPosition, prev.NativeState.TargetPosition);
-                                    if (link > worstLink)
-                                    {
-                                        worstLink = link;
-                                        worstLinkName = bo.BoneName;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // (TEMP) Mantener sincronizados los gizmos del radio propio de cada hueso.
-                if (CySpringHairColliderGizmos)
-                    UpdateHairBoneVisualizers();
-            }
-        }
-
-        // 官方AlterLateUpdatePost 是 EndSimulation 后 UpdateBodyLightDir / UpdateFaceLight。
-        // 现在先补脸部，身体光照后面再看 UpdateBodyLightDir。
+        // (AlterLateUpdatePost del original) Tras EndSimulation: UpdateBodyLightDir / UpdateFaceLight.
         UpdateFaceLightRuntime();
     }
 
@@ -3932,7 +1581,7 @@ public class UmaContainerCharacter : UmaContainer
 
         if (HeadToonBaseTransform == null)
         {
-            // 官方 InitFaceLight 默认就是 GetHeadTransform，不是 Position_light。
+            // å®˜æ–¹ InitFaceLight é»˜è®¤å°±æ˜¯ GetHeadTransformï¼Œä¸æ˜¯ Position_lightã€‚
             if (HeadBone != null)
             {
                 HeadToonBaseTransform = HeadBone.transform;
@@ -4283,7 +1932,7 @@ public class UmaContainerCharacter : UmaContainer
                         //BodyAlapha's shader need to change manually.
 
 
-                        //修改(载入通用服装ColorSet相关)
+                        //ä¿®æ”¹(è½½å…¥é€šç”¨æœè£…ColorSetç›¸å…³)
                         if (m.name.Contains("bdy"))
                         {
                             if (m.name.Contains("Alpha"))
@@ -4639,7 +2288,7 @@ public class UmaContainerCharacter : UmaContainer
 
 
 
-    //修改(载入专用尾巴相关)
+    //ä¿®æ”¹(è½½å…¥ä¸“ç”¨å°¾å·´ç›¸å…³)
     public void LoadExclusiveTail(UmaDatabaseEntry entry)
     {
         GameObject go = entry.Get<GameObject>();
@@ -4686,7 +2335,7 @@ public class UmaContainerCharacter : UmaContainer
 
 
 
-    //修改(载入通用服装ColorSet相关)
+    //ä¿®æ”¹(è½½å…¥é€šç”¨æœè£…ColorSetç›¸å…³)
     public void RefreshDressColor()
     {
         foreach (var materialHelper in Materials)
@@ -4713,7 +2362,7 @@ public class UmaContainerCharacter : UmaContainer
 
 
 
-    //修改(载入通用服装ColorSet相关)
+    //ä¿®æ”¹(è½½å…¥é€šç”¨æœè£…ColorSetç›¸å…³)
     private void ApplyDressColorAndArea(Material mat)
     {
         var uma = Builder.CurrentUMAContainer;
@@ -4793,7 +2442,7 @@ public class UmaContainerCharacter : UmaContainer
         {
 
 
-            //修改(载入通用服装ColorSet相关)
+            //ä¿®æ”¹(è½½å…¥é€šç”¨æœè£…ColorSetç›¸å…³)
             ColorUtility.TryParseHtmlString(colordata["color_r1"].ToString(), out c1);
             ColorUtility.TryParseHtmlString(colordata["color_r2"].ToString(), out c2);
             ColorUtility.TryParseHtmlString(colordata["color_g1"].ToString(), out c3);
@@ -5476,7 +3125,7 @@ public class UmaContainerCharacter : UmaContainer
         InitBoneTransform =
             new Dictionary<Transform, (Vector3 localPosition, Quaternion localRotation, Vector3 localScale)>();
 
-        // 覆盖所有可能被 Animator 驱动的模型节点，避免特殊动作残留在控制节点或辅助骨骼中。
+        // è¦†ç›–æ‰€æœ‰å¯èƒ½è¢« Animator é©±åŠ¨çš„æ¨¡åž‹èŠ‚ç‚¹ï¼Œé¿å…ç‰¹æ®ŠåŠ¨ä½œæ®‹ç•™åœ¨æŽ§åˆ¶èŠ‚ç‚¹æˆ–è¾…åŠ©éª¨éª¼ä¸­ã€‚
         foreach (Transform modelTransform in GetComponentsInChildren<Transform>(true))
         {
             if (modelTransform == transform)
@@ -5498,7 +3147,7 @@ public class UmaContainerCharacter : UmaContainer
             return;
         }
 
-        // 使用本地变换恢复，避免父节点缩放或旋转使子骨骼的世界坐标发生二次偏移。
+        // ä½¿ç”¨æœ¬åœ°å˜æ¢æ¢å¤ï¼Œé¿å…çˆ¶èŠ‚ç‚¹ç¼©æ”¾æˆ–æ—‹è½¬ä½¿å­éª¨éª¼çš„ä¸–ç•Œåæ ‡å‘ç”ŸäºŒæ¬¡åç§»ã€‚
         foreach (var pair in InitBoneTransform)
         {
             if (pair.Key == null)
@@ -5537,3 +3186,5 @@ public class UmaContainerCharacter : UmaContainer
         return Instantiate(entry.Get<GameObject>(), parent.transform);
     }
 }
+
+

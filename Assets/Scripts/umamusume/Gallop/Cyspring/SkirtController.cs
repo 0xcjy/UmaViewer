@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Gallop
 {
-    //控制裙摆骨骼的碰撞修正、角度更新以及与CySpring的联动
+    //æŽ§åˆ¶è£™æ‘†éª¨éª¼çš„ç¢°æ’žä¿®æ­£ã€è§’åº¦æ›´æ–°ä»¥åŠä¸ŽCySpringçš„è”åŠ¨
     public class SkirtController : MonoBehaviour
     {
 
@@ -77,8 +77,24 @@ namespace Gallop
 
         private Transform _cachedTransform;
         private bool _isInitialized;
+
         private bool _isEnableSkirt = true;
         private Func<bool> _isEnableCySpringFunc;
+
+        // (FIX ancla del plano de falda) Nodo cuyo espacio usa el solver. Tiene que ser el MISMO
+        // owner de CySpring (el nodo "Position"), porque `UpdatePrevousPosture` lo deja en
+        // (0,0,0)/identidad durante el step y ahi es donde estan las posiciones de hueso contra
+        // las que se compara el plano. Antes se usaba el contenedor (Chara_XXXX_00), que NO se
+        // pone a cero: el plano quedaba desplazado por la posicion del personaje. Medido en el
+        // live 1001 (contenedor en x=8): el panel izquierdo recibia un empuje de 8,47 m y el
+        // frontal ninguno. Con el ancla correcta, el empuje es 0,02-0,03 m (el radio del hueso).
+        [SerializeField] private Transform _rootAnchor;
+
+        public void SetRootAnchor(Transform anchor)
+        {
+            if (anchor != null)
+                _rootAnchor = anchor;
+        }
 
         private static readonly Vector3 SkirtNormal = Vector3.up;
         private static readonly Vector3 RotAxis = Vector3.left;
@@ -171,6 +187,9 @@ namespace Gallop
             InitializeSkirtData();
             InitializeNativeWorkingStaticFlags();
 
+            // La referencia de reposo (Init*) se captura AQUI, en el bind, igual que hace la
+            // fisica de CySpring: si se capturase en el primer frame de juego la pose podria ser
+            // cualquiera (los personajes que entran a mitad de cancion ya estan girados/posados).
             _UpdateSkirtArg();
 
             _isInitialized = true;
@@ -362,10 +381,15 @@ namespace Gallop
 
         private void _UpdateSkirtArg()
         {
-            NativeArg.RootPos = CachedTransform.position;
+            NativeArg.RootPos = _ResolveRootPos();
 
             if (_center != null)
                 NativeArg.CenterPos = _center.position;
+            else
+                // Sin hueso "centro", usar el propio personaje. Dejarlo a (0,0,0) hace que el
+                // solver evalue los planos contra el origen del mundo (la falda se levanta hacia
+                // el origen y empeora con la distancia).
+                NativeArg.CenterPos = NativeArg.RootPos;
 
             if (_kneeL != null)
                 NativeArg.KneeLPos = _kneeL.position;
@@ -381,6 +405,7 @@ namespace Gallop
 
             NativeArg.KneeColliderRadius = _kneeColliderRadius;
             NativeArg.AnkleColliderRadius = _ankleColliderRadius;
+
             NativeArg.InfluenceAngle = _influenceAngle;
             NativeArg.InfluenceMaxAngle = _influenceMaxAngle;
 
@@ -408,10 +433,14 @@ namespace Gallop
 
                 NativeSkirtWorking work = NativeWorkingArray[i];
 
+                // El juego recalcula estos tres campos EN CADA FRAME (decompilado
+                // _UpdateSkirtArg: get_position del hijo + Quaternion_op_Multiply con el eje
+                // estatico escribiendo en el working). Capturarlos una sola vez en el bind es
+                // incorrecto: hay que refrescarlos cada frame.
                 work.SkirtRootPos = skirtData.SkirtRoot.position;
 
                 work.SkirtInitChildPos =
-                    skirtData.SkirtRoot.position +
+                    work.SkirtRootPos +
                     initWorldRotation * skirtData.ChildInitLocalPosition;
 
                 work.SkirtInitNormal = initWorldRotation * SkirtNormal;
@@ -422,6 +451,27 @@ namespace Gallop
                 NativeWorkingArray[i] = work;
             }
             
+        }
+
+        private Transform _ResolveRigRoot()
+        {
+            return transform.Find("Position");
+        }
+
+        /// <summary>
+        /// De donde sale NativeArg.RootPos. El plano de falda nativo se coloca con
+        /// `SkirtNormalPos = SkirtRootPos - RootPos` y se compara contra posiciones de hueso que,
+        /// durante el step, estan en el espacio del owner (`UpdatePrevousPosture` lo deja en el
+        /// origen). Por eso RootPos sale del ancla del owner, que vale 0 en ese momento: asi
+        /// `SkirtNormalPos` cae exactamente sobre la raiz de la falda. Leyendolo del contenedor
+        /// (que no se pone a cero) el plano quedaba desplazado por la posicion del personaje
+        /// (medido en el live 1001: hasta 8,47 m de empuje en un panel).
+        /// </summary>
+        private Vector3 _ResolveRootPos()
+        {
+            Transform anchor = _rootAnchor != null ? _rootAnchor : _ResolveRigRoot();
+
+            return anchor != null ? anchor.position : Vector3.zero;
         }
 
         public void UpdateSkirt()
@@ -442,7 +492,7 @@ namespace Gallop
 
         int count = _skirtDataArray.Length;
 
-        // 1. 第一轮：官方先判断哪些 skirt 由 SkirtController 自己更新
+        // 1. ç¬¬ä¸€è½®ï¼šå®˜æ–¹å…ˆåˆ¤æ–­å“ªäº› skirt ç”± SkirtController è‡ªå·±æ›´æ–°
         for (int i = 0; i < count; i++)
         {
             SkirtData skirtData = _skirtDataArray[i];
@@ -461,7 +511,7 @@ namespace Gallop
             if (!IsUpdateSelf(skirtData))
                 continue;
 
-            // 官方：先还原skirt root的初始localRotation
+            // å®˜æ–¹ï¼šå…ˆè¿˜åŽŸskirt rootçš„åˆå§‹localRotation
             skirtData.SkirtRoot.localRotation = skirtData.RootInitRotation;
 
             skirtData.IsUpdate = true;
@@ -471,20 +521,20 @@ namespace Gallop
             {
                 NativeSkirtWorking work = NativeWorkingArray[i];
 
-                // 官方这里写的是-1.0f,不是 -360.0f
+                // å®˜æ–¹è¿™é‡Œå†™çš„æ˜¯-1.0f,ä¸æ˜¯ -360.0f
                 work.Evaluation = -1.0f;
 
                 NativeWorkingArray[i] = work;
             }
         }
 
-        //只有有self update时才更新skirt arg
+        //åªæœ‰æœ‰self updateæ—¶æ‰æ›´æ–°skirt arg
         if (!hasUpdateSelf)
             return;
 
         _UpdateSkirtArg();
 
-        //第二轮：对 IsUpdate的skirt调 NativeSkirtUpdate
+        //ç¬¬äºŒè½®ï¼šå¯¹ IsUpdateçš„skirtè°ƒ NativeSkirtUpdate
         for (int i = 0; i < count; i++)
         {
             SkirtData skirtData = _skirtDataArray[i];
@@ -504,11 +554,11 @@ namespace Gallop
             if ((uint)i >= (uint)NativeWorkingArray.Length)
                 continue;
 
-            // 官方是传 NativeWorkingArray[i] 的地址,不是复制 work 到临时变量
+            // å®˜æ–¹æ˜¯ä¼  NativeWorkingArray[i] çš„åœ°å€,ä¸æ˜¯å¤åˆ¶ work åˆ°ä¸´æ—¶å˜é‡
             CySpringNative.UpdateSkirtNativePluginOne(NativeWorkingArray,i,ref NativeArg);
         }
 
-        //第三轮：Evaluation > 0才旋转 skirt root
+        //ç¬¬ä¸‰è½®ï¼šEvaluation > 0æ‰æ—‹è½¬ skirt root
         for (int i = 0; i < count; i++)
         {
             SkirtData skirtData = _skirtDataArray[i];
@@ -532,10 +582,15 @@ namespace Gallop
 
             if (work.Evaluation > 0.0f)
             {
+                // Decompilado del juego (SkirtController.UpdateSkirt @0x7ffffc34df70):
+                //   Transform.Rotate(transform, &ejeEstatico, evaluation, /*Space*/ 1)   -> Space.World
+                // El eje es la constante estatica (Vector3.left), NO el RotationAxis del working.
+                // El visor lo hacia en Space.Self, y por eso el giro caia en un eje distinto al
+                // calculado por el solver (la falda se torcia).
                 skirtData.SkirtRoot.Rotate(
                     RotAxis,
                     work.Evaluation,
-                    Space.Self);
+                    Space.World);
             }
         }
     }
@@ -638,7 +693,9 @@ namespace Gallop
             }
 
             if (NativeWorkingArray == null || NativeWorkingArray.Length != count)
+            {
                 NativeWorkingArray = new NativeSkirtWorking[count];
+            }
         }
 
         private void InitializeSkirtData()
@@ -710,8 +767,12 @@ namespace Gallop
         {
             Transform root = CachedTransform;
 
+            // "Hip" es el nombre real del rig de Uma. Si `_center` queda a null, `_UpdateSkirtArg`
+            // no escribe `NativeArg.CenterPos` y se queda en (0,0,0): la falda evalua sus planos
+            // contra el ORIGEN DEL MUNDO, asi que la esquina que apunta al origen se levanta y
+            // cuanto mas lejos esta el personaje, peor (el slot del centro salia bien).
             if (_center == null)
-                _center = FindFirstBone(root, "center", "Center", "J_Bip_C_Hips", "J_Bip_C_Pelvis", "Hips", "Pelvis");
+                _center = FindFirstBone(root, "center", "Center", "J_Bip_C_Hips", "J_Bip_C_Pelvis", "Hips", "Pelvis", "Hip", "Waist");
 
             if (_kneeL == null)
                 _kneeL = FindFirstBone(root, "knee_L", "Knee_L", "LeftKnee", "J_Bip_L_LowerLeg", "J_Bip_L_Knee", "Bip001 L Calf");
@@ -1123,3 +1184,5 @@ namespace Gallop
         }
     }
 }
+
+
