@@ -1,3 +1,4 @@
+
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -40,8 +41,11 @@ public class Config
     public string DownloadMissingResourcesTip = "true/false. automatically download missing files, which may require a VPN.";
     public bool DownloadMissingResources = true;
 
-    public string UseNetworkProxyTip = "true/false. Route download requests through the configured HTTP proxy. If the proxy is not reachable, a direct connection is used instead.";
+    public string UseNetworkProxyTip = "true/false. Legacy switch; prefer NetworkProxyMode.";
     public bool UseNetworkProxy = false;
+
+    public string NetworkProxyModeTip = "Proxy mode: 0 - Off (direct only), 1 - On (always use the proxy), 2 - Auto (direct first, switch to the proxy when a request fails).";
+    public ProxyMode NetworkProxyMode = ProxyMode.Auto;
 
     public string NetworkProxyHostTip = "HTTP proxy host or IP address. Do not include the protocol or port.";
     public string NetworkProxyHost = "127.0.0.1";
@@ -188,35 +192,72 @@ public class Config
         0x53, 0x2B, 0x46, 0x31, 0xE4, 0xA7, 0xB9, 0x47, 0x3E, 0x7C, 0xFB
     };
 
-
     public Config()
     {
+        StandaloneLogger.Begin("Config Constructor");
+
         configPath = GetConfigPath();
+
+        StandaloneLogger.Info("ConfigPath = " + configPath);
+        StandaloneLogger.Info("Application.version = " + Application.version);
+        StandaloneLogger.Info("Application.platform = " + Application.platform);
+        StandaloneLogger.Info("Application.dataPath = " + Application.dataPath);
+        StandaloneLogger.Info("Application.persistentDataPath = " + Application.persistentDataPath);
+
         Version = Application.version;
 
         MainPath = $@"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low"}\Cygames\umamusume";
+
         if (Application.isMobilePlatform)
         {
+            StandaloneLogger.Info("Mobile platform detected");
+            StandaloneLogger.Info("Forcing WorkMode = Standalone");
+
             WorkMode = WorkMode.Standalone;
             DownloadMissingResources = true;
             MainPath = Application.persistentDataPath;
+
             Instance = this;
+
+            StandaloneLogger.RecordConfig();
+            StandaloneLogger.RecordDirectory("MainPath", MainPath);
+            StandaloneLogger.End("Config Constructor");
+
             return;
         }
 
+        StandaloneLogger.RecordPath("Config.json", configPath);
+
         if (!File.Exists(configPath))
         {
+            StandaloneLogger.Warning("Config.json does not exist. Creating default config.");
+
             DBBaseKeyText = ByteArrayToHex(DBBaseKey);
             DBKeyText = ByteArrayToHex(DBKey);
             GlobalDBKeyText = ByteArrayToHex(GlobalDBKey);
             ABKeyText = ByteArrayToHex(ABKey);
+
             File.WriteAllText(configPath, JsonUtility.ToJson(this, true));
         }
         else
         {
             try
             {
-                JsonUtility.FromJsonOverwrite(File.ReadAllText(configPath), this);
+                StandaloneLogger.Info("Reading Config.json");
+
+                string configJson = File.ReadAllText(configPath);
+
+                StandaloneLogger.Info("Config.json length = " + configJson.Length);
+
+                JsonUtility.FromJsonOverwrite(configJson, this);
+
+                StandaloneLogger.Info("Config.json parsed successfully");
+
+                // Old configs only had the boolean switch: honour it as the explicit "On" mode.
+                if (UseNetworkProxy && NetworkProxyMode == ProxyMode.Auto)
+                {
+                    NetworkProxyMode = ProxyMode.On;
+                }
 
                 if (string.IsNullOrWhiteSpace(DBBaseKeyText))
                 {
@@ -226,6 +267,7 @@ public class Config
                 {
                     DBBaseKey = HexToByteArray(DBBaseKeyText);
                 }
+
                 if (string.IsNullOrWhiteSpace(DBKeyText))
                 {
                     DBKeyText = ByteArrayToHex(DBKey);
@@ -234,6 +276,7 @@ public class Config
                 {
                     DBKey = HexToByteArray(DBKeyText);
                 }
+
                 if (string.IsNullOrWhiteSpace(ABKeyText))
                 {
                     ABKeyText = ByteArrayToHex(ABKey);
@@ -242,21 +285,27 @@ public class Config
                 {
                     ABKey = HexToByteArray(ABKeyText);
                 }
+
                 if (string.IsNullOrWhiteSpace(GlobalDBKeyText))
                 {
                     GlobalDBKeyText = ByteArrayToHex(GlobalDBKey);
-                } else
+                }
+                else
                 {
                     GlobalDBKey = HexToByteArray(GlobalDBKeyText);
                 }
+
                 if (string.IsNullOrWhiteSpace(AudioKeyText))
                 {
                     AudioKeyText = DefaultAudioKeyText;
                 }
+
                 File.WriteAllText(configPath, JsonUtility.ToJson(this, true));
             }
             catch (Exception ex)
             {
+                StandaloneLogger.Exception("Config load failed", ex);
+
                 if (UmaViewerUI.Instance != null)
                 {
                     UmaViewerUI.Instance.ShowMessage("Config load error. Using default. " + ex.Message, UIMessageType.Error);
@@ -265,26 +314,65 @@ public class Config
                 {
                     Debug.LogError("Config load error. Using default. " + ex.Message);
                 }
+
                 MainPath = $@"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low"}\Cygames\umamusume";
             }
         }
+
         Instance = this;
+
+        StandaloneLogger.Info("Config initialized");
+        StandaloneLogger.RecordConfig();
+        StandaloneLogger.RecordDirectory("MainPath", MainPath);
+
+        StandaloneLogger.RecordPath("MetaDB", Path.Combine(MainPath, "meta_umaviewer"));
+        StandaloneLogger.RecordPath("MasterDB", Path.Combine(MainPath, "master", "master_umaviewer.mdb"));
+        StandaloneLogger.RecordDirectory("Resource directory", Path.Combine(MainPath, "dat"));
+
+        StandaloneLogger.End("Config Constructor");
     }
 
     public void UpdateConfig(bool requireRestart)
     {
-        File.WriteAllText(configPath, JsonUtility.ToJson(this, true));
-        if (requireRestart)
+        StandaloneLogger.Begin("UpdateConfig");
+
+        try
         {
-            UmaViewerUI.Instance?.ShowMessage("The configuration has changed. Please restart the application.", UIMessageType.Default);
+            StandaloneLogger.Info("Writing config: " + configPath);
+
+            File.WriteAllText(configPath, JsonUtility.ToJson(this, true));
+
+            StandaloneLogger.RecordPath("Updated Config.json", configPath);
+            StandaloneLogger.RecordConfig();
+
+            if (requireRestart)
+            {
+                UmaViewerUI.Instance?.ShowMessage(
+                    "The configuration has changed. Please restart the application.",
+                    UIMessageType.Default);
+            }
         }
+        catch (Exception ex)
+        {
+            StandaloneLogger.Exception("UpdateConfig failed", ex);
+
+            UmaViewerUI.Instance?.ShowMessage(
+                "Config save failed: " + ex.Message,
+                UIMessageType.Error);
+        }
+
+        StandaloneLogger.End("UpdateConfig");
     }
 
     public ulong GetAudioKey()
     {
         string keyText = string.IsNullOrWhiteSpace(AudioKeyText) ? DefaultAudioKeyText : AudioKeyText.Trim();
-        if (keyText.Length > 16 || !ulong.TryParse(keyText, System.Globalization.NumberStyles.AllowHexSpecifier,
-            System.Globalization.CultureInfo.InvariantCulture, out ulong key) || key == 0)
+
+        if (keyText.Length > 16 || !ulong.TryParse(
+            keyText,
+            System.Globalization.NumberStyles.AllowHexSpecifier,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out ulong key) || key == 0)
         {
             throw new InvalidOperationException("AudioKeyText must be a nonzero hexadecimal key of at most 16 digits, without a 0x prefix.");
         }
@@ -343,6 +431,7 @@ public class Config
         {
             return Path.Combine(Application.persistentDataPath, "Config.json");
         }
+
         return Application.dataPath + "/../Config.json";
     }
 
@@ -351,10 +440,12 @@ public class Config
         if (byteArray == null) return string.Empty;
 
         StringBuilder sb = new StringBuilder(byteArray.Length * 2);
+
         foreach (byte b in byteArray)
         {
             sb.AppendFormat("{0:X2}", b);
         }
+
         return sb.ToString();
     }
 
@@ -364,11 +455,13 @@ public class Config
             return new byte[0];
 
         byte[] result = new byte[hex.Length / 2];
+
         for (int i = 0; i < result.Length; i++)
         {
             string byteString = hex.Substring(i * 2, 2);
             result[i] = byte.Parse(byteString, System.Globalization.NumberStyles.HexNumber);
         }
+
         return result;
     }
 }
@@ -390,6 +483,13 @@ public enum WorkMode
 {
     Default,
     Standalone
+}
+
+public enum ProxyMode
+{
+    Off = 0,
+    On = 1,
+    Auto = 2
 }
 
 [Serializable]

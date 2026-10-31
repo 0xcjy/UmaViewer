@@ -1,4 +1,4 @@
-#if UNITY_STANDALONE || UNITY_EDITOR
+﻿#if UNITY_STANDALONE || UNITY_EDITOR
 using SFB;
 #endif
 
@@ -37,16 +37,292 @@ public class UISettingsOther : MonoBehaviour
     public void ApplySettings()
     {
         EnsureLanguageOptions();
+        EnsureCjkFallback();
+        EnsureProxyRow();
         EnsureUIFps();
         EnsureUIRenderScale();
         EnsureUpdateNonLoadingModelsButton();
+
         WorkModeDropdown.SetValueWithoutNotify((int)Config.Instance.WorkMode);
         RegionDropdown.SetValueWithoutNotify((int)Config.Instance.Region);
         LanguageDropdown.SetValueWithoutNotify(LanguageToDropdownValue(Config.Instance.Language));
+
+        // Translate last: dropdown captions are rebuilt from options[value] by
+        // SetValueWithoutNotify, so applying the table afterwards is what makes the
+        // Region/WorkMode captions match the selected item.
+        UiLocalization.Apply(Config.Instance != null ? Config.Instance.Language : Language.En);
+
         UmaViewerMain.ApplyFrameRateLimit();
         // El boton "UpdateDatabase" genera las listas EN (nombres + lyrics) desde el cliente
         // Global. Se deja SIEMPRE clicable: si Region no es JP, UpdateGameDB avisa y no hace nada.
         UpdateDBButton.interactable = true;
+    }
+
+    private static TMP_FontAsset cjkFallback;
+
+    /// <summary>
+    /// The language names are "简体中文" / "日本語" but the UI font atlas carries no CJK
+    /// glyphs, so they came out as boxes. Build a dynamic TMP font from the bundled
+    /// Noto Sans CJK and register it as a fallback for every text on this panel.
+    /// </summary>
+    private void EnsureCjkFallback()
+    {
+        if (cjkFallback == null)
+        {
+            Font source = Resources.Load<Font>("Fonts/NotoSansCJKsc-Bold");
+
+            if (source == null)
+            {
+                UnityEngine.Debug.LogWarning(
+                    "[UISettingsOther] Fonts/NotoSansCJKsc-Bold.otf is missing; " +
+                    "CJK labels will render as boxes.");
+                return;
+            }
+
+            cjkFallback = TMP_FontAsset.CreateFontAsset(
+                source,
+                90,
+                7,
+                UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA,
+                1024,
+                1024,
+                AtlasPopulationMode.Dynamic);
+
+            if (cjkFallback != null)
+            {
+                cjkFallback.name = "NotoSansCJK (dynamic)";
+            }
+        }
+
+        if (cjkFallback == null) return;
+
+        if (LanguageDropdown != null)
+        {
+            if (LanguageDropdown.captionText != null)
+            {
+                LanguageDropdown.captionText.font = cjkFallback;
+            }
+
+            if (LanguageDropdown.itemText != null)
+            {
+                LanguageDropdown.itemText.font = cjkFallback;
+            }
+        }
+
+        foreach (TMP_Text text in GetComponentsInChildren<TMP_Text>(true))
+        {
+            TMP_FontAsset font = text.font;
+
+            if (font == null || font == cjkFallback) continue;
+
+            if (font.fallbackFontAssetTable == null)
+            {
+                font.fallbackFontAssetTable = new List<TMP_FontAsset>(1);
+            }
+
+            if (!font.fallbackFontAssetTable.Contains(cjkFallback))
+            {
+                font.fallbackFontAssetTable.Add(cjkFallback);
+            }
+        }
+    }
+
+    private Transform proxyRow;
+    private TMP_Text proxyLabel;
+
+    /// <summary>
+    /// The "ClearLoadedBundle" row in the scene has no text and no interaction component —
+    /// it is an empty placeholder. Repurpose it as the network proxy toggle so the option is
+    /// reachable without editing Config.json by hand.
+    /// </summary>
+    private void EnsureProxyRow()
+    {
+        if (proxyRow != null)
+        {
+            RefreshProxyLabel();
+            return;
+        }
+
+        Transform row = transform.Find("ClearLoadedBundle");
+
+        if (row == null)
+        {
+            UnityEngine.Debug.LogWarning(
+                "[UISettingsOther] 'ClearLoadedBundle' row not found; proxy toggle not added.");
+            return;
+        }
+
+        proxyRow = row;
+        proxyLabel = row.GetComponentInChildren<TMP_Text>(true);
+
+        if (proxyLabel == null)
+        {
+            // The row's child is just an Image + Button; there is no text component at all, so
+            // assigning a caption had nowhere to render (the row stayed a blank bar). Build one.
+            GameObject labelObject = new GameObject("ProxyLabel", typeof(RectTransform));
+            labelObject.transform.SetParent(row, false);
+
+            RectTransform newRect = labelObject.GetComponent<RectTransform>();
+            newRect.anchorMin = Vector2.zero;
+            newRect.anchorMax = Vector2.one;
+            newRect.offsetMin = new Vector2(8f, 0f);
+            newRect.offsetMax = new Vector2(-8f, 0f);
+
+            TextMeshProUGUI created = labelObject.AddComponent<TextMeshProUGUI>();
+
+            TMP_Text sample = GetComponentInChildren<TMP_Text>(true);
+            created.font = sample != null && sample.font != null
+                ? sample.font
+                : TMP_Settings.defaultFontAsset;
+
+            created.fontSize = sample != null && sample.fontSize > 1f ? sample.fontSize : 26f;
+            created.fontStyle = sample != null ? sample.fontStyle : FontStyles.Normal;
+            created.alignment = TextAlignmentOptions.Center;
+            created.enableWordWrapping = false;
+            created.raycastTarget = false;
+            created.color = new Color(0.12f, 0.12f, 0.12f, 1f);
+
+            proxyLabel = created;
+
+            StandaloneLogger.Info(
+                "[UISettingsOther] created the proxy caption label on 'ClearLoadedBundle'");
+        }
+        else
+        {
+            // The original label was an empty placeholder with a zero-sized rect, so the text
+            // never rendered. Give it the panel font, a visible colour, and the full row area.
+            if (proxyLabel.font == null)
+            {
+                TMP_Text sample = GetComponentInChildren<TMP_Text>(true);
+
+                if (sample != null && sample != proxyLabel)
+                {
+                    proxyLabel.font = sample.font;
+                }
+            }
+
+            RectTransform labelRect = proxyLabel.rectTransform;
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(8f, 0f);
+            labelRect.offsetMax = new Vector2(-8f, 0f);
+
+            proxyLabel.enableWordWrapping = false;
+            proxyLabel.alignment = TextAlignmentOptions.Center;
+            TMP_Text sibling = GetComponentInChildren<TMP_Text>(true);
+
+            if (sibling != null && sibling != proxyLabel)
+            {
+                proxyLabel.fontStyle = sibling.fontStyle;
+                if (sibling.fontSize > 1f) proxyLabel.fontSize = sibling.fontSize;
+            }
+            else
+            {
+                proxyLabel.fontSize = Mathf.Min(proxyLabel.fontSize <= 1f ? 28f : proxyLabel.fontSize, 28f);
+            }
+            proxyLabel.color = new Color(0.12f, 0.12f, 0.12f, 1f);
+            proxyLabel.gameObject.SetActive(true);
+        }
+
+        Image hitArea = row.GetComponent<Image>();
+
+        if (hitArea == null)
+        {
+            // The row is a bare RectTransform; give it an invisible graphic so it can be clicked.
+            hitArea = row.gameObject.AddComponent<Image>();
+            hitArea.color = new Color(0f, 0f, 0f, 0f);
+        }
+
+        Button button = row.GetComponent<Button>();
+
+        if (button == null)
+        {
+            button = row.gameObject.AddComponent<Button>();
+        }
+
+        // A scene Image often ships with raycastTarget = false, which silently makes the whole
+        // row unclickable.
+        hitArea.raycastTarget = true;
+
+        button.targetGraphic = hitArea;
+        button.interactable = true;
+        button.transition = Selectable.Transition.None;
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(ToggleProxy);
+
+        RefreshProxyLabel();
+    }
+
+    private void ToggleProxy()
+    {
+        StandaloneLogger.Info("[UISettingsOther] proxy row clicked");
+
+        Config config = Config.Instance;
+
+        if (config == null) return;
+
+        // Off -> On -> Auto -> Off
+        switch (config.NetworkProxyMode)
+        {
+            case ProxyMode.Off:
+                config.NetworkProxyMode = ProxyMode.On;
+                break;
+            case ProxyMode.On:
+                config.NetworkProxyMode = ProxyMode.Auto;
+                break;
+            default:
+                config.NetworkProxyMode = ProxyMode.Off;
+                break;
+        }
+
+        config.UseNetworkProxy = config.NetworkProxyMode == ProxyMode.On;
+
+        if (string.IsNullOrWhiteSpace(config.NetworkProxyHost))
+        {
+            config.NetworkProxyHost = "127.0.0.1";
+        }
+
+        if (config.NetworkProxyPort <= 0)
+        {
+            config.NetworkProxyPort = 7890;
+        }
+
+        config.UpdateConfig(false);
+        RefreshProxyLabel();
+
+        UmaViewerDownload.ResetProxyClients();
+
+        StandaloneLogger.Info(
+            "Network proxy mode -> " + config.NetworkProxyMode +
+            " (" + config.NetworkProxyHost + ":" + config.NetworkProxyPort + ")");
+    }
+
+    private void RefreshProxyLabel()
+    {
+        if (proxyLabel == null) return;
+
+        Config config = Config.Instance;
+
+        if (config == null) return;
+
+        // Keep the label self-describing: a bare 开/关/自动 reads like an unrelated toggle.
+        string mode;
+        switch (config.NetworkProxyMode)
+        {
+            case ProxyMode.On:
+                mode = "On";
+                break;
+            case ProxyMode.Auto:
+                mode = "Auto";
+                break;
+            default:
+                mode = "Off";
+                break;
+        }
+
+        proxyLabel.text = UiLocalization.T("Proxy:") + UiLocalization.T(mode);
+
+        proxyLabel.ForceMeshUpdate();
     }
 
     private void EnsureLanguageOptions()
@@ -222,15 +498,32 @@ public class UISettingsOther : MonoBehaviour
     public void ChangeLanguage(int lang)
     {
         Language language = DropdownValueToLanguage(lang);
-        if (Config.Instance.Language != language)
-        {
-            Config.Instance.Language = language;
-            Config.Instance.UpdateConfig(false);
+        StandaloneLogger.Info("[UISettingsOther] ChangeLanguage called: dropdown=" + lang +
+            " -> " + language + " (current=" + Config.Instance.Language + ")");
 
-            // Rebuild all localized lists and reload English translations when
-            // necessary without requiring the application process to restart.
-            Scene activeScene = SceneManager.GetActiveScene();
+        if (Config.Instance.Language == language)
+        {
+            StandaloneLogger.Info("[UISettingsOther] language unchanged, skip reload");
+            return;
+        }
+
+        Config.Instance.Language = language;
+        Config.Instance.UpdateConfig(false);
+
+        // Rebuild all localized lists and reload English translations when
+        // necessary without requiring the application process to restart.
+        Scene activeScene = SceneManager.GetActiveScene();
+        StandaloneLogger.Info("[UISettingsOther] reloading scene " + activeScene.name +
+            " (buildIndex=" + activeScene.buildIndex + ")");
+
+        try
+        {
             SceneManager.LoadScene(activeScene.buildIndex);
+        }
+        catch (System.Exception ex)
+        {
+            StandaloneLogger.Exception("[UISettingsOther] scene reload failed", ex);
+            UiLocalization.Apply(language);
         }
     }
 
@@ -251,6 +544,42 @@ public class UISettingsOther : MonoBehaviour
             Config.Instance.WorkMode = (WorkMode)mode;
             Config.Instance.UpdateConfig(true);
         }
+    }
+
+
+    public void UpdateGameDB()
+    {
+        if (_updateResVerCoroutine != null &&
+            Config.Instance.WorkMode != WorkMode.Standalone)
+            return;
+
+        UmaDatabaseController.Instance.CloseAllConnection();
+
+        ManifestDB db = new ManifestDB();
+
+        _updateResVerCoroutine = db.UpdateResourceVersion(
+            delegate (string msg, UIMessageType type)
+            {
+                UmaViewerUI.Instance.ShowMessage(msg, type);
+            });
+
+        StartCoroutine(RunUpdateThenSyncKeys(_updateResVerCoroutine));
+    }
+
+    /// <summary>
+    /// The CDN rebuild fills names, sizes and hashes but no key column, so the bundles stay
+    /// undecryptable. Right after the rebuild, pull the exported key list from the API and
+    /// write it into the fresh database.
+    /// </summary>
+    private IEnumerator RunUpdateThenSyncKeys(IEnumerator update)
+    {
+        yield return update;
+
+        yield return UmaKeySync.Ensure(ManifestDB.DBPath);
+
+        UmaViewerUI.Instance?.ShowMessage(
+            "Database updated. Keys synced — restart the viewer.",
+            UIMessageType.Success);
     }
 
     //Genera la blacklist de trajes sin cuerpo (`blacklist_trajes.json`) desde los datos cargados y
@@ -295,7 +624,9 @@ public class UISettingsOther : MonoBehaviour
         }
     }
 
-    public void UpdateGameDB()
+    // Genera las listas EN (nombres + lyrics) desde el cliente Global. Se mantiene separado de
+    // UpdateGameDB, que actualiza la version de recursos para el modo standalone.
+    public void UpdateGlobalNames()
     {
         if (Config.Instance.Region != Region.Jp)
         {
@@ -373,6 +704,7 @@ public class UISettingsOther : MonoBehaviour
         return null;
 #endif
     }
+
 
     public void ChangeDataPath()
     {

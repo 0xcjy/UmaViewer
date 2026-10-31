@@ -14,6 +14,13 @@ public class UmaDatabaseEntry
     public long Key;
     private byte[] fKey;
 
+    /// <summary>
+    /// True when the payload must be decrypted with <see cref="Key"/> (the `e` column).
+    /// The game's bundles keep a plain "UnityFS" header even though every block after it is
+    /// encrypted, so a header check cannot tell plain from encrypted — trusting it here made
+    /// the loader skip the decryptor and fail with "&lt;path&gt; exists and doesn't work".
+    /// Every bundle shipped by the game/CDN with a non-zero key is encrypted.
+    /// </summary>
     public bool IsEncrypted => Key != 0;
 
     [NonSerialized]
@@ -55,7 +62,9 @@ public class UmaDatabaseEntry
     {
         get
         {
-            if (Config.Instance.DownloadMissingResources && !File.Exists(Path))
+            if (Config.Instance.DownloadMissingResources
+                && !File.Exists(Path)
+                && !UmaMissingAssets.IsMissing(Url))
             {
                 DownloadAsset(this);
             }

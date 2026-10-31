@@ -301,6 +301,26 @@ public class UmaAssetManager : MonoBehaviour
         }
     }
 
+    private static string DescribeHead(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return "<missing>";
+
+            byte[] head = new byte[8];
+            using FileStream probe = File.OpenRead(filePath);
+            int read = probe.Read(head, 0, head.Length);
+
+            if (read <= 0) return "<empty>";
+
+            return BitConverter.ToString(head, 0, read);
+        }
+        catch (Exception ex)
+        {
+            return "<error: " + ex.GetType().Name + ">";
+        }
+    }
+
     private static bool AcquireOne(UmaDatabaseEntry entry, bool neverUnload, bool allowDownload = true)
     {
         if (instance == null || entry == null || string.IsNullOrEmpty(entry.Name))
@@ -387,6 +407,14 @@ public class UmaAssetManager : MonoBehaviour
                     Gallop.Live.LiveRuntimeDiagnostics.RecordBundleAcquire(entry.Name, "load_failed", "bundle");
                 }
                 stream?.Dispose();
+
+                StandaloneLogger.Error(
+                    "Bundle load failed: " + entry.Name +
+                    " | key=" + entry.Key +
+                    " | encrypted=" + entry.IsEncrypted +
+                    " | size=" + (File.Exists(filePath) ? new FileInfo(filePath).Length : -1) +
+                    " | head=" + DescribeHead(filePath));
+
                 Debug.LogError(filePath + " exists and doesn't work");
                 UmaViewerUI.Instance?.ShowMessage(
                     filePath + " exists and doesn't work",
