@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 public class UmaViewerMain : MonoBehaviour
 {
     private const string EnglishNamesCacheFileName = "english_names.cache";
+    private const string ChineseNamesCacheFileName = "chinese_names.cache";
     private const string EnglishNamesCacheMagic = "UmaViewerEnglishNames";
     private const int EnglishNamesCacheVersion = 1;
 
@@ -44,12 +45,39 @@ public class UmaViewerMain : MonoBehaviour
     public List<UmaDatabaseEntry> AbEffect = new List<UmaDatabaseEntry>();
     public List<UmaDatabaseEntry> CostumeList = new List<UmaDatabaseEntry>();
 
+    /// <summary>
+    /// Set when Standalone mode has no database at all. Awake must not touch
+    /// UmaDatabaseController.Instance in that case: the constructor throws and only shows
+    /// "Only `Default` mode is supported", long before the rebuild in Start() would run.
+    /// </summary>
+    private bool _needsDatabaseRebuild;
+
     private void Awake()
     {
         Instance = this;
         new Config();
         ApplyFrameRateLimit();
 
+        if (Config.Instance != null && Config.Instance.WorkMode == WorkMode.Standalone)
+        {
+            string nativeMeta = Path.Combine(Config.Instance.MainPath, "meta");
+            string rebuiltMeta = Path.Combine(Config.Instance.MainPath, "meta_umaviewer");
+
+            if (!File.Exists(nativeMeta) && !File.Exists(rebuiltMeta))
+            {
+                _needsDatabaseRebuild = true;
+                StandaloneLogger.Info(
+                    "Awake: no database yet, deferring asset list build until the rebuild finishes");
+                return;
+            }
+        }
+
+        LoadDatabaseLists();
+    }
+
+    /// <summary>Fills AbList/AbChara/... from the meta database. Safe to call after a rebuild.</summary>
+    private void LoadDatabaseLists()
+    {
         AbList = UmaDatabaseController.Instance.MetaEntries;
         if (AbList == null) return;
         var chara_3d = AbList.Where(ab => ab.Value.Type == UmaFileType._3d_cutt).Select(ab => ab.Value).ToList();
@@ -92,9 +120,97 @@ public class UmaViewerMain : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Builds meta_umaviewer from the CDN manifests and then fills in the per-entry keys, so a
+    /// fresh Standalone install can start without the user touching `Other` settings first.
+    /// </summary>
+    private IEnumerator RebuildStandaloneDatabase()
+    {
+        StandaloneLogger.Begin("Standalone auto-rebuild");
+        StandaloneLogger.Info(
+            "No meta/meta_umaviewer under " + Config.Instance.MainPath +
+            "; rebuilding from CDN manifests");
+
+        if (UmaSceneController.instance != null)
+        {
+            UmaSceneController.instance.LoadingProgressChange(0, 10, "Building Database");
+        }
+
+        ManifestDB db = new ManifestDB();
+
+        yield return db.UpdateResourceVersion(delegate (string msg, UIMessageType type)
+        {
+            if (UmaViewerUI.Instance != null)
+            {
+                UmaViewerUI.Instance.ShowMessage(msg, type);
+            }
+        });
+
+        // UpdateResourceVersion already syncs the keys as part of the same pass.
+        StandaloneLogger.Info(
+            "Rebuild finished; meta_umaviewer now carries the decryption keys");
+
+        StandaloneLogger.End("Standalone auto-rebuild");
+    }
+
     private IEnumerator Start()
     {
+        // Swap the scene's English labels for the Chinese table when that language is selected.
+        UiLocalization.Apply(Config.Instance != null ? Config.Instance.Language : Language.En);
+
+        // Awake deferred the asset-list build because there was no database at all; build it
+        // now, fill in the keys, then re-read the lists before anything else touches them.
+        if (_needsDatabaseRebuild)
+        {
+            yield return RebuildStandaloneDatabase();
+
+            _needsDatabaseRebuild = false;
+
+            if (UmaDatabaseController.Instance != null)
+            {
+                UmaDatabaseController.Instance.CloseAllConnection();
+
+                // The controller memoised its failure path; reload from the fresh database.
+                UmaDatabaseController.ResetInstance();
+            }
+
+            LoadDatabaseLists();
+        }
+
         if (AbList == null) yield break;
+
+        // Rebuilt databases come from the CDN manifests, which carry no per-entry key. If the
+        // one we are about to use has no `e` column (or a completely empty one), pull the key
+        // list from the API and fill it in before anything tries to decrypt a bundle.
+        // Use the path that is actually going to be loaded: native meta already ships keys,
+        // only a CDN-rebuilt meta_umaviewer needs the sync.
+        string keySyncPath = UmaDatabaseController.Instance != null
+            ? UmaDatabaseController.Instance.MetaDatabasePath
+            : ManifestDB.DBPath;
+
+        if (UmaKeySync.NeedsSync(keySyncPath))
+        {
+            if (UmaSceneController.instance != null)
+            {
+                UmaSceneController.instance.LoadingProgressChange(0, 10, "Syncing Keys");
+            }
+
+            yield return UmaKeySync.Ensure(keySyncPath);
+
+            // The meta was already read into memory before the keys were written, so every
+            // entry still carries Key = 0 and decryption silently falls back to "plaintext".
+            // Drop the cached controller and re-read so the freshly written e column is used.
+            if (UmaDatabaseController.Instance != null)
+            {
+                UmaDatabaseController.Instance.CloseAllConnection();
+                UmaDatabaseController.ResetInstance();
+            }
+
+            LoadDatabaseLists();
+
+            StandaloneLogger.Info(
+                "Reloaded meta after key sync; entries = " + (AbList == null ? 0 : AbList.Count));
+        }
 
         // Traduce nombres JP->EN con la instalacion GLOBAL (solo nombres; si no esta,
         // no pasa nada y se conservan los japoneses).
@@ -112,39 +228,124 @@ public class UmaViewerMain : MonoBehaviour
 
 
 
-        // Reuse downloaded English names; only fetch when no usable cache exists.
-        bool downloadTranslations = false;
-        string cachePath = Path.Combine(Application.persistentDataPath, EnglishNamesCacheFileName);
-        if (Config.Instance.Language == Language.En)
-            downloadTranslations = !TryLoadEnglishNamesCache(cachePath);
+        // Reuse the downloaded names; only fetch when no usable cache exists.
+        bool isChinese = Config.Instance.Language == Language.Cn;
+        bool useNames = Config.Instance.Language == Language.En || isChinese;
+
+        string cachePath = Path.Combine(
+            Application.persistentDataPath,
+            isChinese ? ChineseNamesCacheFileName : EnglishNamesCacheFileName);
+
+        bool downloadTranslations = useNames && !TryLoadEnglishNamesCache(cachePath);
 
         loadingUI.LoadingProgressChange(
             loadingStep++,
             loadingStepsTotal,
             downloadTranslations ? "Downloading Translations" : "Loading Translations");
+
         if (downloadTranslations)
         {
-
-            yield return UmaViewerDownload.DownloadText(LocalizeEn.TranslationUrl, json =>
+            if (isChinese)
             {
-                if (string.IsNullOrEmpty(json)) return;
+                // A zh-CN.json dropped in {exe}/translations wins over the network copy so the
+                // viewer keeps working offline (same hachimi text_data_dict.json layout).
+                string localTranslation = LocalizeEn.FindLocalTranslationFile();
 
-                try
+                // Bundled table first: on Android there is no translations/ folder next to the
+                // player and downloading 5.8 MB with 3-second timeouts kept failing.
+                TextAsset bundledNames = Resources.Load<TextAsset>("Localize/zh-CN-names");
+
+                if (bundledNames != null &&
+                    TryParseEnglishNames(bundledNames.text, out Dictionary<int, string> bundledChara, out Dictionary<int, string> bundledMob))
                 {
-                    if (!TryParseEnglishNames(json, out Dictionary<int, string> charaNames, out Dictionary<int, string> mobNames))
+                    ApplyEnglishNames(bundledChara, bundledMob);
+                    TrySaveEnglishNamesCache(cachePath, bundledChara, bundledMob);
+                    Debug.Log("[Localize] Chinese names loaded from Resources/Localize/zh-CN-names.json");
+                }
+                else if (!string.IsNullOrEmpty(localTranslation))
+                {
+                    try
                     {
-                        Debug.LogWarning("Online English translations did not contain the required name tables. Using LocalizeEn fallback.");
-                        return;
-                    }
+                        string localJson = File.ReadAllText(localTranslation);
 
-                    ApplyEnglishNames(charaNames, mobNames);
-                    TrySaveEnglishNamesCache(cachePath, charaNames, mobNames);
+                        if (TryParseEnglishNames(localJson, out Dictionary<int, string> localChara, out Dictionary<int, string> localMob))
+                        {
+                            ApplyEnglishNames(localChara, localMob);
+                            TrySaveEnglishNamesCache(cachePath, localChara, localMob);
+                            Debug.Log($"[Localize] Chinese names loaded from {localTranslation}");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[Localize] {localTranslation} does not contain the required name tables.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[Localize] Could not read {localTranslation}: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
+                else if (LocalizeEn.TranslationUrlCnMirrors != null && LocalizeEn.TranslationUrlCnMirrors.Length > 0)
                 {
-                    Debug.LogWarning($"Could not parse online English translations. Using LocalizeEn fallback: {ex.Message}");
+                    // Try each mirror until one yields the name tables (the hosts are copies of
+                    // the same hachimi payload; some are blocked from certain networks).
+                    foreach (string mirror in LocalizeEn.TranslationUrlCnMirrors)
+                    {
+                        bool applied = false;
+
+                        yield return UmaViewerDownload.DownloadText(mirror, json =>
+                        {
+                            if (string.IsNullOrEmpty(json)) return;
+
+                            try
+                            {
+                                if (!TryParseEnglishNames(json, out Dictionary<int, string> charaNames, out Dictionary<int, string> mobNames))
+                                {
+                                    Debug.LogWarning("[Localize] " + mirror + " did not contain the required name tables.");
+                                    return;
+                                }
+
+                                ApplyEnglishNames(charaNames, mobNames);
+                                TrySaveEnglishNamesCache(cachePath, charaNames, mobNames);
+                                applied = true;
+                                Debug.Log("[Localize] Chinese names loaded from " + mirror);
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.LogWarning($"[Localize] Could not parse {mirror}: {ex.Message}");
+                            }
+                        });
+
+                        if (applied) break;
+                    }
                 }
-            });
+                else
+                {
+                    Debug.LogWarning("[Localize] Chinese selected but no translation file or URL is available.");
+                }
+            }
+            else
+            {
+                yield return UmaViewerDownload.DownloadText(LocalizeEn.TranslationUrl, json =>
+                {
+                    if (string.IsNullOrEmpty(json)) return;
+
+                    try
+                    {
+                        if (!TryParseEnglishNames(json, out Dictionary<int, string> charaNames, out Dictionary<int, string> mobNames))
+                        {
+                            Debug.LogWarning("Online English translations did not contain the required name tables. Using LocalizeEn fallback.");
+                            return;
+                        }
+
+                        ApplyEnglishNames(charaNames, mobNames);
+                        TrySaveEnglishNamesCache(cachePath, charaNames, mobNames);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"Could not parse online English translations. Using LocalizeEn fallback: {ex.Message}");
+                    }
+                });
+            }
         }
 
         if (Config.Instance.WorkMode == WorkMode.Standalone)

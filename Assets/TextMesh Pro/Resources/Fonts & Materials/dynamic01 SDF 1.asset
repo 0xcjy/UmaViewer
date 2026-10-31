@@ -268,7 +268,7 @@ MonoBehaviour:
   material: {fileID: -4714771145264795804}
   materialHashCode: 915623572
   m_Version: 1.1.0
-  m_SourceFontFileGUID: ea8076455073e4d4d836f95d66cfeaca
+  m_SourceFontFileGUID: c5cf89e9cfa342b1902c42077c8b649a
   m_SourceFontFile_EditorRef: {fileID: 12800000, guid: ea8076455073e4d4d836f95d66cfeaca,
     type: 3}
   m_SourceFontFile: {fileID: 12800000, guid: ea8076455073e4d4d836f95d66cfeaca, type: 3}

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using SFB;
@@ -531,7 +531,7 @@ public class LiveRecordPanel : MonoBehaviour
 
     private void Awake()
     {
-        _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        _font = UiFont.Get();
 
         //Si el panel de la escena arranca ACTIVO (p. ej. la escena se guardó con el menú abierto), se
         //oculta: sólo debe mostrarse a través de Open(), que es quien lo conecta con la lógica.

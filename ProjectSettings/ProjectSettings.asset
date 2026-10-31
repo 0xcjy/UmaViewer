@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!129 &1
 PlayerSettings:
@@ -12,7 +12,7 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: "\u8C03\u97F3\u7CD5\u624B"
+  companyName: Buenavista.fans
   productName: UmaViewer
   defaultCursor: {fileID: 2800000, guid: 533f56f1c61acf543bf019a728aadcd4, type: 3}
   cursorHotspot: {x: 40, y: 4}
@@ -165,7 +165,7 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
-    Android: com.hongyiw689.umaviewer
+    Android: fans.buenavista.umaviewer
     Standalone: com.UmaViewer
     iPhone: com.------------.UmaViewer
   buildNumber:

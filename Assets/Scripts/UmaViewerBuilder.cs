@@ -1176,6 +1176,13 @@ public string[] NormalBodyKeywords  = new[] { "skin", "body", "bdy", "face", "he
             return CurrentLyrics;
         }
 
+        // Chinese: hachimi ships per-song translations (japanese line + chinese line).
+        if (Config.Instance.Language == Language.Cn && LocalizeLyrics.TryGet(songid, out var zhLyrics))
+        {
+            CurrentLyrics.AddRange(zhLyrics);
+            return CurrentLyrics;
+        }
+
         string lyricsVar = $"live/musicscores/m{songid}/m{songid}_lyrics";
         UmaDatabaseEntry lyricsAsset = Main.AbList[lyricsVar];
         AssetBundle bundle = UmaAssetManager.LoadAssetBundle(lyricsAsset);
