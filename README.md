@@ -16,16 +16,6 @@ Unity application that makes it easy to view assets from Uma Musume: Pretty Derb
 | KR        | ✅        |
 | Global    | ✅        |
 
-------------
-
-## ⚠️ 🌍 EN/Global users ⚠️
-
-In UmaViewer, set **WorkMode** to **Default** and **Region** to **Global** in the **'Other'** Settings tab.
-
-Currently only the default work mode is supported - you need to download assets using the Download All button in the game's settings for the viewer to work.
-
-------------
-
 ### Requirements/Installation
 1. [Uma Musume: Pretty Derby](https://dmg.umamusume.jp/) with full data download is required to run the viewer.
 2. Depending on your version and update status, the game stores its data in **different locations**
@@ -108,8 +98,6 @@ and more
 
 <img src="https://user-images.githubusercontent.com/59540382/222422871-12e80e0b-778b-4f42-b581-5e4af5cd6df9.png" height="350" />
 
-### Also check out:
-[UmaChat by kagari](https://github.com/kagari-bi/UmaChat) - model viewer fork that lets you chat with Umas using AI + TTS
 
 ### Special Thank to:
 MarshmallowAndroid: [UmaMusumeExplorer](https://github.com/MarshmallowAndroid/UmaMusumeExplorer) for acb/awb decoder.
