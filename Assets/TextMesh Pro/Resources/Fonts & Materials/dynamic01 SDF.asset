@@ -16,11 +16,11 @@ MonoBehaviour:
   material: {fileID: 1876532955194943090}
   materialHashCode: -155166619
   m_Version: 1.1.0
-  m_SourceFontFileGUID: 036631af73b15ac41a9d10f75f5bbafe
+  m_SourceFontFileGUID: c5cf89e9cfa342b1902c42077c8b649a
   m_SourceFontFile_EditorRef: {fileID: 12800000, guid: 036631af73b15ac41a9d10f75f5bbafe,
     type: 3}
-  m_SourceFontFile: {fileID: 0}
-  m_AtlasPopulationMode: 0
+  m_SourceFontFile: {fileID: 12800000, guid: c5cf89e9cfa342b1902c42077c8b649a, type: 3}
+  m_AtlasPopulationMode: 1
   m_FaceInfo:
     m_FaceIndex: 0
     m_FamilyName: UMAMUSUME-RodinWanpaku Pro

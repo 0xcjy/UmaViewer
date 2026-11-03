@@ -2511,11 +2511,17 @@ public class UmaViewerUI : MonoBehaviour
             .Select(ExtractCharaId).Where(id => id >= 0).Distinct().ToList();
 
         int descartadas = allVocalIds.Count - presentIds.Count;
-        vocalOptions = (presentIds.Count > 0 ? presentIds : allVocalIds).OrderBy(x => x).ToList();
+
+        // Always offer every singer the manifest knows about, in plain id order. Filtering down
+        // to the .awb files already on disk looked reasonable, but as soon as one song had been
+        // played once its cached vocal was the only entry left, so the dropdown collapsed to a
+        // single option. Picking a singer without a cached .awb downloads it on demand.
+        vocalOptions = allVocalIds.OrderBy(id => id).ToList();
+
         if (descartadas > 0 && presentIds.Count > 0)
         {
-            Debug.Log($"[UmaViewerUI] Cancion {songid}: {descartadas} cantante(s) oculta(s) por no tener " +
-                      $"su .awb en disco ({presentIds.Count} disponibles).");
+            Debug.Log($"[UmaViewerUI] Cancion {songid}: {allVocalIds.Count} cantante(s) en el " +
+                      $"manifiesto, {presentIds.Count} ya en disco (el resto se descarga al elegirlo).");
         }
 
         //Cambiar de canción cambia el elenco: se limpian filtros y selecciones antes de reconstruir.

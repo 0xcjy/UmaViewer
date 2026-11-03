@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Gallop.Live;
 using Gallop.Live.Cutt;
 using UnityEngine;
@@ -139,7 +139,7 @@ public class LiveFrameDebugOverlay : MonoBehaviour
         textRect.offsetMax = new Vector2(-12f, -8f);
 
         _text = textGo.GetComponent<Text>();
-        _text.font = Resources.GetBuiltinResource<Font>(BuiltinFontName);
+        _text.font = UiFont.Get();
         _text.fontSize = 22;
         _text.alignment = TextAnchor.UpperRight;
         _text.color = new Color(0.95f, 1f, 0.85f, 1f);

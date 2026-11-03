@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Gallop;
 using System;
@@ -71,9 +71,13 @@ public class CharaEntry
             case Language.Cn:
                 Localize.CurrentRegion = Localize.Region.CN;
 
+                // LocalizeEn carries the full localised table (1187 constants plus the runtime
+                // names loaded from Resources/Localize/zh-CN-names.json). Localize.CN only ever
+                // covered 1001..2005 and 9001/9002, so everything from 9003 on fell back to the
+                // Japanese name from the database.
                 return IsMob
-                    ? Localize.GetMobName(Id, Name)
-                    : Localize.GetCharaName(Id, Name);
+                    ? LocalizeEn.GetMobName(Id, Name)
+                    : LocalizeEn.GetCharaName(Id, Name);
 
             case Language.Jp:
             default:

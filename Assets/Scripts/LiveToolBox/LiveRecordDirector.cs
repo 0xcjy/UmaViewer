@@ -1,4 +1,4 @@
-using Gallop.Live;
+﻿using Gallop.Live;
 using Gallop.RenderPipeline;
 using System;
 using System.IO;
@@ -1169,7 +1169,7 @@ public class LiveRecordDirector : MonoBehaviour
         rect.anchoredPosition = position;
 
         var text = go.GetComponent<Text>();
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.font = UiFont.Get();
         text.fontSize = fontSize;
         text.color = color;
         text.alignment = anchor;

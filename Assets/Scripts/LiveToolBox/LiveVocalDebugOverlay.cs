@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Gallop.Live;
@@ -250,7 +250,7 @@ public class LiveVocalDebugOverlay : MonoBehaviour
         var go = new GameObject("Text", typeof(RectTransform), typeof(Text));
         go.transform.SetParent(parent, false);
         var t = go.GetComponent<Text>();
-        t.font = Resources.GetBuiltinResource<Font>(BuiltinFontName);
+        t.font = UiFont.Get();
         t.fontSize = size;
         t.fontStyle = style;
         t.alignment = anchor;
