@@ -1,4 +1,4 @@
-
+﻿
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -34,6 +34,13 @@ public class Config
 
     public string LanguageTip = "Affects Uma names on the list. Language options: 0 - En, 1 - Jp, 2 - Simplified Chinese";
     public Language Language = Language.En;
+
+    /// <summary>
+    /// Android Default（root）模式下 root 与游戏数据是否可用。false 时启动应直接提示
+    /// "需要 root 权限"，而不是继续走到数据库缺失那一步。
+    /// </summary>
+    [System.NonSerialized]
+    public bool RootAvailable = true;
 
     public string RegionTip = "Game region. Region options: 0 - Global, 1 - Japan";
     public Region Region = Region.Jp;
@@ -211,10 +218,53 @@ public class Config
         if (Application.isMobilePlatform)
         {
             StandaloneLogger.Info("Mobile platform detected");
-            StandaloneLogger.Info("Forcing WorkMode = Standalone");
 
-            WorkMode = WorkMode.Standalone;
             DownloadMissingResources = true;
+
+            // Android 上 Default 模式就是 root 模式：直接取 /data/data/<game>/files 的
+            // meta + master + dat，镜像到应用私有目录之后再按普通路径使用。
+            // 不再强制切成 Standalone —— 那会让 Default 变得毫无用处，CDN 重建也慢得多。
+            if (Application.platform == RuntimePlatform.Android && WorkMode == WorkMode.Default)
+            {
+                RootAvailable = AndroidRootSource.HasRoot();
+
+                if (!RootAvailable)
+                {
+                    StandaloneLogger.Error(
+                        "Root unavailable: cannot read " + AndroidRootSource.GameFiles +
+                        " (" + AndroidRootSource.LastError + ")");
+
+                    MainPath = string.Empty;
+                }
+                else
+                {
+                    StandaloneLogger.Info("Root granted, mirroring game data");
+
+                    string mirror = AndroidRootSource.Mirror(Application.persistentDataPath);
+
+                    if (string.IsNullOrEmpty(mirror))
+                    {
+                        RootAvailable = false;
+                        MainPath = string.Empty;
+
+                        StandaloneLogger.Error(
+                            "Root granted but mirroring failed: " + AndroidRootSource.LastError);
+                    }
+                    else
+                    {
+                        MainPath = mirror;
+                    }
+                }
+
+                Instance = this;
+
+                StandaloneLogger.RecordConfig();
+                StandaloneLogger.RecordDirectory("MainPath", MainPath);
+                StandaloneLogger.End("Config Constructor");
+
+                return;
+            }
+
             MainPath = Application.persistentDataPath;
 
             Instance = this;

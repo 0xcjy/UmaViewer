@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -76,6 +76,18 @@ public class UmaDatabaseEntry
     {
         get
         {
+            // Android root 模式没有搬运 dat/，命中缓存就返回缓存路径，否则用 su 取一份。
+            if (AndroidRootSource.IsRootMode && !string.IsNullOrEmpty(Url) && Url.Length >= 2)
+            {
+                string cached = AndroidRootSource.EnsureBundle(
+                    UnityEngine.Application.persistentDataPath, Url);
+
+                if (!string.IsNullOrEmpty(cached))
+                {
+                    return cached;
+                }
+            }
+
             return $"{Config.Instance.MainPath.Replace("\\", "/")}/dat/{Url.Substring(0, 2)}/{Url}";
         }
     }

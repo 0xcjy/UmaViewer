@@ -355,6 +355,16 @@ public class UISettingsOther : MonoBehaviour
             LanguageDropdown.ClearOptions();
             LanguageDropdown.AddOptions(options);
         }
+
+        // 场景里没有可靠的 onValueChanged 绑定，Android 上表现为「点了没反应」。这里显式挂上，
+        // 先移除再添加，避免重复触发。
+        LanguageDropdown.onValueChanged.RemoveListener(ChangeLanguage);
+        LanguageDropdown.onValueChanged.AddListener(ChangeLanguage);
+
+        if (!LanguageDropdown.interactable)
+        {
+            LanguageDropdown.interactable = true;
+        }
     }
 
     private int LanguageToDropdownValue(Language language)

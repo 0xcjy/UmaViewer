@@ -177,6 +177,20 @@ public class UmaViewerMain : MonoBehaviour
             LoadDatabaseLists();
         }
 
+        // Android root 模式：Config 里已经探测过 su，失败时 MainPath 为空，没有继续的意义。
+        if (Config.Instance != null && !Config.Instance.RootAvailable)
+        {
+            StandaloneLogger.Error(
+                "Root mode selected but root is unavailable: " + AndroidRootSource.LastError);
+
+            UmaViewerUI.Instance?.ShowMessage(
+                "没有 root 权限。Root 模式需要 /data/data/" + AndroidRootSource.GamePackage +
+                "/files 的读取权限；请授予本应用 su 权限，或改用 Standalone 模式。",
+                UIMessageType.Error);
+
+            yield break;
+        }
+
         if (AbList == null) yield break;
 
         // Rebuilt databases come from the CDN manifests, which carry no per-entry key. If the
