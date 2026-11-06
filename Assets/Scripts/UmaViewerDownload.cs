@@ -16,14 +16,14 @@ using System.Linq;
 
 public class UmaViewerDownload : MonoBehaviour
 {
-    public static string MANIFEST_ROOT_URL = "https://prd-storage-app-umamusume.akamaized.net/dl/resources/Manifest";
-    public static string GENERIC_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Generic";
+    public static string MANIFEST_ROOT_URL = "https://umamusume.cn-sy1.rains3.com/dat/";
+    public static string GENERIC_BASE_URL = "https://umamusume.cn-sy1.rains3.com/dat/";
 #if UNITY_IOS || UNITY_IPHONE || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-    public static string ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/iOS/assetbundles/";
+    public static string ASSET_BASE_URL = "https://umamusume.cn-sy1.rains3.com/dat/";
 #elif UNITY_ANDROID
     public static string ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Android/assetbundles/";
 #else
-    public static string ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Windows/assetbundles/";
+    public static string ASSET_BASE_URL = "https://umamusume.cn-sy1.rains3.com/dat/";
 #endif
 
 #if UNITY_ANDROID || UNITY_IOS || UNITY_IPHONE
