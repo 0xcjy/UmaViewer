@@ -200,6 +200,7 @@ public static class AndroidRootSource
     public const string GamePackage = "jp.co.cygames.umamusume";
     public const string GameFiles = "";
     public const string MirrorDirName = "game_root";
+    public const string BundleCacheDirName = "game_bundles";
 
     public static string LastError => "not an Android build";
 
@@ -212,5 +213,7 @@ public static class AndroidRootSource
     public static bool GameDataAccessible() => false;
 
     public static string Mirror(string persistentRoot) => null;
+
+    public static string EnsureBundle(string persistentRoot, string hash) => null;
 }
 #endif

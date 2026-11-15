@@ -1,4 +1,4 @@
-﻿#if UNITY_STANDALONE || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
 using SFB;
 #endif
 
@@ -34,6 +34,9 @@ public class UISettingsOther : MonoBehaviour
     private TypeInDropdown _uiFps;
     private TypeInDropdown _uiRenderScale;
 
+    private TMP_Dropdown _cdnDropdown;
+    private static readonly List<string> CdnModeLabels = new List<string> { "Cy", "CN" };
+
     public void ApplySettings()
     {
         EnsureLanguageOptions();
@@ -41,6 +44,7 @@ public class UISettingsOther : MonoBehaviour
         EnsureProxyRow();
         EnsureUIFps();
         EnsureUIRenderScale();
+        EnsureCdnMode();
         EnsureUpdateNonLoadingModelsButton();
 
         WorkModeDropdown.SetValueWithoutNotify((int)Config.Instance.WorkMode);
@@ -430,6 +434,61 @@ public class UISettingsOther : MonoBehaviour
         if (dd == null) return;
         _uiFps = new TmpTypeInDropdown(dd, UIFpsOptions, 0, 0, "", ApplyUIFrameRate);
         _uiFps.SetValue(Config.Instance.UIFrameRate);
+    }
+
+    private void EnsureCdnMode()
+    {
+        if (_cdnDropdown == null)
+        {
+            var row = transform.Find("CdnMode");
+            if (row == null)
+            {
+                UnityEngine.Debug.LogWarning("[UISettingsOther] No se encuentra 'Other/CdnMode' en la escena.");
+                return;
+            }
+
+            _cdnDropdown = row.GetComponentInChildren<TMP_Dropdown>(true);
+            if (_cdnDropdown == null)
+            {
+                UnityEngine.Debug.LogWarning("[UISettingsOther] 'Other/CdnMode' no tiene TMP_Dropdown.");
+                return;
+            }
+
+            bool optionsMatch = _cdnDropdown.options.Count == CdnModeLabels.Count;
+            if (optionsMatch)
+            {
+                for (int i = 0; i < CdnModeLabels.Count; i++)
+                {
+                    if (_cdnDropdown.options[i].text != CdnModeLabels[i])
+                    {
+                        optionsMatch = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!optionsMatch)
+            {
+                _cdnDropdown.ClearOptions();
+                _cdnDropdown.AddOptions(CdnModeLabels);
+            }
+
+            _cdnDropdown.onValueChanged.RemoveListener(ApplyCdnMode);
+            _cdnDropdown.onValueChanged.AddListener(ApplyCdnMode);
+        }
+
+        _cdnDropdown.SetValueWithoutNotify(Mathf.Clamp(Config.Instance.CdnMode, 0, 1));
+    }
+
+    private void ApplyCdnMode(int mode)
+    {
+        mode = Mathf.Clamp(mode, 0, 1);
+        if (Config.Instance.CdnMode == mode) return;
+
+        Config.Instance.CdnMode = mode;
+        Config.Instance.UpdateConfig(false);
+
+        StandaloneLogger.Info("CDN mode changed to " + (mode == 0 ? "Cy" : "CN"));
     }
 
     private void EnsureUIRenderScale()

@@ -1,4 +1,4 @@
-﻿
+
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -86,6 +86,9 @@ public class Config
 
     public string UIFrameRateTip = "Viewer (UI) frame rate: positive integer FPS, 0 = unlimited (desktop). Changed only by the Version2 settings panel.";
     public int UIFrameRate = 60;
+
+    public string CdnModeTip = "CDN source: 0 = Cy (official), 1 = CN";
+    public int CdnMode = 0;
 
     public string UIRenderScalePercentTip = "Viewer (UI) render scale, 10-200 %. 100 = native resolution. Changed only by the Version2 settings panel.";
     public int UIRenderScalePercent = 100;

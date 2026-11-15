@@ -16,15 +16,42 @@ using System.Linq;
 
 public class UmaViewerDownload : MonoBehaviour
 {
-    public static string MANIFEST_ROOT_URL = "https://prd-storage-app-umamusume.akamaized.net/dl/resources/Manifest";
-    public static string GENERIC_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Generic";
-#if UNITY_IOS || UNITY_IPHONE || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-    public static string ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/iOS/assetbundles/";
-#elif UNITY_ANDROID
-    public static string ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Android/assetbundles/";
+    private const string CY_MANIFEST_ROOT_URL = "https://prd-storage-app-umamusume.akamaized.net/dl/resources/Manifest";
+    private const string CY_GENERIC_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Generic";
+    private const string CY_WINDOWS_ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Windows/assetbundles/";
+    private const string CY_ANDROID_ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Android/assetbundles/";
+
+    private const string CN_MANIFEST_ROOT_URL = "https://umamusume.cn-sy1.rains3.com/dat/";
+    private const string CN_GENERIC_BASE_URL = "https://umamusume.cn-sy1.rains3.com/dat/";
+    private const string CN_ASSET_BASE_URL = "https://umamusume.cn-sy1.rains3.com/dat/";
+
+    private static bool UseCnCdn
+    {
+        get { return Config.Instance != null && Config.Instance.CdnMode == 1; }
+    }
+
+    public static string MANIFEST_ROOT_URL
+    {
+        get { return UseCnCdn ? CN_MANIFEST_ROOT_URL : CY_MANIFEST_ROOT_URL; }
+    }
+
+    public static string GENERIC_BASE_URL
+    {
+        get { return UseCnCdn ? CN_GENERIC_BASE_URL : CY_GENERIC_BASE_URL; }
+    }
+
+    public static string ASSET_BASE_URL
+    {
+        get
+        {
+#if UNITY_ANDROID
+            // The supplied CN endpoint intentionally keeps Android AssetBundles on the official CDN.
+            return CY_ANDROID_ASSET_BASE_URL;
 #else
-    public static string ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Windows/assetbundles/";
+            return UseCnCdn ? CN_ASSET_BASE_URL : CY_WINDOWS_ASSET_BASE_URL;
 #endif
+        }
+    }
 
 #if UNITY_ANDROID || UNITY_IOS || UNITY_IPHONE
     private const int maxConcurrentDownloads = 6;
